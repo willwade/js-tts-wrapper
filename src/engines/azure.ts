@@ -1,7 +1,7 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
-import { SpeakOptions, UnifiedVoice, WordBoundaryCallback } from "../types";
-import { SSMLUtils } from "../core/ssml-utils";
+import * as SSMLUtils from "../core/ssml-utils";
 import { SpeechMarkdownConverter } from "../markdown/converter";
+import type { SpeakOptions, UnifiedVoice, WordBoundaryCallback } from "../types";
 
 /**
  * Azure TTS Client

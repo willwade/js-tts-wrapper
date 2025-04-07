@@ -1,4 +1,4 @@
-import { UnifiedVoice } from "../types";
+import type { UnifiedVoice } from "../types";
 
 /**
  * Filter voices by language code

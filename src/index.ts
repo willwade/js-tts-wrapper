@@ -1,7 +1,7 @@
 // Core exports
 export { AbstractTTSClient } from "./core/abstract-tts";
-export { SSMLUtils } from "./core/ssml-utils";
-export { VoiceUtils } from "./core/voice-utils";
+export * as SSMLUtils from "./core/ssml-utils";
+export * as VoiceUtils from "./core/voice-utils";
 export { AudioPlayback } from "./core/playback";
 
 // SSML exports
@@ -21,4 +21,5 @@ export type {
   TTSEventType,
   WordBoundaryCallback,
   SimpleCallback,
+  PropertyType,
 } from "./types";

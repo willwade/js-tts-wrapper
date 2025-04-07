@@ -1,4 +1,4 @@
-import { SSMLUtils } from "../core/ssml-utils";
+import * as SSMLUtils from "../core/ssml-utils";
 
 describe("SSMLUtils", () => {
   describe("isSSML", () => {

@@ -1,4 +1,4 @@
-import { SpeakOptions } from "../types";
+import type { SpeakOptions } from "../types";
 
 /**
  * Check if text is SSML

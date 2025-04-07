@@ -2,7 +2,7 @@
  * SSML Builder class for creating SSML markup
  */
 export class SSMLBuilder {
-  private ssml: string = "";
+  private ssml = "";
 
   /**
    * Add text or SSML to the builder
@@ -11,10 +11,10 @@ export class SSMLBuilder {
    */
   add(text: string): string {
     // If text doesn't start with <speak>, wrap it
-    if (!text.trim().startsWith("<speak")) {
-      this.ssml = `<speak>${text}</speak>`;
-    } else {
+    if (text.trim().startsWith("<speak")) {
       this.ssml = text;
+    } else {
+      this.ssml = `<speak>${text}</speak>`;
     }
     return this.ssml;
   }
@@ -24,7 +24,7 @@ export class SSMLBuilder {
    * @param time Break duration (e.g., '500ms')
    * @returns The SSML builder instance
    */
-  addBreak(time: string = "500ms"): SSMLBuilder {
+  addBreak(time = "500ms"): SSMLBuilder {
     this.ssml = this.ssml.replace("</speak>", `<break time="${time}"/></speak>`);
     return this;
   }

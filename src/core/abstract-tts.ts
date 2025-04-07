@@ -1,13 +1,14 @@
+import { SSMLBuilder } from "../ssml/builder";
 import type {
+  PropertyType,
+  SimpleCallback,
   SpeakOptions,
-  UnifiedVoice,
   TTSCredentials,
   TTSEventType,
+  UnifiedVoice,
   WordBoundaryCallback,
-  SimpleCallback,
-  PropertyType,
 } from "../types";
-import { SSMLBuilder } from "../ssml/builder";
+import * as SSMLUtils from "./ssml-utils";
 
 /**
  * Abstract base class for all TTS clients
@@ -22,7 +23,7 @@ export abstract class AbstractTTSClient {
   /**
    * Currently selected language
    */
-  protected lang: string = "en-US";
+  protected lang = "en-US";
 
   /**
    * Event callbacks
@@ -62,7 +63,7 @@ export abstract class AbstractTTSClient {
   /**
    * Audio sample rate
    */
-  protected audioRate: number = 24000;
+  protected audioRate = 24000;
 
   /**
    * Creates a new TTS client
@@ -333,7 +334,7 @@ export abstract class AbstractTTSClient {
    * @returns True if text is SSML
    */
   protected _isSSML(text: string): boolean {
-    return text.trim().startsWith("<speak");
+    return SSMLUtils.isSSML(text);
   }
 
   /**
@@ -342,20 +343,7 @@ export abstract class AbstractTTSClient {
    * @returns Plain text without SSML tags
    */
   protected _stripSSML(ssml: string): string {
-    return ssml
-      .replace(/<speak[^>]*>/g, "")
-      .replace(/<\/speak>/g, "")
-      .replace(/<break[^>]*\/>/g, " ")
-      .replace(/<emphasis[^>]*>(.*?)<\/emphasis>/g, "$1")
-      .replace(/<prosody[^>]*>(.*?)<\/prosody>/g, "$1")
-      .replace(/<voice[^>]*>(.*?)<\/voice>/g, "$1")
-      .replace(/<say-as[^>]*>(.*?)<\/say-as>/g, "$1")
-      .replace(/<phoneme[^>]*>(.*?)<\/phoneme>/g, "$1")
-      .replace(/<sub[^>]*>(.*?)<\/sub>/g, "$1")
-      .replace(/<p>(.*?)<\/p>/g, "$1 ")
-      .replace(/<s>(.*?)<\/s>/g, "$1 ")
-      .replace(/\s+/g, " ")
-      .trim();
+    return SSMLUtils.stripSSML(ssml);
   }
 
   // --- Event system ---
