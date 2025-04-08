@@ -30,8 +30,10 @@ package-lock.json
 .eslintcache
 *v8.log
 /lib/
-coverage/*
-dist/*
+/coverage
+/coverage/*
+/dist
+/dist/*
 .env
 .env.local
 .envrc
