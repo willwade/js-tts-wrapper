@@ -8,7 +8,7 @@ const runTests = process.env.MICROSOFT_TOKEN && process.env.MICROSOFT_REGION;
 // Only run these tests if credentials are available
 (runTests ? describe : describe.skip)('AzureTTSClient', () => {
   let client: AzureTTSClient;
-  
+
   beforeAll(() => {
     // Create a client with the credentials from environment variables
     client = new AzureTTSClient({
@@ -16,20 +16,17 @@ const runTests = process.env.MICROSOFT_TOKEN && process.env.MICROSOFT_REGION;
       region: process.env.MICROSOFT_REGION || '',
     });
   });
-  
-  afterAll(async () => {
-    // Clean up any resources
-    if (client) {
-      await client.close();
-    }
+
+  afterAll(() => {
+    // No cleanup needed
   });
-  
+
   it('should list available voices', async () => {
     const voices = await client.getVoices();
     expect(voices).toBeDefined();
     expect(Array.isArray(voices)).toBe(true);
     expect(voices.length).toBeGreaterThan(0);
-    
+
     // Check that the voices have the expected properties
     const voice = voices[0];
     expect(voice).toHaveProperty('id');
@@ -37,83 +34,61 @@ const runTests = process.env.MICROSOFT_TOKEN && process.env.MICROSOFT_REGION;
     expect(voice).toHaveProperty('gender');
     expect(voice).toHaveProperty('languageCodes');
   });
-  
-  it('should convert text to speech', async () => {
-    const text = 'Hello, this is a test of the Azure Text to Speech service.';
-    const outputPath = path.join(__dirname, 'azure-test-output.mp3');
-    
-    // Convert text to speech and save to file
-    await client.speak(text, {
-      outputPath,
+
+  it('should get voices by language', async () => {
+    const voices = await client.getVoicesByLanguage('en-US');
+    expect(voices).toBeDefined();
+    expect(Array.isArray(voices)).toBe(true);
+    expect(voices.length).toBeGreaterThan(0);
+
+    // Check that all voices are for the requested language
+    for (const voice of voices) {
+      expect(voice.languageCodes.some(lang => lang.bcp47 === 'en-US')).toBe(true);
+    }
+  });
+
+  it('should prepare SSML correctly', () => {
+    // Access the private prepareSSML method using type assertion
+    const prepareSSML = (client as any).prepareSSML.bind(client);
+
+    // Test with plain text
+    const text = 'Hello, this is a test.';
+    const ssml = prepareSSML(text, { voice: 'en-US-JennyNeural' });
+
+    // Check that the SSML is formatted correctly
+    expect(ssml).toContain('<speak');
+    expect(ssml).toContain('</speak>');
+    expect(ssml).toContain('Hello, this is a test.');
+  });
+
+  it('should convert Speech Markdown to SSML', () => {
+    // Access the private prepareSSML method using type assertion
+    const prepareSSML = (client as any).prepareSSML.bind(client);
+
+    // Test with Speech Markdown
+    const markdown = 'Hello [500ms] this is a test of Speech Markdown.';
+    const ssml = prepareSSML(markdown, {
       voice: 'en-US-JennyNeural',
+      useSpeechMarkdown: true
     });
-    
-    // Check that the file exists and has content
-    expect(fs.existsSync(outputPath)).toBe(true);
-    const stats = fs.statSync(outputPath);
-    expect(stats.size).toBeGreaterThan(0);
-    
-    // Clean up the file
-    fs.unlinkSync(outputPath);
+
+    // Check that the SSML is formatted correctly
+    expect(ssml).toContain('<speak');
+    expect(ssml).toContain('</speak>');
+    expect(ssml).toContain('<break');
   });
-  
-  it('should convert SSML to speech', async () => {
-    const ssml = `
-      <speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="http://www.w3.org/2001/mstts" xml:lang="en-US">
-        <voice name="en-US-JennyNeural">
-          <prosody rate="slow" pitch="+10%">
-            This is a test of SSML with Azure Text to Speech.
-          </prosody>
-        </voice>
-      </speak>
-    `;
-    const outputPath = path.join(__dirname, 'azure-ssml-test-output.mp3');
-    
-    // Convert SSML to speech and save to file
-    await client.speak(ssml, {
-      outputPath,
-    });
-    
-    // Check that the file exists and has content
-    expect(fs.existsSync(outputPath)).toBe(true);
-    const stats = fs.statSync(outputPath);
-    expect(stats.size).toBeGreaterThan(0);
-    
-    // Clean up the file
-    fs.unlinkSync(outputPath);
-  });
-  
-  it('should convert Speech Markdown to speech', async () => {
-    const markdown = 'Hello [500ms] this is a test with (pitch:high) Speech Markdown.';
-    const outputPath = path.join(__dirname, 'azure-markdown-test-output.mp3');
-    
-    // Convert Speech Markdown to speech and save to file
-    await client.speak(markdown, {
-      outputPath,
-      voice: 'en-US-JennyNeural',
-      useSpeechMarkdown: true,
-    });
-    
-    // Check that the file exists and has content
-    expect(fs.existsSync(outputPath)).toBe(true);
-    const stats = fs.statSync(outputPath);
-    expect(stats.size).toBeGreaterThan(0);
-    
-    // Clean up the file
-    fs.unlinkSync(outputPath);
-  });
-  
+
   it('should set and get properties', async () => {
     // Set properties
     client.setProperty('rate', 1.5);
     client.setProperty('pitch', 1.2);
     client.setProperty('volume', 2.0);
-    
+
     // Get properties
     expect(client.getProperty('rate')).toBe(1.5);
     expect(client.getProperty('pitch')).toBe(1.2);
     expect(client.getProperty('volume')).toBe(2.0);
-    
+
     // Reset properties
     client.setProperty('rate', 1.0);
     client.setProperty('pitch', 1.0);

@@ -138,28 +138,41 @@ export abstract class AbstractTTSClient {
     // Convert text to audio bytes
     const audioBytes = await this.synthToBytes(text, options);
 
-    // Create audio blob and URL
-    const blob = new Blob([audioBytes], { type: "audio/wav" }); // default to WAV
-    const url = URL.createObjectURL(blob);
+    // Check if we're in a browser environment
+    let url = '';
+    if (typeof Blob !== 'undefined' && typeof URL !== 'undefined') {
+      // Create audio blob and URL
+      const blob = new Blob([audioBytes], { type: "audio/wav" }); // default to WAV
+      url = URL.createObjectURL(blob);
+    }
 
-    // Create and play audio element
-    const audio = new Audio(url);
-    this.audio.audioElement = audio;
-    this.audio.isPlaying = true;
-    this.audio.isPaused = false;
+    // Check if we're in a browser environment
+    if (typeof Audio !== 'undefined') {
+      // Create and play audio element
+      const audio = new Audio(url);
+      this.audio.audioElement = audio;
+      this.audio.isPlaying = true;
+      this.audio.isPaused = false;
 
-    // Set up event handlers
-    audio.onended = () => {
+      // Set up event handlers
+      audio.onended = () => {
+        this.emit("end");
+        this.audio.isPlaying = false;
+        URL.revokeObjectURL(url); // Clean up the URL
+      };
+    } else {
+      // In Node.js environment, we can't play audio
+      // Just emit the end event immediately
       this.emit("end");
-      this.audio.isPlaying = false;
-      URL.revokeObjectURL(url); // Clean up the URL
-    };
+    }
 
     // Create estimated word timings if needed
     this._createEstimatedWordTimings(text);
 
-    // Play the audio
-    await audio.play();
+    // Play the audio if in browser environment
+    if (this.audio.audioElement) {
+      await this.audio.audioElement.play();
+    }
   }
 
   /**
@@ -461,5 +474,17 @@ export abstract class AbstractTTSClient {
       console.error("Error checking credentials:", error);
       return false;
     }
+  }
+
+  /**
+   * Get available voices for a specific language
+   * @param language Language code (BCP-47 format, e.g., 'en-US')
+   * @returns Promise resolving to an array of available voices for the specified language
+   */
+  async getVoicesByLanguage(language: string): Promise<UnifiedVoice[]> {
+    const voices = await this.getVoices();
+    return voices.filter(voice =>
+      voice.languageCodes.some(lang => lang.bcp47 === language)
+    );
   }
 }

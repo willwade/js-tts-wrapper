@@ -12,6 +12,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "jest",
+    "test:env": "node load-env.js && jest",
     "lint": "biome lint ./src",
     "format": "biome format --write ./src",
     "check": "biome check --apply ./src",
