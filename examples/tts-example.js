@@ -1,19 +1,23 @@
 // Unified example for all TTS engines
-require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
+require("dotenv").config();
+const fs = require("node:fs");
+const path = require("node:path");
 const {
   AzureTTSClient,
   ElevenLabsTTSClient,
-  GoogleTTSClient
-} = require('../dist');
+  GoogleTTSClient,
+  OpenAITTSClient,
+  PlayHTTTSClient,
+  PollyTTSClient,
+  SherpaOnnxTTSClient,
+} = require("../dist");
 
 // Get engine name from command line arguments
-const engineName = process.argv[2]?.toLowerCase() || 'all';
-const validEngines = ['azure', 'elevenlabs', 'google', 'all'];
+const engineName = process.argv[2]?.toLowerCase() || "all";
+const validEngines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "sherpaonnx", "all"];
 
 if (!validEngines.includes(engineName)) {
-  console.error(`Error: Invalid engine name. Valid options are: ${validEngines.join(', ')}`);
+  console.error(`Error: Invalid engine name. Valid options are: ${validEngines.join(", ")}`);
   process.exit(1);
 }
 
@@ -23,9 +27,11 @@ async function createTTSClient(engine) {
 
   try {
     switch (engine) {
-      case 'azure':
+      case "azure":
         if (!process.env.MICROSOFT_TOKEN || !process.env.MICROSOFT_REGION) {
-          console.error('Error: MICROSOFT_TOKEN and MICROSOFT_REGION environment variables are required for Azure TTS');
+          console.error(
+            "Error: MICROSOFT_TOKEN and MICROSOFT_REGION environment variables are required for Azure TTS"
+          );
           return null;
         }
         client = new AzureTTSClient({
@@ -34,9 +40,11 @@ async function createTTSClient(engine) {
         });
         break;
 
-      case 'elevenlabs':
+      case "elevenlabs":
         if (!process.env.ELEVENLABS_API_KEY) {
-          console.error('Error: ELEVENLABS_API_KEY environment variable is required for ElevenLabs TTS');
+          console.error(
+            "Error: ELEVENLABS_API_KEY environment variable is required for ElevenLabs TTS"
+          );
           return null;
         }
         client = new ElevenLabsTTSClient({
@@ -44,14 +52,64 @@ async function createTTSClient(engine) {
         });
         break;
 
-      case 'google':
+      case "google":
         if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.GOOGLE_SA_PATH) {
-          console.error('Error: GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_SA_PATH environment variable is required for Google TTS');
+          console.error(
+            "Error: GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_SA_PATH environment variable is required for Google TTS"
+          );
           return null;
         }
         client = new GoogleTTSClient({
           keyFilename: process.env.GOOGLE_SA_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS,
         });
+        break;
+
+      case "polly":
+        if (
+          !process.env.POLLY_AWS_KEY_ID ||
+          !process.env.POLLY_AWS_ACCESS_KEY ||
+          !process.env.POLLY_REGION
+        ) {
+          console.error(
+            "Error: POLLY_AWS_KEY_ID, POLLY_AWS_ACCESS_KEY, and POLLY_REGION environment variables are required for AWS Polly TTS"
+          );
+          return null;
+        }
+        client = new PollyTTSClient({
+          region: process.env.POLLY_REGION,
+          accessKeyId: process.env.POLLY_AWS_KEY_ID,
+          secretAccessKey: process.env.POLLY_AWS_ACCESS_KEY,
+        });
+        break;
+
+      case "openai":
+        if (!process.env.OPENAI_API_KEY) {
+          console.error(
+            "Error: OPENAI_API_KEY environment variable is required for OpenAI TTS"
+          );
+          return null;
+        }
+        client = new OpenAITTSClient({
+          apiKey: process.env.OPENAI_API_KEY,
+        });
+        break;
+
+      case "playht":
+        if (!process.env.PLAYHT_API_KEY || !process.env.PLAYHT_USER_ID) {
+          console.error(
+            "Error: PLAYHT_API_KEY and PLAYHT_USER_ID environment variables are required for PlayHT TTS"
+          );
+          return null;
+        }
+        client = new PlayHTTTSClient({
+          apiKey: process.env.PLAYHT_API_KEY,
+          userId: process.env.PLAYHT_USER_ID,
+        });
+        break;
+
+      case "sherpaonnx":
+        // SherpaOnnx doesn't require credentials, but it will download models automatically
+        client = new SherpaOnnxTTSClient({});
         break;
 
       default:
@@ -89,17 +147,17 @@ async function runEngineExample(engine) {
 
   try {
     // List available voices
-    console.log('Fetching available voices...');
+    console.log("Fetching available voices...");
     const voices = await client.getVoices();
     console.log(`Found ${voices.length} voices`);
 
     // Print the first few voices
-    voices.slice(0, 3).forEach(voice => {
+    for (const voice of voices.slice(0, 3)) {
       console.log(`- ${voice.name} (${voice.id}): ${voice.languageCodes[0].display}`);
-    });
+    }
 
     // Get English voices
-    const enVoices = await client.getVoicesByLanguage('en-US');
+    const enVoices = await client.getVoicesByLanguage("en-US");
     console.log(`\nFound ${enVoices.length} English (US) voices`);
 
     // Select a voice
@@ -110,26 +168,54 @@ async function runEngineExample(engine) {
       // Set the voice
       client.setVoice(voiceId);
     } else {
-      console.log('\nNo English voices found, using default voice');
+      console.log("\nNo English voices found, using default voice");
+    }
+
+    // Special settings for OpenAI
+    if (engine === "openai") {
+      console.log("\nSetting OpenAI-specific properties...");
+      // Set the model (defaults to gpt-4o-mini-tts)
+      client.setProperty("model", "gpt-4o-mini-tts");
+      console.log("Model set to: gpt-4o-mini-tts");
+
+      // Set instructions for the TTS engine
+      client.setProperty("instructions", "Speak in a friendly and clear tone.");
+      console.log("Instructions set for natural speech");
+
+      // Set the response format
+      client.setProperty("responseFormat", "mp3");
+      console.log("Response format set to: mp3");
+    }
+
+    // Special settings for PlayHT
+    if (engine === "playht") {
+      console.log("\nSetting PlayHT-specific properties...");
+      // Set the voice engine (defaults to PlayHT1.0)
+      client.setProperty("voiceEngine", "PlayHT1.0");
+      console.log("Voice engine set to: PlayHT1.0");
+
+      // Set the output format
+      client.setProperty("outputFormat", "wav");
+      console.log("Output format set to: wav");
     }
 
     // Convert text to speech
-    console.log('\nConverting text to speech...');
+    console.log("\nConverting text to speech...");
     const text = `Hello, this is a test of the ${engine} Text to Speech API. It sounds quite natural, doesn't it?`;
     const outputPath = path.join(__dirname, `${engine}-output.mp3`);
 
     // Synthesize speech
     const audioBytes = await client.synthToBytes(text, {
-      format: 'mp3',
+      format: "mp3",
     });
 
     // Save to file
     fs.writeFileSync(outputPath, Buffer.from(audioBytes));
     console.log(`Speech saved to ${outputPath}`);
 
-    // Example with SSML (skip for ElevenLabs which doesn't support SSML)
-    if (engine !== 'elevenlabs') {
-      console.log('\nConverting SSML to speech...');
+    // Example with SSML (skip for engines that don't support SSML)
+    if (engine !== "elevenlabs" && engine !== "sherpaonnx" && engine !== "openai" && engine !== "playht") {
+      console.log("\nConverting SSML to speech...");
       const ssml = `
         <speak>
           This is an example of <emphasis level="strong">SSML</emphasis> synthesis with ${engine}.
@@ -143,26 +229,26 @@ async function runEngineExample(engine) {
       try {
         // Synthesize SSML
         const ssmlAudioBytes = await client.synthToBytes(ssml, {
-          format: 'mp3',
+          format: "mp3",
         });
 
         // Save to file
         fs.writeFileSync(ssmlOutputPath, Buffer.from(ssmlAudioBytes));
         console.log(`SSML speech saved to ${ssmlOutputPath}`);
       } catch (error) {
-        console.error('Error synthesizing SSML:', error.message);
+        console.error("Error synthesizing SSML:", error.message);
       }
     }
 
     // Example with streaming
-    console.log('\nConverting text to speech using streaming...');
+    console.log("\nConverting text to speech using streaming...");
     const streamingText = `This is an example of streaming synthesis with ${engine} TTS.`;
     const streamingOutputPath = path.join(__dirname, `${engine}-streaming-output.mp3`);
 
     try {
       // Get streaming audio
       const streamResult = await client.synthToBytestream(streamingText, {
-        format: 'mp3',
+        format: "mp3",
         useWordBoundary: true, // Request word boundaries
       });
 
@@ -170,7 +256,7 @@ async function runEngineExample(engine) {
       let stream;
       let wordBoundaries = [];
 
-      if ('audioStream' in streamResult) {
+      if ("audioStream" in streamResult) {
         stream = streamResult.audioStream;
         wordBoundaries = streamResult.wordBoundaries;
         console.log(`Received ${wordBoundaries.length} word boundaries`);
@@ -203,20 +289,30 @@ async function runEngineExample(engine) {
 
       // Print word boundaries if available
       if (wordBoundaries.length > 0) {
-        console.log('\nWord boundaries:');
-        wordBoundaries.slice(0, 5).forEach(wb => {
-          console.log(`- "${wb.text}" at ${wb.offset / 10000}s (duration: ${wb.duration / 10000}s)`);
-        });
+        console.log("\nWord boundaries:");
+        if (engine === "openai") {
+          // OpenAI uses a different word boundary format
+          for (const wb of wordBoundaries.slice(0, 5)) {
+            console.log(`- "${wb.word}" at ${wb.start}s (duration: ${wb.end - wb.start}s)`);
+          }
+        } else {
+          // Standard format for other engines
+          for (const wb of wordBoundaries.slice(0, 5)) {
+            console.log(
+              `- "${wb.text}" at ${wb.offset / 10000}s (duration: ${wb.duration / 10000}s)`
+            );
+          }
+        }
         if (wordBoundaries.length > 5) {
           console.log(`... and ${wordBoundaries.length - 5} more`);
         }
       }
     } catch (error) {
-      console.error('Error with streaming synthesis:', error.message);
+      console.error("Error with streaming synthesis:", error.message);
     }
 
     // Example with word boundary events
-    console.log('\nTesting word boundary events...');
+    console.log("\nTesting word boundary events...");
     const boundaryText = `This is a test of word boundary events with ${engine} TTS.`;
 
     try {
@@ -233,16 +329,16 @@ async function runEngineExample(engine) {
       // Print word boundaries
       console.log(`Received ${wordBoundaries.length} word boundary events`);
       if (wordBoundaries.length > 0) {
-        console.log('First few word boundaries:');
-        wordBoundaries.slice(0, 5).forEach(wb => {
+        console.log("First few word boundaries:");
+        for (const wb of wordBoundaries.slice(0, 5)) {
           console.log(`- "${wb.word}" at ${wb.start}s (duration: ${wb.end - wb.start}s)`);
-        });
+        }
         if (wordBoundaries.length > 5) {
           console.log(`... and ${wordBoundaries.length - 5} more`);
         }
       }
     } catch (error) {
-      console.error('Error with word boundary events:', error.message);
+      console.error("Error with word boundary events:", error.message);
     }
 
     console.log(`\n${engine.toUpperCase()} example completed successfully!`);
@@ -253,9 +349,9 @@ async function runEngineExample(engine) {
 
 // Main function to run examples
 async function runExamples() {
-  if (engineName === 'all') {
+  if (engineName === "all") {
     // Run examples for all engines
-    for (const engine of ['azure', 'elevenlabs', 'google']) {
+    for (const engine of ["azure", "elevenlabs", "google", "polly", "sherpaonnx"]) {
       await runEngineExample(engine);
     }
   } else {

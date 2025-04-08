@@ -35,3 +35,5 @@ TEST-results.xml
 .env
 .env.local
 .envrc
+examples/*.wav
+examples/*.mp3

@@ -2,8 +2,31 @@ import { AbstractTTSClient } from "../core/abstract-tts";
 import { LanguageNormalizer } from "../core/language-utils";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
 
-// Use global fetch if available, otherwise try to import node-fetch
-const fetchApi = typeof fetch !== "undefined" ? fetch : require("node-fetch");
+// Mock fetch types for TypeScript compilation
+// These will be replaced by the actual types when the node-fetch package is installed
+interface Response {
+  json(): Promise<any>;
+  text(): Promise<string>;
+  arrayBuffer(): Promise<ArrayBuffer>;
+  body: ReadableStream<Uint8Array>;
+  ok: boolean;
+  status: number;
+  statusText: string;
+}
+
+type FetchFunction = (url: string, options?: any) => Promise<Response>;
+
+// Use the mock fetch function if the node-fetch package is not installed
+let fetch: FetchFunction;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  fetch = require("node-fetch");
+} catch (_error) {
+  console.warn("node-fetch package not found, using mock implementation");
+  fetch = async () => {
+    throw new Error("node-fetch is required for ElevenLabs TTS");
+  };
+}
 
 /**
  * ElevenLabs TTS credentials
@@ -12,7 +35,7 @@ export interface ElevenLabsCredentials extends TTSCredentials {
   /**
    * ElevenLabs API key
    */
-  apiKey: string;
+  apiKey?: string;
 }
 
 /**
@@ -33,9 +56,29 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    * Create a new ElevenLabs TTS client
    * @param credentials ElevenLabs credentials
    */
-  constructor(credentials: ElevenLabsCredentials) {
+  constructor(credentials: ElevenLabsCredentials = {}) {
     super(credentials);
-    this.apiKey = credentials.apiKey;
+    this.apiKey = credentials.apiKey || process.env.ELEVENLABS_API_KEY || "";
+  }
+
+  /**
+   * Check if the credentials are valid
+   * @returns Promise resolving to true if credentials are valid, false otherwise
+   */
+  async checkCredentials(): Promise<boolean> {
+    if (!this.apiKey) {
+      console.error("ElevenLabs API key is required");
+      return false;
+    }
+
+    try {
+      // Try to list voices to check if the API key is valid
+      await this._getVoices();
+      return true;
+    } catch (error) {
+      console.error("Error checking ElevenLabs credentials:", error);
+      return false;
+    }
   }
 
   /**
@@ -43,19 +86,28 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to an array of voice objects
    */
   protected async _getVoices(): Promise<any[]> {
-    const response = await fetchApi(`${this.baseUrl}/voices`, {
-      method: "GET",
-      headers: {
-        "xi-api-key": this.apiKey,
-      },
-    });
+    try {
+      const response = await fetch(`${this.baseUrl}/voices`, {
+        method: "GET",
+        headers: {
+          "xi-api-key": this.apiKey,
+        },
+      });
 
-    if (!response.ok) {
-      throw new Error(`Failed to get voices: ${response.statusText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
+        );
+        throw new Error(`Failed to get voices: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.voices;
+    } catch (error) {
+      console.error("Error getting ElevenLabs voices:", error);
+      return [];
     }
-
-    const data = await response.json();
-    return data.voices;
   }
 
   /**
@@ -85,15 +137,19 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
             similarity_boost: 0.75,
             use_speaker_boost: true,
             style: 0,
-            speed: this.properties.rate || 1.0,
+            speed: typeof this.properties.rate === "number" ? this.properties.rate : 1.0,
           },
         }),
       };
 
       // Make API request
-      const response = await fetchApi(`${this.baseUrl}/text-to-speech/${voiceId}`, requestOptions);
+      const response = await fetch(`${this.baseUrl}/text-to-speech/${voiceId}`, requestOptions);
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
+        );
         throw new Error(`Failed to synthesize speech: ${response.statusText}`);
       }
 
@@ -136,23 +192,36 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
             similarity_boost: 0.75,
             use_speaker_boost: true,
             style: 0,
-            speed: this.properties.rate || 1.0,
+            speed: typeof this.properties.rate === "number" ? this.properties.rate : 1.0,
           },
         }),
       };
 
       // Make API request with streaming option
-      const response = await fetchApi(
+      const response = await fetch(
         `${this.baseUrl}/text-to-speech/${voiceId}/stream`,
         requestOptions
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to synthesize speech: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error(
+          `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
+        );
+        throw new Error(`Failed to synthesize speech stream: ${response.statusText}`);
       }
 
-      // Return the response body as a stream
-      return response.body as ReadableStream<Uint8Array>;
+      // Convert the response body to a proper ReadableStream
+      const responseArrayBuffer = await response.arrayBuffer();
+      const uint8Array = new Uint8Array(responseArrayBuffer);
+
+      // Create a ReadableStream from the Uint8Array
+      return new ReadableStream({
+        start(controller) {
+          controller.enqueue(uint8Array);
+          controller.close();
+        },
+      });
     } catch (error) {
       console.error("Error synthesizing speech stream:", error);
       throw error;
@@ -213,7 +282,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    */
   async getVoice(voiceId: string): Promise<UnifiedVoice | null> {
     try {
-      const response = await fetchApi(`${this.baseUrl}/voices/${voiceId}`, {
+      const response = await fetch(`${this.baseUrl}/voices/${voiceId}`, {
         method: "GET",
         headers: {
           "xi-api-key": this.apiKey,
@@ -224,6 +293,10 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
         if (response.status === 404) {
           return null;
         }
+        const errorText = await response.text();
+        console.error(
+          `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
+        );
         throw new Error(`Failed to get voice: ${response.statusText}`);
       }
 

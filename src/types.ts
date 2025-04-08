@@ -74,7 +74,8 @@ export type UnifiedVoice = {
     | "witai"
     | "playht"
     | "openai"
-    | "sherpa";
+    | "sherpa"
+    | "sherpaonnx";
 
   /**
    * Language codes supported by this voice

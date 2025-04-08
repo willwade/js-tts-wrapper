@@ -2,14 +2,17 @@ import type { SpeakOptions, UnifiedVoice } from "../types";
 
 export abstract class AbstractTTSClient {
   protected voiceId: string | null = null;
-  protected callbacks: Record<string, Function[]> = {};
+  protected callbacks: Record<string, ((...args: any[]) => void)[]> = {};
 
   constructor(protected credentials: any) {}
 
   // --- Required abstract methods ---
   abstract getVoices(): Promise<UnifiedVoice[]>;
   abstract synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array>;
-  abstract synthToBytestream(text: string, options?: SpeakOptions): Promise<ReadableStream<Uint8Array>>;
+  abstract synthToBytestream(
+    text: string,
+    options?: SpeakOptions
+  ): Promise<ReadableStream<Uint8Array>>;
 
   // --- Optional overrides ---
   async speak(text: string, options?: SpeakOptions): Promise<void> {
@@ -64,7 +67,7 @@ export abstract class AbstractTTSClient {
   }
 
   // --- Event System ---
-  on(event: "start" | "end" | "boundary", fn: Function): void {
+  on(event: "start" | "end" | "boundary", fn: (...args: any[]) => void): void {
     this.callbacks[event] = this.callbacks[event] || [];
     this.callbacks[event].push(fn);
   }

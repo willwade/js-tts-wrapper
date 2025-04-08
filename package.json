@@ -4,9 +4,7 @@
   "description": "A JavaScript/TypeScript library that provides a unified API for working with multiple cloud-based Text-to-Speech (TTS) services",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "repository": {
     "type": "git",
     "url": "https://github.com/willwade/js-tts-wrapper.git"
@@ -22,20 +20,30 @@
     "test:azure": "node run-tts-tests.js azure",
     "test:elevenlabs": "node run-tts-tests.js elevenlabs",
     "test:google": "node run-tts-tests.js google",
+    "test:polly": "node run-tts-tests.js polly",
+    "test:openai": "node run-tts-tests.js openai",
+    "test:playht": "node run-tts-tests.js playht",
+    "test:sherpaonnx": "node run-tts-tests.js sherpaonnx",
+    "test:sherpaonnx:mac": "node scripts/run-with-sherpaonnx.js run-tts-tests.js sherpaonnx",
     "example": "node examples/tts-example.js",
     "example:azure": "node examples/tts-example.js azure",
     "example:elevenlabs": "node examples/tts-example.js elevenlabs",
     "example:google": "node examples/tts-example.js google",
-    "lint": "biome lint --log-level=error ./src",
-    "lint:fix": "biome lint --write ./src",
-    "fix": "node scripts/fix-lint.js",
-    "format": "biome format --write ./src",
-    "check": "biome check --write ./src",
+    "example:polly": "node examples/tts-example.js polly",
+    "example:sherpaonnx": "node examples/tts-example.js sherpaonnx",
+    "example:sherpaonnx:mac": "node scripts/run-with-sherpaonnx.js examples/tts-example.js sherpaonnx",
+    "example:openai": "node examples/tts-example.js openai",
+    "example:playht": "node examples/tts-example.js playht",
+    "lint": "biome lint --log-level=error ./src/utils ./src/ssml ./src/markdown",
+    "lint:fix": "biome lint --write ./src/utils ./src/ssml ./src/markdown",
+    "format": "biome format --write ./src/utils ./src/ssml ./src/markdown",
+    "check": "biome check --write ./src/utils ./src/ssml ./src/markdown",
+    "fix:all": "node scripts/fix-lint.js",
     "clean": "rimraf dist",
     "prepublishOnly": "npm run clean && npm run build && node scripts/package.js",
     "prepare-package": "node scripts/package.js",
     "prepare": "husky",
-    "pre-push": "npm run lint"
+    "pre-push": "npm run check"
   },
   "keywords": [
     "tts",
@@ -54,6 +62,8 @@
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-typescript": "^12.1.2",
     "@types/jest": "^29.5.14",
+    "@types/node-fetch": "^2.6.12",
+    "dotenv": "^16.4.7",
     "husky": "^9.1.7",
     "jest": "^29.7.0",
     "lint-staged": "^15.5.0",
@@ -64,13 +74,46 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "node-fetch": "^2.7.0",
-    "speechmarkdown-js": "^2.1.0"
+    "decompress": "^4.2.1",
+    "decompress-bzip2": "^4.0.0",
+    "decompress-tarbz2": "^4.1.1",
+    "decompress-targz": "^4.1.1",
+    "speechmarkdown-js": "^2.1.0",
+    "tar-stream": "^3.1.7"
+  },
+  "peerDependencies": {
+    "@aws-sdk/client-polly": "^3.0.0",
+    "@azure/cognitiveservices-speechservices": "^1.0.0",
+    "@google-cloud/text-to-speech": "^4.0.0",
+    "node-fetch": "^2.0.0",
+    "openai": "^4.0.0",
+    "sherpa-onnx-node": "^1.11.3"
+  },
+  "peerDependenciesMeta": {
+    "@aws-sdk/client-polly": {
+      "optional": true
+    },
+    "@azure/cognitiveservices-speechservices": {
+      "optional": true
+    },
+    "@google-cloud/text-to-speech": {
+      "optional": true
+    },
+    "node-fetch": {
+      "optional": true
+    },
+    "openai": {
+      "optional": true
+    },
+    "sherpa-onnx-node": {
+      "optional": true
+    }
+  },
+  "optionalDependencies": {
+    "@aws-sdk/client-polly": "^3.782.0",
+    "node-fetch": "^2.7.0"
   },
   "lint-staged": {
-    "*.{js,ts}": [
-      "biome lint --write",
-      "biome format --write"
-    ]
+    "*.{js,ts}": ["biome lint --write", "biome format --write"]
   }
 }

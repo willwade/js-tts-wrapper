@@ -29,7 +29,7 @@ export abstract class AbstractTTSClient {
   /**
    * Event callbacks
    */
-  protected callbacks: Record<string, Function[]> = {};
+  protected callbacks: Record<string, ((...args: any[]) => void)[]> = {};
 
   /**
    * SSML builder instance
@@ -461,7 +461,7 @@ export abstract class AbstractTTSClient {
    * @param event Event type
    * @param fn Callback function
    */
-  on(event: TTSEventType, fn: Function): void {
+  on(event: TTSEventType, fn: (...args: any[]) => void): void {
     this.callbacks[event] = this.callbacks[event] || [];
     this.callbacks[event].push(fn);
   }

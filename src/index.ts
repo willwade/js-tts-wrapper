@@ -14,6 +14,10 @@ export * as SpeechMarkdown from "./markdown/converter";
 export { AzureTTSClient } from "./engines/azure";
 export { ElevenLabsTTSClient } from "./engines/elevenlabs";
 export { GoogleTTSClient } from "./engines/google";
+export { OpenAITTSClient } from "./engines/openai";
+export { PlayHTTTSClient } from "./engines/playht";
+export { PollyTTSClient } from "./engines/polly";
+export { SherpaOnnxTTSClient } from "./engines/sherpaonnx";
 
 // Type exports
 export type {

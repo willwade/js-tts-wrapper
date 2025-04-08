@@ -9,13 +9,9 @@ const { execSync } = require('node:child_process');
 console.log('Fixing linting issues...');
 
 try {
-  // Run Biome with --write flag to fix issues
-  execSync('npx biome lint --write ./src', { stdio: 'inherit' });
-  console.log('Linting issues fixed!');
-
-  // Also run formatter
-  execSync('npx biome format --write ./src', { stdio: 'inherit' });
-  console.log('Formatting applied!');
+  // Run Biome check which combines lint and format with --write flag
+  execSync('npx biome check --write ./src/utils ./src/ssml ./src/markdown', { stdio: 'inherit' });
+  console.log('Linting and formatting issues fixed!');
 } catch (error) {
   console.error('Error fixing linting issues:', error.message);
   process.exit(1);

@@ -12,11 +12,18 @@
       "dist/**/*",
       "coverage/**/*",
       "scripts/**/*",
-      "src/core/language-utils.ts",
-      "src/engines/azure.ts",
-      "src/core/abstract-tts.ts",
-      "src/engines/google.ts",
-      "src/__tests__/**/*"
+      "examples/**/*",
+      "load-env.js",
+      "run-tts-tests.js",
+      "./src/core/language-utils.ts",
+      "./src/engines/azure.ts",
+      "./src/core/abstract-tts.ts",
+      "./src/engines/google.ts",
+      "./src/engines/openai.ts",
+      "./src/engines/playht.ts",
+      "./src/engines/polly.ts",
+      "./src/engines/sherpaonnx.ts",
+      "./src/__tests__/**/*"
     ]
   },
   "formatter": {

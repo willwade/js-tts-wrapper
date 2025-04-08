@@ -4,6 +4,10 @@ import type { AbstractTTSClient } from "../core/abstract-tts";
 import { AzureTTSClient } from "../engines/azure";
 import { ElevenLabsTTSClient } from "../engines/elevenlabs";
 import { GoogleTTSClient } from "../engines/google";
+import { PollyTTSClient } from "../engines/polly";
+import { SherpaOnnxTTSClient } from "../engines/sherpaonnx";
+import { OpenAITTSClient } from "../engines/openai";
+import { PlayHTTTSClient } from "../engines/playht";
 
 // Define a factory function to create TTS clients
 async function createTTSClient(engine: string): Promise<AbstractTTSClient | null> {
@@ -42,6 +46,47 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
         });
         break;
 
+      case "polly":
+        if (!process.env.POLLY_AWS_KEY_ID || !process.env.POLLY_AWS_ACCESS_KEY || !process.env.POLLY_REGION) {
+          console.log("AWS Polly credentials not available");
+          return null;
+        }
+        client = new PollyTTSClient({
+          region: process.env.POLLY_REGION,
+          accessKeyId: process.env.POLLY_AWS_KEY_ID,
+          secretAccessKey: process.env.POLLY_AWS_ACCESS_KEY,
+        });
+        break;
+
+      case "sherpaonnx":
+        // SherpaOnnx doesn't require credentials, but we'll create a mock client for testing
+        client = new SherpaOnnxTTSClient({
+          // Use test mode to avoid downloading models
+          noDefaultDownload: true,
+        });
+        break;
+
+      case "openai":
+        if (!process.env.OPENAI_API_KEY) {
+          console.log("OpenAI credentials not available");
+          return null;
+        }
+        client = new OpenAITTSClient({
+          apiKey: process.env.OPENAI_API_KEY,
+        });
+        break;
+
+      case "playht":
+        if (!process.env.PLAYHT_API_KEY || !process.env.PLAYHT_USER_ID) {
+          console.log("PlayHT credentials not available");
+          return null;
+        }
+        client = new PlayHTTTSClient({
+          apiKey: process.env.PLAYHT_API_KEY,
+          userId: process.env.PLAYHT_USER_ID,
+        });
+        break;
+
       default:
         console.log(`Unknown engine: ${engine}`);
         return null;
@@ -64,7 +109,7 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
 }
 
 // Define the engines to test
-const engines = ["azure", "elevenlabs", "google"];
+const engines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "sherpaonnx"];
 
 // Run tests for each engine
 engines.forEach((engineName) => {
