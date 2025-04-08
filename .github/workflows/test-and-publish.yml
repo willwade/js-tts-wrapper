@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [14.x, 16.x, 18.x]
+        node-version: [16.x, 18.x, 20.x]
 
     steps:
     - uses: actions/checkout@v3
@@ -27,19 +27,45 @@ jobs:
     - run: npm run lint
     - run: npm test
     # Run TTS tests if credentials are available
-    - name: Run TTS tests
-      if: ${{ env.MICROSOFT_TOKEN != '' && env.MICROSOFT_REGION != '' }}
+    - name: Check Azure credentials
+      id: check_azure
+      run: |
+        if [ -n "${{ secrets.MICROSOFT_TOKEN }}" ] && [ -n "${{ secrets.MICROSOFT_REGION }}" ]; then
+          echo "has_creds=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_creds=false" >> $GITHUB_OUTPUT
+        fi
+    - name: Run Azure TTS tests
+      if: steps.check_azure.outputs.has_creds == 'true'
       run: npm run test:azure
       env:
         MICROSOFT_TOKEN: ${{ secrets.MICROSOFT_TOKEN }}
         MICROSOFT_REGION: ${{ secrets.MICROSOFT_REGION }}
+
+    - name: Check ElevenLabs credentials
+      id: check_elevenlabs
+      run: |
+        if [ -n "${{ secrets.ELEVENLABS_API_KEY }}" ]; then
+          echo "has_creds=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_creds=false" >> $GITHUB_OUTPUT
+        fi
     - name: Run ElevenLabs tests
-      if: ${{ env.ELEVENLABS_API_KEY != '' }}
+      if: steps.check_elevenlabs.outputs.has_creds == 'true'
       run: npm run test:elevenlabs
       env:
         ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+
+    - name: Check Google credentials
+      id: check_google
+      run: |
+        if [ -n "${{ secrets.GOOGLE_SA_KEY }}" ]; then
+          echo "has_creds=true" >> $GITHUB_OUTPUT
+        else
+          echo "has_creds=false" >> $GITHUB_OUTPUT
+        fi
     - name: Run Google tests
-      if: ${{ env.GOOGLE_SA_KEY != '' }}
+      if: steps.check_google.outputs.has_creds == 'true'
       run: |
         echo "${{ secrets.GOOGLE_SA_KEY }}" > google-sa-key.json
         export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/google-sa-key.json

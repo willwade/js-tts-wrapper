@@ -13,7 +13,6 @@
   },
   "author": "Will Wade <willwade@gmail.com>",
   "license": "MIT",
-
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -45,7 +44,6 @@
     "watson",
     "openai"
   ],
-
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@rollup/plugin-commonjs": "^28.0.3",
