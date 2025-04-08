@@ -9,8 +9,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
+    "build": "tsc",
+    "dev": "tsc --watch",
     "test": "jest",
     "lint": "biome lint ./src",
     "format": "biome format --write ./src",
@@ -42,5 +42,8 @@
     "ts-jest": "^29.3.1",
     "tslib": "^2.8.1",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "speechmarkdown-js": "^2.1.0"
   }
 }

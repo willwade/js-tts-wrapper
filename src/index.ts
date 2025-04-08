@@ -8,7 +8,7 @@ export { AudioPlayback } from "./core/playback";
 export { SSMLBuilder } from "./ssml/builder";
 
 // Markdown exports
-export { SpeechMarkdownConverter } from "./markdown/converter";
+export * as SpeechMarkdown from "./markdown/converter";
 
 // Engine exports
 export { AzureTTSClient } from "./engines/azure";

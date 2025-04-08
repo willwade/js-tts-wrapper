@@ -63,13 +63,16 @@ export function findById(voices: UnifiedVoice[], id: string): UnifiedVoice | und
  * @returns Array of unique language codes
  */
 export function getAvailableLanguages(voices: UnifiedVoice[]): string[] {
+  // Use a Set to collect unique language codes
   const languages = new Set<string>();
 
-  voices.forEach((voice) => {
-    voice.languageCodes.forEach((lang) => {
+  // Iterate through all voices and their language codes
+  for (const voice of voices) {
+    for (const lang of voice.languageCodes) {
       languages.add(lang.bcp47);
-    });
-  });
+    }
+  }
 
+  // Convert Set to Array and return
   return Array.from(languages);
 }

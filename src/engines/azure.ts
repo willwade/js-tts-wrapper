@@ -1,6 +1,6 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import * as SSMLUtils from "../core/ssml-utils";
-import { SpeechMarkdownConverter } from "../markdown/converter";
+import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, UnifiedVoice, WordBoundaryCallback } from "../types";
 
 /**
@@ -167,8 +167,8 @@ export class AzureTTSClient extends AbstractTTSClient {
    */
   private prepareSSML(text: string, options?: SpeakOptions): string {
     // Convert from Speech Markdown if requested
-    if (options?.useSpeechMarkdown && SpeechMarkdownConverter.isSpeechMarkdown(text)) {
-      text = SpeechMarkdownConverter.toSSML(text);
+    if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
+      text = SpeechMarkdown.toSSML(text, 'microsoft-azure');
     }
 
     // Ensure text is wrapped in SSML

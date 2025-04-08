@@ -15,6 +15,8 @@ module.exports = [
       typescript({ tsconfig: './tsconfig.json' }),
       resolve(),
       commonjs()
-    ]
+    ],
+    // External dependencies that should not be bundled
+    external: ['speechmarkdown-js']
   }
 ];
