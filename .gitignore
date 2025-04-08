@@ -34,3 +34,4 @@ coverage/*
 dist/*
 .env
 .env.local
+.envrc

@@ -1,0 +1,67 @@
+name: Test and Publish
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ created ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x, 18.x]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - run: npm ci
+    - run: npm run build
+    - run: npm run lint
+    - run: npm test
+    # Run TTS tests if credentials are available
+    - name: Run TTS tests
+      if: ${{ env.MICROSOFT_TOKEN != '' && env.MICROSOFT_REGION != '' }}
+      run: npm run test:azure
+      env:
+        MICROSOFT_TOKEN: ${{ secrets.MICROSOFT_TOKEN }}
+        MICROSOFT_REGION: ${{ secrets.MICROSOFT_REGION }}
+    - name: Run ElevenLabs tests
+      if: ${{ env.ELEVENLABS_API_KEY != '' }}
+      run: npm run test:elevenlabs
+      env:
+        ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+    - name: Run Google tests
+      if: ${{ env.GOOGLE_SA_KEY != '' }}
+      run: |
+        echo "${{ secrets.GOOGLE_SA_KEY }}" > google-sa-key.json
+        export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/google-sa-key.json
+        npm run test:google
+        rm google-sa-key.json
+
+  publish:
+    needs: test
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16.x'
+        registry-url: 'https://registry.npmjs.org'
+    - run: npm ci
+    - run: npm run prepublishOnly
+    - name: Publish to npm
+      run: |
+        cd dist
+        npm publish
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -24,7 +24,7 @@ export class AzureTTSClient extends AbstractTTSClient {
    * Get raw voices from Azure
    * @returns Promise resolving to an array of unified voice objects
    */
-  protected async _getVoices(): Promise<UnifiedVoice[]> {
+  protected async _getVoices(): Promise<any[]> {
     try {
       const response = await fetch(
         `https://${this.region}.tts.speech.microsoft.com/cognitiveservices/voices/list`,
@@ -40,26 +40,33 @@ export class AzureTTSClient extends AbstractTTSClient {
         throw new Error(`Failed to fetch voices: ${response.statusText}`);
       }
 
-      const voices = await response.json();
-
-      // Transform Azure voices to unified format
-      return voices.map((voice: any) => ({
-        id: voice.ShortName,
-        name: voice.DisplayName,
-        gender: voice.Gender === "Female" ? "Female" : voice.Gender === "Male" ? "Male" : "Unknown",
-        provider: "azure",
-        languageCodes: [
-          {
-            bcp47: voice.Locale,
-            iso639_3: this.bcp47ToIso639_3(voice.Locale),
-            display: voice.LocaleName,
-          },
-        ],
-      }));
+      return await response.json();
     } catch (error) {
       console.error("Error fetching Azure voices:", error);
       return [];
     }
+  }
+
+  /**
+   * Map Azure voice objects to unified format
+   * @param rawVoices Array of Azure voice objects
+   * @returns Promise resolving to an array of unified voice objects
+   */
+  protected async _mapVoicesToUnified(rawVoices: any[]): Promise<UnifiedVoice[]> {
+    // Transform Azure voices to unified format
+    return rawVoices.map((voice: any) => ({
+      id: voice.ShortName,
+      name: voice.DisplayName,
+      gender: voice.Gender === "Female" ? "Female" : voice.Gender === "Male" ? "Male" : "Unknown",
+      provider: "azure",
+      languageCodes: [
+        {
+          bcp47: voice.Locale,
+          iso639_3: voice.Locale.split('-')[0], // Simple extraction of language code
+          display: voice.LocaleName,
+        },
+      ],
+    }));
   }
 
   /**
@@ -266,28 +273,5 @@ export class AzureTTSClient extends AbstractTTSClient {
     return ssml;
   }
 
-  /**
-   * Convert BCP-47 language code to ISO 639-3
-   * @param bcp47 BCP-47 language code
-   * @returns ISO 639-3 language code
-   */
-  private bcp47ToIso639_3(bcp47: string): string {
-    // This is a simplified mapping
-    // A full implementation would use a complete mapping table
-    const map: Record<string, string> = {
-      en: "eng",
-      fr: "fra",
-      es: "spa",
-      de: "deu",
-      it: "ita",
-      ja: "jpn",
-      ko: "kor",
-      pt: "por",
-      ru: "rus",
-      zh: "zho",
-    };
 
-    const lang = bcp47.split("-")[0].toLowerCase();
-    return map[lang] || "und"; // 'und' for undefined
-  }
 }

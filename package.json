@@ -2,21 +2,37 @@
   "name": "js-tts-wrapper",
   "version": "0.1.0",
   "description": "A JavaScript/TypeScript library that provides a unified API for working with multiple cloud-based Text-to-Speech (TTS) services",
-  "main": "dist/index.cjs.js",
-  "module": "dist/index.esm.js",
+  "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/willwade/js-tts-wrapper.git"
+  },
+  "author": "Will Wade <willwade@gmail.com>",
+  "license": "MIT",
+
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "jest",
     "test:env": "node load-env.js && jest",
+    "test:tts": "node run-tts-tests.js",
+    "test:azure": "node run-tts-tests.js azure",
+    "test:elevenlabs": "node run-tts-tests.js elevenlabs",
+    "test:google": "node run-tts-tests.js google",
+    "example": "node examples/tts-example.js",
+    "example:azure": "node examples/tts-example.js azure",
+    "example:elevenlabs": "node examples/tts-example.js elevenlabs",
+    "example:google": "node examples/tts-example.js google",
     "lint": "biome lint ./src",
     "format": "biome format --write ./src",
     "check": "biome check --apply ./src",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run clean && npm run build && node scripts/package.js",
+    "prepare-package": "node scripts/package.js"
   },
   "keywords": [
     "tts",
@@ -29,8 +45,7 @@
     "watson",
     "openai"
   ],
-  "author": "",
-  "license": "MIT",
+
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@rollup/plugin-commonjs": "^28.0.3",

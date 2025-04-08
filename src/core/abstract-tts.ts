@@ -8,6 +8,7 @@ import type {
   UnifiedVoice,
   WordBoundaryCallback,
 } from "../types";
+import { LanguageNormalizer } from "./language-utils";
 import * as SSMLUtils from "./ssml-utils";
 
 /**
@@ -120,13 +121,42 @@ export abstract class AbstractTTSClient {
     const rawVoices = await this._getVoices();
 
     // Process and normalize the voices
-    // In a full implementation, we would normalize language codes here
-    // similar to the Python version's language_utils.LanguageNormalizer
+    // Each engine should implement _mapVoiceToUnified to convert its raw voice format
+    // to a partially filled UnifiedVoice object
+    const voices = await this._mapVoicesToUnified(rawVoices);
 
-    return rawVoices;
+    // Normalize language codes for all voices
+    return voices.map(voice => {
+      // Normalize language codes for each language
+      const normalizedLanguageCodes = voice.languageCodes.map(lang => {
+        const normalized = LanguageNormalizer.normalize(lang.bcp47);
+        return {
+          bcp47: normalized.bcp47,
+          iso639_3: normalized.iso639_3,
+          display: normalized.display
+        };
+      });
+
+      // Return the voice with normalized language codes
+      return {
+        ...voice,
+        languageCodes: normalizedLanguageCodes
+      };
+    });
   }
 
   // --- Optional overrides ---
+
+  /**
+   * Map provider-specific voice objects to unified format
+   * @param rawVoices Array of provider-specific voice objects
+   * @returns Promise resolving to an array of partially unified voice objects
+   */
+  protected async _mapVoicesToUnified(rawVoices: any[]): Promise<UnifiedVoice[]> {
+    // Default implementation that assumes rawVoices are already in UnifiedVoice format
+    // Engine-specific implementations should override this method
+    return rawVoices as UnifiedVoice[];
+  }
 
   /**
    * Speak text using the default audio output
@@ -540,9 +570,20 @@ export abstract class AbstractTTSClient {
    * @returns Promise resolving to an array of available voices for the specified language
    */
   async getVoicesByLanguage(language: string): Promise<UnifiedVoice[]> {
+    // Normalize the input language code
+    const normalizedLanguage = LanguageNormalizer.normalize(language);
+
+    // Get all voices
     const voices = await this.getVoices();
+
+    // Filter voices by language
     return voices.filter(voice =>
-      voice.languageCodes.some(lang => lang.bcp47 === language)
+      voice.languageCodes.some(lang =>
+        // Match by BCP-47 code
+        lang.bcp47 === normalizedLanguage.bcp47 ||
+        // Or by ISO 639-3 code
+        lang.iso639_3 === normalizedLanguage.iso639_3
+      )
     );
   }
 }

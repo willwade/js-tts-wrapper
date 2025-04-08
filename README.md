@@ -49,17 +49,19 @@ await tts.speak(ssml);
 
 | Provider      | SSML | Streaming | Word Timing | File Output | Notes                     |
 |---------------|------|-----------|-------------|-------------|---------------------------|
-| AWS Polly     | Yes  | Yes       | Yes         | Yes         | REST API support          |
-| Azure         | Yes  | Yes       | Yes         | Yes         | SSML supported            |
+| Azure         | Yes  | Yes       | Yes         | Yes         | Full SSML support         |
 | Google Cloud  | Yes  | Yes       | Yes         | Yes         | Full SSML + markup        |
-| IBM Watson    | Yes  | Yes       | Yes         | Yes         | Good for enterprise use   |
 | ElevenLabs    | No*  | Yes       | Partial     | Yes         | Strip SSML automatically  |
-| Wit.Ai        | No   | Yes       | No          | Yes         | Basic synthesis only      |
-| Play.HT       | No*  | Yes       | No          | Yes         | Strip SSML automatically  |
-| OpenAI        | No   | Yes       | No          | Yes         | Simple API wrapper        |
-| Sherpa-ONNX   | No   | Yes       | Partial     | Yes         | JS-compatible inference   |
 
 *Engines that don't support SSML will automatically strip SSML tags and process the plain text.
+
+### Coming Soon
+
+| Provider      | Status                  |
+|---------------|-------------------------|
+| AWS Polly     | Planned                 |
+| IBM Watson    | Planned                 |
+| OpenAI        | Planned                 |
 
 ## Core API
 
@@ -102,6 +104,26 @@ const ssml = SpeechMarkdownConverter.toSSML(markdown);
 ```
 
 ## Advanced Usage
+
+### Language Normalization
+
+The library provides a unified language normalization system that works across all TTS engines:
+
+```typescript
+import { AzureTTSClient, LanguageNormalizer } from 'js-tts-wrapper';
+
+// Normalize a language code
+const normalized = LanguageNormalizer.normalize('en-US');
+console.log(normalized);
+// { bcp47: 'en-US', iso639_3: 'eng', display: 'English (United States)' }
+
+// Get voices by language (works with both BCP-47 and ISO 639-3 codes)
+const tts = new AzureTTSClient({ /* credentials */ });
+const enVoices = await tts.getVoicesByLanguage('en-US'); // BCP-47
+const engVoices = await tts.getVoicesByLanguage('eng');  // ISO 639-3
+```
+
+For more details, see [Language Normalization](./docs/LANGUAGE_NORMALIZATION.md).
 
 ### Word Boundary Callbacks
 
@@ -148,6 +170,41 @@ const tts = new AzureTTSClient({
 // Synthesize to bytes and save to file
 const audioBytes = await tts.synthToBytes('Hello world', { format: 'mp3' });
 await writeFile('output.mp3', Buffer.from(audioBytes));
+```
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for guidelines.
+
+### Testing
+
+The library includes a comprehensive test suite. For details on running tests, see [TESTING.md](./docs/TESTING.md).
+
+```bash
+# Run all tests
+npm test
+
+# Run TTS engine tests
+npm run test:tts
+
+# Run tests for specific engines
+npm run test:azure
+npm run test:elevenlabs
+npm run test:google
+```
+
+### Examples
+
+Examples are available in the `examples` directory:
+
+```bash
+# Run the unified example
+npm run example
+
+# Run examples for specific engines
+npm run example:azure
+npm run example:elevenlabs
+npm run example:google
 ```
 
 ## License
