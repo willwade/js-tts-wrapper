@@ -102,41 +102,67 @@ export class AzureTTSClient extends AbstractTTSClient {
   }
 
   /**
-   * Synthesize text to a byte stream
+   * Synthesize text to a byte stream with word boundary information
    * @param text Text or SSML to synthesize
    * @param options Synthesis options
-   * @returns Promise resolving to a readable stream of audio bytes
+   * @returns Promise resolving to an object containing the audio stream and word boundary information
    */
   async synthToBytestream(
     text: string,
     options?: SpeakOptions
-  ): Promise<ReadableStream<Uint8Array>> {
+  ): Promise<{
+    audioStream: ReadableStream<Uint8Array>;
+    wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
+  }> {
     const ssml = this.prepareSSML(text, options);
+    const useWordBoundary = options?.useWordBoundary !== false; // Default to true
 
     try {
-      const response = await fetch(
-        `https://${this.region}.tts.speech.microsoft.com/cognitiveservices/v1`,
-        {
-          method: "POST",
-          headers: {
-            "Ocp-Apim-Subscription-Key": this.subscriptionKey,
-            "Content-Type": "application/ssml+xml",
-            "X-Microsoft-OutputFormat":
-              options?.format === "mp3"
-                ? "audio-24khz-96kbitrate-mono-mp3"
-                : "riff-24khz-16bit-mono-pcm",
-            "User-Agent": "js-tts-wrapper",
-          },
-          body: ssml,
-        }
-      );
+      // Use the timeoffset endpoint if word boundary information is requested
+      const endpoint = useWordBoundary
+        ? `https://${this.region}.tts.speech.microsoft.com/cognitiveservices/v1/timeoffset`
+        : `https://${this.region}.tts.speech.microsoft.com/cognitiveservices/v1`;
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Ocp-Apim-Subscription-Key": this.subscriptionKey,
+          "Content-Type": "application/ssml+xml",
+          "X-Microsoft-OutputFormat":
+            options?.format === "mp3"
+              ? "audio-24khz-96kbitrate-mono-mp3"
+              : "riff-24khz-16bit-mono-pcm",
+          "User-Agent": "js-tts-wrapper",
+        },
+        body: ssml,
+      });
 
       if (!response.ok) {
         throw new Error(`Failed to synthesize speech: ${response.statusText}`);
       }
 
-      // Return the response body as a stream
-      return response.body as ReadableStream<Uint8Array>;
+      // Extract word boundary information from headers if available
+      const wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
+
+      if (useWordBoundary) {
+        // The timeoffset endpoint returns word boundary information in the X-WordBoundary header
+        const wordBoundaryHeader = response.headers.get("X-WordBoundary");
+        if (wordBoundaryHeader) {
+          try {
+            // Parse the word boundary information
+            // Format: [{'text':'word1','offset':123,'duration':456},{'text':'word2',...}]
+            const boundaryData = JSON.parse(wordBoundaryHeader);
+            wordBoundaries.push(...boundaryData);
+          } catch (e) {
+            console.warn("Failed to parse word boundary information:", e);
+          }
+        }
+      }
+
+      return {
+        audioStream: response.body as ReadableStream<Uint8Array>,
+        wordBoundaries,
+      };
     } catch (error) {
       console.error("Error synthesizing speech stream:", error);
       throw error;
@@ -154,9 +180,14 @@ export class AzureTTSClient extends AbstractTTSClient {
     callback: WordBoundaryCallback,
     options?: SpeakOptions
   ): Promise<void> {
-    // This is a simplified implementation
-    // A full implementation would use the Azure Speech SDK to get word boundary events
-    await super.startPlaybackWithCallbacks(text, callback, options);
+    // Register the callback
+    this.on("boundary", callback);
+
+    // Enable word boundary information
+    const enhancedOptions = { ...options, useWordBoundary: true };
+
+    // Start playback with word boundary information
+    await this.speakStreamed(text, enhancedOptions);
   }
 
   /**
@@ -174,16 +205,19 @@ export class AzureTTSClient extends AbstractTTSClient {
     // Ensure text is wrapped in SSML
     let ssml = SSMLUtils.isSSML(text) ? text : SSMLUtils.wrapWithSpeakTags(text);
 
+    // Use voice from options or the default voice
+    const voiceId = options?.voice || this.voiceId;
+
     // Add voice selection if a voice is set
-    if (this.voiceId) {
+    if (voiceId) {
       // Insert voice tag after <speak> tag
       ssml = ssml.replace(
         "<speak",
-        `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="${this.lang}"`
+        `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${this.lang}"`
       );
 
       // Insert voice tag before the content
-      ssml = ssml.replace(">", `><voice name="${this.voiceId}">`);
+      ssml = ssml.replace(">", `><voice name="${voiceId}">`);
 
       // Close voice tag before </speak>
       ssml = ssml.replace("</speak>", "</voice></speak>");

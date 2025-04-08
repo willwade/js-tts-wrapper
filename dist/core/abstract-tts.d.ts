@@ -1,5 +1,5 @@
-import type { SpeakOptions, UnifiedVoice, TTSCredentials, TTSEventType, WordBoundaryCallback, SimpleCallback, PropertyType } from "../types";
 import { SSMLBuilder } from "../ssml/builder";
+import type { PropertyType, SimpleCallback, SpeakOptions, TTSCredentials, TTSEventType, UnifiedVoice, WordBoundaryCallback } from "../types";
 /**
  * Abstract base class for all TTS clients
  * This provides a unified interface for all TTS providers
@@ -68,7 +68,14 @@ export declare abstract class AbstractTTSClient {
      * @param options Synthesis options
      * @returns Promise resolving to a readable stream of audio bytes
      */
-    abstract synthToBytestream(text: string, options?: SpeakOptions): Promise<ReadableStream<Uint8Array>>;
+    abstract synthToBytestream(text: string, options?: SpeakOptions): Promise<ReadableStream<Uint8Array> | {
+        audioStream: ReadableStream<Uint8Array>;
+        wordBoundaries: Array<{
+            text: string;
+            offset: number;
+            duration: number;
+        }>;
+    }>;
     /**
      * Get available voices from the provider with normalized language codes
      * @returns Promise resolving to an array of unified voice objects
@@ -95,7 +102,7 @@ export declare abstract class AbstractTTSClient {
      * @param format Audio format (mp3 or wav)
      * @param options Synthesis options
      */
-    synthToFile(text: string, filename: string, format?: 'mp3' | 'wav', options?: SpeakOptions): Promise<void>;
+    synthToFile(text: string, filename: string, format?: "mp3" | "wav", options?: SpeakOptions): Promise<void>;
     /**
      * Set the voice to use for synthesis
      * @param voiceId Voice ID to use
@@ -119,6 +126,10 @@ export declare abstract class AbstractTTSClient {
      * @param text Text to create timings for
      */
     protected _createEstimatedWordTimings(text: string): void;
+    /**
+     * Fire word boundary callbacks based on timing data
+     */
+    protected _fireWordBoundaryCallbacks(): void;
     /**
      * Check if text is SSML
      * @param text Text to check
@@ -155,7 +166,7 @@ export declare abstract class AbstractTTSClient {
      * @param event Event name
      * @param callback Callback function
      */
-    connect(event: 'onStart' | 'onEnd', callback: SimpleCallback): void;
+    connect(event: "onStart" | "onEnd", callback: SimpleCallback): void;
     /**
      * Get the value of a property
      * @param propertyName Property name
@@ -179,4 +190,10 @@ export declare abstract class AbstractTTSClient {
      * @returns Promise resolving to true if credentials are valid
      */
     checkCredentials(): Promise<boolean>;
+    /**
+     * Get available voices for a specific language
+     * @param language Language code (BCP-47 format, e.g., 'en-US')
+     * @returns Promise resolving to an array of available voices for the specified language
+     */
+    getVoicesByLanguage(language: string): Promise<UnifiedVoice[]>;
 }

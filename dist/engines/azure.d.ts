@@ -1,5 +1,5 @@
-import { AbstractTTSClient } from '../core/abstract-tts';
-import { SpeakOptions, UnifiedVoice, WordBoundaryCallback } from '../types';
+import { AbstractTTSClient } from "../core/abstract-tts";
+import type { SpeakOptions, UnifiedVoice, WordBoundaryCallback } from "../types";
 /**
  * Azure TTS Client
  */
@@ -27,12 +27,19 @@ export declare class AzureTTSClient extends AbstractTTSClient {
      */
     synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array>;
     /**
-     * Synthesize text to a byte stream
+     * Synthesize text to a byte stream with word boundary information
      * @param text Text or SSML to synthesize
      * @param options Synthesis options
-     * @returns Promise resolving to a readable stream of audio bytes
+     * @returns Promise resolving to an object containing the audio stream and word boundary information
      */
-    synthToBytestream(text: string, options?: SpeakOptions): Promise<ReadableStream<Uint8Array>>;
+    synthToBytestream(text: string, options?: SpeakOptions): Promise<{
+        audioStream: ReadableStream<Uint8Array>;
+        wordBoundaries: Array<{
+            text: string;
+            offset: number;
+            duration: number;
+        }>;
+    }>;
     /**
      * Start playback with word boundary callbacks
      * @param text Text or SSML to speak

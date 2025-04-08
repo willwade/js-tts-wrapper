@@ -5,11 +5,11 @@ export interface SpeakOptions {
     /**
      * Speech rate
      */
-    rate?: 'x-slow' | 'slow' | 'medium' | 'fast' | 'x-fast';
+    rate?: "x-slow" | "slow" | "medium" | "fast" | "x-fast";
     /**
      * Speech pitch
      */
-    pitch?: 'x-low' | 'low' | 'medium' | 'high' | 'x-high';
+    pitch?: "x-low" | "low" | "medium" | "high" | "x-high";
     /**
      * Speech volume (0-100)
      */
@@ -17,11 +17,23 @@ export interface SpeakOptions {
     /**
      * Output audio format
      */
-    format?: 'mp3' | 'wav';
+    format?: "mp3" | "wav";
     /**
      * Whether to convert input from SpeechMarkdown to SSML before processing
      */
     useSpeechMarkdown?: boolean;
+    /**
+     * Whether to use word boundary information for streaming synthesis
+     */
+    useWordBoundary?: boolean;
+    /**
+     * Path to save the audio output
+     */
+    outputPath?: string;
+    /**
+     * Voice ID to use for synthesis
+     */
+    voice?: string;
 }
 /**
  * Unified voice format across all providers
@@ -38,11 +50,11 @@ export type UnifiedVoice = {
     /**
      * Gender of the voice
      */
-    gender?: 'Male' | 'Female' | 'Unknown';
+    gender?: "Male" | "Female" | "Unknown";
     /**
      * TTS provider
      */
-    provider: 'azure' | 'google' | 'ibm' | 'elevenlabs' | 'polly' | 'witai' | 'playht' | 'openai' | 'sherpa';
+    provider: "azure" | "google" | "ibm" | "elevenlabs" | "polly" | "witai" | "playht" | "openai" | "sherpa";
     /**
      * Language codes supported by this voice
      */
@@ -63,12 +75,13 @@ export type UnifiedVoice = {
 };
 /**
  * Credentials for TTS providers
+ * @remarks This is intentionally kept as a generic object type to allow different credential formats for different providers
  */
-export type TTSCredentials = any;
+export type TTSCredentials = Record<string, unknown>;
 /**
  * Event types for TTS callbacks
  */
-export type TTSEventType = 'start' | 'end' | 'boundary';
+export type TTSEventType = "start" | "end" | "boundary";
 /**
  * Callback function for word boundary events
  */

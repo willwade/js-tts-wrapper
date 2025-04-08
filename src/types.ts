@@ -26,6 +26,21 @@ export interface SpeakOptions {
    * Whether to convert input from SpeechMarkdown to SSML before processing
    */
   useSpeechMarkdown?: boolean;
+
+  /**
+   * Whether to use word boundary information for streaming synthesis
+   */
+  useWordBoundary?: boolean;
+
+  /**
+   * Path to save the audio output
+   */
+  outputPath?: string;
+
+  /**
+   * Voice ID to use for synthesis
+   */
+  voice?: string;
 }
 
 /**

@@ -106,7 +106,10 @@ export abstract class AbstractTTSClient {
   abstract synthToBytestream(
     text: string,
     options?: SpeakOptions
-  ): Promise<ReadableStream<Uint8Array>>;
+  ): Promise<ReadableStream<Uint8Array> | {
+    audioStream: ReadableStream<Uint8Array>;
+    wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
+  }>;
 
   /**
    * Get available voices from the provider with normalized language codes
@@ -187,8 +190,22 @@ export abstract class AbstractTTSClient {
 
     try {
       // Get streaming audio data
-      const stream = await this.synthToBytestream(text, options);
-      const reader = stream.getReader();
+      const streamResult = await this.synthToBytestream(text, options);
+
+      // Handle both simple stream and stream with word boundaries
+      let audioStream: ReadableStream<Uint8Array>;
+      let wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
+
+      if ('audioStream' in streamResult) {
+        // It's the enhanced version with word boundaries
+        audioStream = streamResult.audioStream;
+        wordBoundaries = streamResult.wordBoundaries;
+      } else {
+        // It's just a simple stream
+        audioStream = streamResult;
+      }
+
+      const reader = audioStream.getReader();
       const chunks: Uint8Array[] = [];
 
       // Read all chunks from the stream
@@ -207,25 +224,48 @@ export abstract class AbstractTTSClient {
         offset += chunk.length;
       }
 
-      // Create estimated word timings
-      this._createEstimatedWordTimings(text);
+      // Use actual word boundaries if available, otherwise create estimated ones
+      if (wordBoundaries.length > 0) {
+        // Convert the word boundaries to our internal format
+        this.timings = wordBoundaries.map(wb => [
+          wb.offset / 10000, // Convert from 100-nanosecond units to seconds
+          (wb.offset + wb.duration) / 10000,
+          wb.text
+        ]);
+      } else {
+        // Create estimated word timings
+        this._createEstimatedWordTimings(text);
+      }
 
-      // Play the audio
-      const blob = new Blob([audioBytes], { type: "audio/wav" });
-      const url = URL.createObjectURL(blob);
+      // Check if we're in a browser environment
+      if (typeof Blob !== 'undefined' && typeof URL !== 'undefined' && typeof Audio !== 'undefined') {
+        // Create audio blob and URL
+        const blob = new Blob([audioBytes], { type: "audio/wav" });
+        const url = URL.createObjectURL(blob);
 
-      const audio = new Audio(url);
-      this.audio.audioElement = audio;
-      this.audio.isPlaying = true;
-      this.audio.isPaused = false;
+        // Create and play audio element
+        const audio = new Audio(url);
+        this.audio.audioElement = audio;
+        this.audio.isPlaying = true;
+        this.audio.isPaused = false;
 
-      audio.onended = () => {
-        this.emit("end");
-        this.audio.isPlaying = false;
-        URL.revokeObjectURL(url);
-      };
+        // Set up event handlers
+        audio.onended = () => {
+          this.emit("end");
+          this.audio.isPlaying = false;
+          URL.revokeObjectURL(url);
+        };
 
-      await audio.play();
+        // Play the audio
+        await audio.play();
+      } else {
+        // In Node.js environment, just emit events
+        // Fire word boundary events immediately
+        setTimeout(() => {
+          this._fireWordBoundaryCallbacks();
+          this.emit("end");
+        }, 100);
+      }
     } catch (error) {
       console.error("Error in streaming synthesis:", error);
       this.emit("end"); // Ensure end event is triggered even on error
@@ -338,6 +378,24 @@ export abstract class AbstractTTSClient {
       const startTime = i * wordDuration;
       const endTime = (i + 1) * wordDuration;
       this.timings.push([startTime, endTime, words[i]]);
+    }
+  }
+
+  /**
+   * Fire word boundary callbacks based on timing data
+   */
+  protected _fireWordBoundaryCallbacks(): void {
+    if (!this.timings.length) return;
+
+    // Get all boundary callbacks
+    const callbacks = this.callbacks["boundary"] || [];
+    if (!callbacks.length) return;
+
+    // Fire callbacks for each word
+    for (const [start, end, word] of this.timings) {
+      for (const callback of callbacks) {
+        callback(word, start, end);
+      }
     }
   }
 

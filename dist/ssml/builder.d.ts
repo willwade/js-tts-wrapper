@@ -23,7 +23,7 @@ export declare class SSMLBuilder {
      * @param volume Speech volume
      * @returns The SSML builder instance
      */
-    addProsody(text: string, rate?: 'x-slow' | 'slow' | 'medium' | 'fast' | 'x-fast', pitch?: 'x-low' | 'low' | 'medium' | 'high' | 'x-high', volume?: string): SSMLBuilder;
+    addProsody(text: string, rate?: "x-slow" | "slow" | "medium" | "fast" | "x-fast", pitch?: "x-low" | "low" | "medium" | "high" | "x-high", volume?: string): SSMLBuilder;
     /**
      * Wrap text with speak tags
      * @param text Text to wrap
