@@ -62,7 +62,7 @@ export class AzureTTSClient extends AbstractTTSClient {
       languageCodes: [
         {
           bcp47: voice.Locale,
-          iso639_3: voice.Locale.split('-')[0], // Simple extraction of language code
+          iso639_3: voice.Locale.split("-")[0], // Simple extraction of language code
           display: voice.LocaleName,
         },
       ],
@@ -206,7 +206,8 @@ export class AzureTTSClient extends AbstractTTSClient {
   private prepareSSML(text: string, options?: SpeakOptions): string {
     // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
-      text = SpeechMarkdown.toSSML(text, 'microsoft-azure');
+      const ssmlText = SpeechMarkdown.toSSML(text, "microsoft-azure");
+      text = ssmlText;
     }
 
     // Ensure text is wrapped in SSML
@@ -272,6 +273,4 @@ export class AzureTTSClient extends AbstractTTSClient {
 
     return ssml;
   }
-
-
 }

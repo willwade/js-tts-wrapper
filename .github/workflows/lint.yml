@@ -1,0 +1,45 @@
+name: Lint
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**.ts'
+      - '**.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/lint.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**.ts'
+      - '**.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/lint.yml'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+    - run: npm ci
+    - name: Run linting
+      run: npm run lint
+    
+    # Optional: Add a step to automatically fix linting issues on PRs
+    # This would require additional setup with GitHub tokens
+    # - name: Fix linting issues
+    #   if: github.event_name == 'pull_request'
+    #   run: |
+    #     npm run lint:fix
+    #     git config --global user.name 'GitHub Actions'
+    #     git config --global user.email 'actions@github.com'
+    #     git add .
+    #     git diff --quiet && git diff --staged --quiet || git commit -m "Fix linting issues"
+    #     git push

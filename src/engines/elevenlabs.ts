@@ -3,7 +3,7 @@ import { LanguageNormalizer } from "../core/language-utils";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
 
 // Use global fetch if available, otherwise try to import node-fetch
-const fetchApi = typeof fetch !== 'undefined' ? fetch : require('node-fetch');
+const fetchApi = typeof fetch !== "undefined" ? fetch : require("node-fetch");
 
 /**
  * ElevenLabs TTS credentials
@@ -64,10 +64,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Promise resolving to audio bytes
    */
-  async synthToBytes(
-    text: string,
-    options?: SpeakOptions
-  ): Promise<Uint8Array> {
+  async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
     try {
       // Use voice from options or the default voice
       const voiceId = options?.voice || this.voiceId || "21m00Tcm4TlvDq8ikWAM"; // Default voice (Rachel)
@@ -94,10 +91,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       };
 
       // Make API request
-      const response = await fetchApi(
-        `${this.baseUrl}/text-to-speech/${voiceId}`,
-        requestOptions
-      );
+      const response = await fetchApi(`${this.baseUrl}/text-to-speech/${voiceId}`, requestOptions);
 
       if (!response.ok) {
         throw new Error(`Failed to synthesize speech: ${response.statusText}`);
@@ -190,20 +184,26 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    */
   protected async _mapVoicesToUnified(rawVoices: any[]): Promise<UnifiedVoice[]> {
     // Convert ElevenLabs voices to unified format
-    return rawVoices.map((voice) => ({
-      id: voice.voice_id,
-      name: voice.name,
-      gender: voice.labels?.gender === "female" ? "Female" :
-              voice.labels?.gender === "male" ? "Male" : "Unknown",
-      languageCodes: [
-        {
-          bcp47: voice.labels?.language || "en-US",
-          iso639_3: voice.labels?.language?.split("-")[0] || "eng",
-          display: voice.labels?.accent || "English",
-        },
-      ],
-      provider: "elevenlabs",
-    }));
+    return rawVoices.map((voice) => {
+      const voiceId = voice.voice_id as string;
+      const name = voice.name as string;
+      const labels = voice.labels as Record<string, string> | undefined;
+
+      return {
+        id: voiceId,
+        name: name,
+        gender:
+          labels?.gender === "female" ? "Female" : labels?.gender === "male" ? "Male" : "Unknown",
+        languageCodes: [
+          {
+            bcp47: labels?.language || "en-US",
+            iso639_3: (labels?.language || "en-US").split("-")[0] || "eng",
+            display: labels?.accent || "English",
+          },
+        ],
+        provider: "elevenlabs",
+      };
+    });
   }
 
   /**
@@ -233,8 +233,12 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       const unifiedVoice: UnifiedVoice = {
         id: voice.voice_id,
         name: voice.name,
-        gender: voice.labels?.gender === "female" ? "Female" :
-                voice.labels?.gender === "male" ? "Male" : "Unknown",
+        gender:
+          voice.labels?.gender === "female"
+            ? "Female"
+            : voice.labels?.gender === "male"
+              ? "Male"
+              : "Unknown",
         languageCodes: [
           {
             bcp47: voice.labels?.language || "en-US",
@@ -246,18 +250,18 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       };
 
       // Apply language normalization
-      const normalizedLanguageCodes = unifiedVoice.languageCodes.map(lang => {
+      const normalizedLanguageCodes = unifiedVoice.languageCodes.map((lang) => {
         const normalized = LanguageNormalizer.normalize(lang.bcp47);
         return {
           bcp47: normalized.bcp47,
           iso639_3: normalized.iso639_3,
-          display: normalized.display
+          display: normalized.display,
         };
       });
 
       return {
         ...unifiedVoice,
-        languageCodes: normalizedLanguageCodes
+        languageCodes: normalizedLanguageCodes,
       };
     } catch (error) {
       console.error("Error getting voice:", error);

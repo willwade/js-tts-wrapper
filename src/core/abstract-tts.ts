@@ -107,10 +107,13 @@ export abstract class AbstractTTSClient {
   abstract synthToBytestream(
     text: string,
     options?: SpeakOptions
-  ): Promise<ReadableStream<Uint8Array> | {
-    audioStream: ReadableStream<Uint8Array>;
-    wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
-  }>;
+  ): Promise<
+    | ReadableStream<Uint8Array>
+    | {
+        audioStream: ReadableStream<Uint8Array>;
+        wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
+      }
+  >;
 
   /**
    * Get available voices from the provider with normalized language codes
@@ -126,21 +129,21 @@ export abstract class AbstractTTSClient {
     const voices = await this._mapVoicesToUnified(rawVoices);
 
     // Normalize language codes for all voices
-    return voices.map(voice => {
+    return voices.map((voice) => {
       // Normalize language codes for each language
-      const normalizedLanguageCodes = voice.languageCodes.map(lang => {
+      const normalizedLanguageCodes = voice.languageCodes.map((lang) => {
         const normalized = LanguageNormalizer.normalize(lang.bcp47);
         return {
           bcp47: normalized.bcp47,
           iso639_3: normalized.iso639_3,
-          display: normalized.display
+          display: normalized.display,
         };
       });
 
       // Return the voice with normalized language codes
       return {
         ...voice,
-        languageCodes: normalizedLanguageCodes
+        languageCodes: normalizedLanguageCodes,
       };
     });
   }
@@ -172,15 +175,15 @@ export abstract class AbstractTTSClient {
     const audioBytes = await this.synthToBytes(text, options);
 
     // Check if we're in a browser environment
-    let url = '';
-    if (typeof Blob !== 'undefined' && typeof URL !== 'undefined') {
+    let url = "";
+    if (typeof Blob !== "undefined" && typeof URL !== "undefined") {
       // Create audio blob and URL
       const blob = new Blob([audioBytes], { type: "audio/wav" }); // default to WAV
       url = URL.createObjectURL(blob);
     }
 
     // Check if we're in a browser environment
-    if (typeof Audio !== 'undefined') {
+    if (typeof Audio !== "undefined") {
       // Create and play audio element
       const audio = new Audio(url);
       this.audio.audioElement = audio;
@@ -226,7 +229,7 @@ export abstract class AbstractTTSClient {
       let audioStream: ReadableStream<Uint8Array>;
       let wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
 
-      if ('audioStream' in streamResult) {
+      if ("audioStream" in streamResult) {
         // It's the enhanced version with word boundaries
         audioStream = streamResult.audioStream;
         wordBoundaries = streamResult.wordBoundaries;
@@ -257,10 +260,10 @@ export abstract class AbstractTTSClient {
       // Use actual word boundaries if available, otherwise create estimated ones
       if (wordBoundaries.length > 0) {
         // Convert the word boundaries to our internal format
-        this.timings = wordBoundaries.map(wb => [
+        this.timings = wordBoundaries.map((wb) => [
           wb.offset / 10000, // Convert from 100-nanosecond units to seconds
           (wb.offset + wb.duration) / 10000,
-          wb.text
+          wb.text,
         ]);
       } else {
         // Create estimated word timings
@@ -268,7 +271,11 @@ export abstract class AbstractTTSClient {
       }
 
       // Check if we're in a browser environment
-      if (typeof Blob !== 'undefined' && typeof URL !== 'undefined' && typeof Audio !== 'undefined') {
+      if (
+        typeof Blob !== "undefined" &&
+        typeof URL !== "undefined" &&
+        typeof Audio !== "undefined"
+      ) {
         // Create audio blob and URL
         const blob = new Blob([audioBytes], { type: "audio/wav" });
         const url = URL.createObjectURL(blob);
@@ -577,12 +584,13 @@ export abstract class AbstractTTSClient {
     const voices = await this.getVoices();
 
     // Filter voices by language
-    return voices.filter(voice =>
-      voice.languageCodes.some(lang =>
-        // Match by BCP-47 code
-        lang.bcp47 === normalizedLanguage.bcp47 ||
-        // Or by ISO 639-3 code
-        lang.iso639_3 === normalizedLanguage.iso639_3
+    return voices.filter((voice) =>
+      voice.languageCodes.some(
+        (lang) =>
+          // Match by BCP-47 code
+          lang.bcp47 === normalizedLanguage.bcp47 ||
+          // Or by ISO 639-3 code
+          lang.iso639_3 === normalizedLanguage.iso639_3
       )
     );
   }

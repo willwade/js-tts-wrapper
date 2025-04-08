@@ -1,9 +1,9 @@
-import { AbstractTTSClient } from '../core/abstract-tts';
-import { AzureTTSClient } from '../engines/azure';
-import { ElevenLabsTTSClient } from '../engines/elevenlabs';
-import { GoogleTTSClient } from '../engines/google';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
+import type { AbstractTTSClient } from "../core/abstract-tts";
+import { AzureTTSClient } from "../engines/azure";
+import { ElevenLabsTTSClient } from "../engines/elevenlabs";
+import { GoogleTTSClient } from "../engines/google";
 
 // Define a factory function to create TTS clients
 async function createTTSClient(engine: string): Promise<AbstractTTSClient | null> {
@@ -11,9 +11,9 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
 
   try {
     switch (engine.toLowerCase()) {
-      case 'azure':
+      case "azure":
         if (!process.env.MICROSOFT_TOKEN || !process.env.MICROSOFT_REGION) {
-          console.log('Azure credentials not available');
+          console.log("Azure credentials not available");
           return null;
         }
         client = new AzureTTSClient({
@@ -22,9 +22,9 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
         });
         break;
 
-      case 'elevenlabs':
+      case "elevenlabs":
         if (!process.env.ELEVENLABS_API_KEY) {
-          console.log('ElevenLabs credentials not available');
+          console.log("ElevenLabs credentials not available");
           return null;
         }
         client = new ElevenLabsTTSClient({
@@ -32,9 +32,9 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
         });
         break;
 
-      case 'google':
+      case "google":
         if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.GOOGLE_SA_PATH) {
-          console.log('Google credentials not available');
+          console.log("Google credentials not available");
           return null;
         }
         client = new GoogleTTSClient({
@@ -64,10 +64,10 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
 }
 
 // Define the engines to test
-const engines = ['azure', 'elevenlabs', 'google'];
+const engines = ["azure", "elevenlabs", "google"];
 
 // Run tests for each engine
-engines.forEach(engineName => {
+engines.forEach((engineName) => {
   // We'll determine whether to run tests in beforeAll
   let client: AbstractTTSClient | null = null;
   let runTests = false;
@@ -89,7 +89,7 @@ engines.forEach(engineName => {
       client = null;
     });
 
-    it('should list available voices', async () => {
+    it("should list available voices", async () => {
       // Skip test if client is not available
       if (!runTests || !client) {
         console.log(`Skipping test: ${engineName} credentials not available or invalid`);
@@ -104,10 +104,10 @@ engines.forEach(engineName => {
 
         // Check that the voices have the expected properties
         const voice = voices[0];
-        expect(voice).toHaveProperty('id');
-        expect(voice).toHaveProperty('name');
-        expect(voice).toHaveProperty('gender');
-        expect(voice).toHaveProperty('languageCodes');
+        expect(voice).toHaveProperty("id");
+        expect(voice).toHaveProperty("name");
+        expect(voice).toHaveProperty("gender");
+        expect(voice).toHaveProperty("languageCodes");
       } catch (error) {
         console.log(`Test failed with error:`, error);
         // Mark the test as passed even if it fails due to API issues
@@ -115,7 +115,7 @@ engines.forEach(engineName => {
       }
     });
 
-    it('should get voices by language', async () => {
+    it("should get voices by language", async () => {
       // Skip test if client is not available
       if (!runTests || !client) {
         console.log(`Skipping test: ${engineName} credentials not available or invalid`);
@@ -123,7 +123,7 @@ engines.forEach(engineName => {
       }
 
       try {
-        const voices = await client!.getVoicesByLanguage('en-US');
+        const voices = await client!.getVoicesByLanguage("en-US");
         expect(voices).toBeDefined();
         expect(Array.isArray(voices)).toBe(true);
 
@@ -131,7 +131,7 @@ engines.forEach(engineName => {
         if (voices.length > 0) {
           // Check that all voices are for the requested language
           for (const voice of voices) {
-            expect(voice.languageCodes.some(lang => lang.bcp47 === 'en-US')).toBe(true);
+            expect(voice.languageCodes.some((lang) => lang.bcp47 === "en-US")).toBe(true);
           }
         } else {
           console.log(`No en-US voices found for ${engineName}`);
@@ -143,7 +143,7 @@ engines.forEach(engineName => {
       }
     });
 
-    it('should set and get properties', async () => {
+    it("should set and get properties", async () => {
       // Skip test if client is not available
       if (!runTests || !client) {
         console.log(`Skipping test: ${engineName} credentials not available or invalid`);
@@ -151,22 +151,22 @@ engines.forEach(engineName => {
       }
 
       // Set properties
-      client!.setProperty('rate', 1.5);
-      client!.setProperty('pitch', 1.2);
-      client!.setProperty('volume', 2.0);
+      client!.setProperty("rate", 1.5);
+      client!.setProperty("pitch", 1.2);
+      client!.setProperty("volume", 2.0);
 
       // Get properties
-      expect(client!.getProperty('rate')).toBe(1.5);
-      expect(client!.getProperty('pitch')).toBe(1.2);
-      expect(client!.getProperty('volume')).toBe(2.0);
+      expect(client!.getProperty("rate")).toBe(1.5);
+      expect(client!.getProperty("pitch")).toBe(1.2);
+      expect(client!.getProperty("volume")).toBe(2.0);
 
       // Reset properties
-      client!.setProperty('rate', 1.0);
-      client!.setProperty('pitch', 1.0);
-      client!.setProperty('volume', 1.0);
+      client!.setProperty("rate", 1.0);
+      client!.setProperty("pitch", 1.0);
+      client!.setProperty("volume", 1.0);
     });
 
-    it('should synthesize text using non-streaming approach', async () => {
+    it("should synthesize text using non-streaming approach", async () => {
       // Skip test if client is not available
       if (!runTests || !client) {
         console.log(`Skipping test: ${engineName} credentials not available or invalid`);
@@ -179,7 +179,7 @@ engines.forEach(engineName => {
 
         // Use synthToBytes (non-streaming)
         const audioBytes = await client!.synthToBytes(text, {
-          format: 'mp3'
+          format: "mp3",
         });
 
         // Save to file for verification
@@ -202,8 +202,8 @@ engines.forEach(engineName => {
     });
 
     // Only test SSML for engines that support it
-    if (engineName !== 'elevenlabs') {
-      it('should synthesize SSML to speech', async () => {
+    if (engineName !== "elevenlabs") {
+      it("should synthesize SSML to speech", async () => {
         // Skip test if client is not available
         if (!runTests || !client) {
           console.log(`Skipping test: ${engineName} credentials not available or invalid`);
@@ -222,7 +222,7 @@ engines.forEach(engineName => {
 
           // Use synthToBytes with SSML
           const audioBytes = await client!.synthToBytes(ssml, {
-            format: 'mp3'
+            format: "mp3",
           });
 
           // Save to file for verification
@@ -245,7 +245,7 @@ engines.forEach(engineName => {
       });
     }
 
-    it('should synthesize text using streaming approach', async () => {
+    it("should synthesize text using streaming approach", async () => {
       // Skip test if client is not available
       if (!runTests || !client) {
         console.log(`Skipping test: ${engineName} credentials not available or invalid`);
@@ -258,8 +258,8 @@ engines.forEach(engineName => {
 
         // Use synthToBytestream (streaming)
         const streamResult = await client!.synthToBytestream(text, {
-          format: 'mp3',
-          useWordBoundary: false // Don't request word boundaries
+          format: "mp3",
+          useWordBoundary: false, // Don't request word boundaries
         });
 
         // Check that we got a stream
@@ -267,7 +267,7 @@ engines.forEach(engineName => {
 
         // Process the stream
         let stream;
-        if ('audioStream' in streamResult) {
+        if ("audioStream" in streamResult) {
           stream = streamResult.audioStream;
         } else {
           stream = streamResult;
@@ -311,7 +311,7 @@ engines.forEach(engineName => {
       }
     });
 
-    it('should handle word boundary events', async () => {
+    it("should handle word boundary events", async () => {
       // Skip test if client is not available
       if (!runTests || !client) {
         console.log(`Skipping test: ${engineName} credentials not available or invalid`);
@@ -320,7 +320,7 @@ engines.forEach(engineName => {
 
       try {
         const text = `This is a test of word boundary events with ${engineName}.`;
-        const wordBoundaries: Array<{word: string, start: number, end: number}> = [];
+        const wordBoundaries: Array<{ word: string; start: number; end: number }> = [];
 
         // Create a word boundary callback
         const callback = (word: string, start: number, end: number) => {
@@ -336,12 +336,12 @@ engines.forEach(engineName => {
 
         // Check the structure of the word boundary events
         const firstEvent = wordBoundaries[0];
-        expect(firstEvent).toHaveProperty('word');
-        expect(firstEvent).toHaveProperty('start');
-        expect(firstEvent).toHaveProperty('end');
-        expect(typeof firstEvent.word).toBe('string');
-        expect(typeof firstEvent.start).toBe('number');
-        expect(typeof firstEvent.end).toBe('number');
+        expect(firstEvent).toHaveProperty("word");
+        expect(firstEvent).toHaveProperty("start");
+        expect(firstEvent).toHaveProperty("end");
+        expect(typeof firstEvent.word).toBe("string");
+        expect(typeof firstEvent.start).toBe("number");
+        expect(typeof firstEvent.end).toBe("number");
       } catch (error) {
         console.log(`Test failed with error:`, error);
         // Mark the test as passed even if it fails due to API issues

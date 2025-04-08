@@ -1,4 +1,4 @@
-import { SpeechMarkdown } from 'speechmarkdown-js';
+import { SpeechMarkdown } from "speechmarkdown-js";
 
 /**
  * Speech Markdown converter using the official speechmarkdown-js library
@@ -24,7 +24,7 @@ const speechMarkdownInstance = new SpeechMarkdown();
  * @param platform Target platform (amazon-alexa, google-assistant, microsoft-azure, etc.)
  * @returns SSML text
  */
-export function toSSML(markdown: string, platform: string = 'amazon-alexa'): string {
+export function toSSML(markdown: string, platform = "amazon-alexa"): string {
   return speechMarkdownInstance.toSSML(markdown, { platform });
 }
 
@@ -71,5 +71,5 @@ export function isSpeechMarkdown(text: string): boolean {
 export function getAvailablePlatforms(): string[] {
   // The library doesn't expose a direct way to get platforms, so we hardcode them
   // These are the platforms supported by speechmarkdown-js as of version 1.x
-  return ['amazon-alexa', 'google-assistant', 'microsoft-azure'];
+  return ["amazon-alexa", "google-assistant", "microsoft-azure"];
 }
