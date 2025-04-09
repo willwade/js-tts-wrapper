@@ -18,6 +18,10 @@ jest.mock("openai", () => {
                 [Symbol.asyncIterator]: async function* () {
                   yield new Uint8Array(0);
                 },
+                getReader: jest.fn().mockReturnValue({
+                  read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
+                  releaseLock: jest.fn(),
+                }),
               },
             }),
           },

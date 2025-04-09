@@ -8,7 +8,7 @@ import { PollyTTSClient } from "../engines/polly";
 import { SherpaOnnxTTSClient } from "../engines/sherpaonnx";
 import { OpenAITTSClient } from "../engines/openai";
 import { PlayHTTTSClient } from "../engines/playht";
-import { MockTTSClient } from "./mock-tts-client";
+import { MockTTSClient } from "./mock-tts-client.helper";
 
 // Use mocks for tests to avoid API calls
 const USE_MOCKS = true;
