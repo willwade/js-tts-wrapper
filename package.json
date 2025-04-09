@@ -76,21 +76,21 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "decompress": "^4.2.1",
-    "decompress-bzip2": "^4.0.0",
-    "decompress-tarbz2": "^4.1.1",
-    "decompress-targz": "^4.1.1",
-    "microsoft-cognitiveservices-speech-sdk": "^1.43.1",
-    "speechmarkdown-js": "^2.1.0",
-    "tar-stream": "^3.1.7"
+    "speechmarkdown-js": "^2.1.0"
   },
   "peerDependencies": {
     "@aws-sdk/client-polly": "^3.0.0",
     "@azure/cognitiveservices-speechservices": "^1.0.0",
     "@google-cloud/text-to-speech": "^4.2.3",
+    "decompress": "^4.2.1",
+    "decompress-bzip2": "^4.0.0",
+    "decompress-tarbz2": "^4.1.1",
+    "decompress-targz": "^4.1.1",
+    "microsoft-cognitiveservices-speech-sdk": "^1.43.1",
     "node-fetch": "^2.0.0",
     "openai": "^4.0.0",
-    "sherpa-onnx-node": "^1.11.3"
+    "sherpa-onnx-node": "^1.11.3",
+    "tar-stream": "^3.1.7"
   },
   "peerDependenciesMeta": {
     "@aws-sdk/client-polly": {
@@ -102,6 +102,21 @@
     "@google-cloud/text-to-speech": {
       "optional": true
     },
+    "decompress": {
+      "optional": true
+    },
+    "decompress-bzip2": {
+      "optional": true
+    },
+    "decompress-tarbz2": {
+      "optional": true
+    },
+    "decompress-targz": {
+      "optional": true
+    },
+    "microsoft-cognitiveservices-speech-sdk": {
+      "optional": true
+    },
     "node-fetch": {
       "optional": true
     },
@@ -109,6 +124,9 @@
       "optional": true
     },
     "sherpa-onnx-node": {
+      "optional": true
+    },
+    "tar-stream": {
       "optional": true
     }
   },
