@@ -1,36 +1,12 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { estimateWordBoundaries, WordBoundary } from "../utils/word-timing-estimator";
+import { getFetch, type FetchResponse } from "../utils/fetch-utils";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// Mock fetch types for TypeScript compilation
-// These will be replaced by the actual types when the node-fetch package is installed
-interface Response {
-  json(): Promise<any>;
-  text(): Promise<string>;
-  arrayBuffer(): Promise<ArrayBuffer>;
-  body: ReadableStream<Uint8Array>;
-  ok: boolean;
-  status: number;
-  statusText: string;
-}
-
-interface FetchFunction {
-  (url: string, options?: any): Promise<Response>;
-}
-
-// Use the mock fetch function if the node-fetch package is not installed
-let fetch: FetchFunction;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  fetch = require("node-fetch");
-} catch (_error) {
-  console.warn("node-fetch package not found, using mock implementation");
-  fetch = async () => {
-    throw new Error("node-fetch is required for PlayHT TTS");
-  };
-}
+// Get the fetch implementation for the current environment
+const fetch = getFetch();
 
 /**
  * PlayHT TTS Client Credentials

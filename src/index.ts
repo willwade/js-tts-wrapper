@@ -10,6 +10,9 @@ export { SSMLBuilder } from "./ssml/builder";
 // Markdown exports
 export * as SpeechMarkdown from "./markdown/converter";
 
+// Utility exports
+export { getFetch, isFetchAvailable } from "./utils/fetch-utils";
+
 // Engine exports
 export { AzureTTSClient } from "./engines/azure";
 export { ElevenLabsTTSClient } from "./engines/elevenlabs";

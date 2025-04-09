@@ -1,32 +1,10 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import { LanguageNormalizer } from "../core/language-utils";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
+import { getFetch, type FetchResponse } from "../utils/fetch-utils";
 
-// Mock fetch types for TypeScript compilation
-// These will be replaced by the actual types when the node-fetch package is installed
-interface Response {
-  json(): Promise<any>;
-  text(): Promise<string>;
-  arrayBuffer(): Promise<ArrayBuffer>;
-  body: ReadableStream<Uint8Array>;
-  ok: boolean;
-  status: number;
-  statusText: string;
-}
-
-type FetchFunction = (url: string, options?: any) => Promise<Response>;
-
-// Use the mock fetch function if the node-fetch package is not installed
-let fetch: FetchFunction;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  fetch = require("node-fetch");
-} catch (_error) {
-  console.warn("node-fetch package not found, using mock implementation");
-  fetch = async () => {
-    throw new Error("node-fetch is required for ElevenLabs TTS");
-  };
-}
+// Get the fetch implementation for the current environment
+const fetch = getFetch();
 
 /**
  * ElevenLabs TTS credentials
