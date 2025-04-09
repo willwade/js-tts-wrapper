@@ -171,7 +171,11 @@ export class PlayHTTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to an array of unified voice objects
    */
   protected async _mapVoicesToUnified(rawVoices: any[]): Promise<UnifiedVoice[]> {
-    return rawVoices.map((voice) => {
+    // Track seen voice IDs to handle duplicates
+    const seenVoiceIds = new Set<string>();
+    const unifiedVoices: UnifiedVoice[] = [];
+
+    for (const voice of rawVoices) {
       // Create language code object
       const languageCode = {
         bcp47: voice.language_code || "en-US",
@@ -179,14 +183,29 @@ export class PlayHTTTSClient extends AbstractTTSClient {
         display: voice.language || "English (US)",
       };
 
-      return {
-        id: voice.id,
+      const voiceId = voice.id;
+
+      // Handle duplicate voice IDs by appending a suffix
+      let uniqueId = voiceId;
+      if (seenVoiceIds.has(voiceId)) {
+        // If this is a duplicate, append the voice name to make it unique
+        uniqueId = `${voiceId}#${voice.name}`;
+        console.warn(`Found duplicate voice ID: ${voiceId}. Using ${uniqueId} instead.`);
+      }
+
+      // Add the voice ID to the set of seen IDs
+      seenVoiceIds.add(voiceId);
+
+      unifiedVoices.push({
+        id: uniqueId,
         name: voice.name,
         gender: (voice.gender as "Male" | "Female" | "Unknown") || "Unknown",
         provider: "playht",
         languageCodes: [languageCode],
-      };
-    });
+      });
+    }
+
+    return unifiedVoices;
   }
 
   /**
@@ -194,7 +213,15 @@ export class PlayHTTTSClient extends AbstractTTSClient {
    * @param voiceId Voice ID to use
    */
   setVoice(voiceId: string): void {
-    this.voice = voiceId;
+    // If the voice ID contains a '#' character, it's a modified ID to handle duplicates
+    // Extract the original ID (everything before the '#')
+    if (voiceId.includes('#')) {
+      const originalId = voiceId.split('#')[0];
+      this.voice = originalId;
+      console.log(`Using original voice ID: ${originalId} (from modified ID: ${voiceId})`);
+    } else {
+      this.voice = voiceId;
+    }
   }
 
   /**
