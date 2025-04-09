@@ -27,17 +27,17 @@ jobs:
     - name: Install peer dependencies
       run: |
         # Install AWS Polly first to ensure TypeScript can find it during build
-        npm install @aws-sdk/client-polly@^3.0.0 --save-dev
+        npm install @aws-sdk/client-polly@^3.782.0 --save-dev
         # Install other peer dependencies
         npm install @azure/cognitiveservices-speechservices@^1.0.0
-        npm install @google-cloud/text-to-speech@^4.2.3
+        npm install @google-cloud/text-to-speech@^6.0.1
         npm install decompress@^4.2.1
         npm install decompress-bzip2@^4.0.0
         npm install decompress-tarbz2@^4.1.1
         npm install decompress-targz@^4.1.1
         npm install microsoft-cognitiveservices-speech-sdk@^1.43.1
         npm install node-fetch@^2.0.0
-        npm install openai@^4.0.0
+        npm install openai@^4.93.0
         npm install tar-stream@^3.1.7
         # Skip sherpa-onnx-node as it's platform-specific
     - run: npm run build
@@ -105,17 +105,17 @@ jobs:
     - name: Install peer dependencies
       run: |
         # Install AWS Polly first to ensure TypeScript can find it during build
-        npm install @aws-sdk/client-polly@^3.0.0 --save-dev
+        npm install @aws-sdk/client-polly@^3.782.0 --save-dev
         # Install other peer dependencies
         npm install @azure/cognitiveservices-speechservices@^1.0.0
-        npm install @google-cloud/text-to-speech@^4.2.3
+        npm install @google-cloud/text-to-speech@^6.0.1
         npm install decompress@^4.2.1
         npm install decompress-bzip2@^4.0.0
         npm install decompress-tarbz2@^4.1.1
         npm install decompress-targz@^4.1.1
         npm install microsoft-cognitiveservices-speech-sdk@^1.43.1
         npm install node-fetch@^2.0.0
-        npm install openai@^4.0.0
+        npm install openai@^4.93.0
         npm install tar-stream@^3.1.7
         # Skip sherpa-onnx-node as it's platform-specific
     - run: npm run prepublishOnly
