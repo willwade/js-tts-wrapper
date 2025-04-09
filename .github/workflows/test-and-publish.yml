@@ -23,6 +23,15 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm ci
+    # Install peer dependencies for build
+    - name: Install peer dependencies
+      run: |
+        npm install @aws-sdk/client-polly@^3.0.0
+        npm install @azure/cognitiveservices-speechservices@^1.0.0
+        npm install @google-cloud/text-to-speech@^4.2.3
+        npm install node-fetch@^2.0.0
+        npm install openai@^4.0.0
+        # Skip sherpa-onnx-node as it's platform-specific
     - run: npm run build
     - run: npm run lint
     - run: npm test
@@ -59,7 +68,7 @@ jobs:
     - name: Check Google credentials
       id: check_google
       run: |
-        if [ -n "${{ secrets.GOOGLE_SA_KEY }}" ]; then
+        if [ -n "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" ]; then
           echo "has_creds=true" >> $GITHUB_OUTPUT
         else
           echo "has_creds=false" >> $GITHUB_OUTPUT
@@ -67,7 +76,7 @@ jobs:
     - name: Run Google tests
       if: steps.check_google.outputs.has_creds == 'true'
       run: |
-        echo "${{ secrets.GOOGLE_SA_KEY }}" > google-sa-key.json
+        echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" > google-sa-key.json
         export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/google-sa-key.json
         npm run test:google
         rm google-sa-key.json
@@ -81,9 +90,18 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '16.x'
+        node-version: '20.x'
         registry-url: 'https://registry.npmjs.org'
     - run: npm ci
+    # Install peer dependencies for build
+    - name: Install peer dependencies
+      run: |
+        npm install @aws-sdk/client-polly@^3.0.0
+        npm install @azure/cognitiveservices-speechservices@^1.0.0
+        npm install @google-cloud/text-to-speech@^4.2.3
+        npm install node-fetch@^2.0.0
+        npm install openai@^4.0.0
+        # Skip sherpa-onnx-node as it's platform-specific
     - run: npm run prepublishOnly
     - name: Publish to npm
       run: |

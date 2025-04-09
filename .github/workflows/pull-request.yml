@@ -15,6 +15,15 @@ jobs:
         node-version: '18.x'
         cache: 'npm'
     - run: npm ci
+    # Install peer dependencies for build
+    - name: Install peer dependencies
+      run: |
+        npm install @aws-sdk/client-polly@^3.0.0
+        npm install @azure/cognitiveservices-speechservices@^1.0.0
+        npm install @google-cloud/text-to-speech@^4.2.3
+        npm install node-fetch@^2.0.0
+        npm install openai@^4.0.0
+        # Skip sherpa-onnx-node as it's platform-specific
     - run: npm run build
     - run: npm run lint
     - run: npm test
