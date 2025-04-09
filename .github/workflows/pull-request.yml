@@ -18,7 +18,9 @@ jobs:
     # Install peer dependencies for build
     - name: Install peer dependencies
       run: |
-        npm install @aws-sdk/client-polly@^3.0.0
+        # Install AWS Polly first to ensure TypeScript can find it during build
+        npm install @aws-sdk/client-polly@^3.0.0 --save-dev
+        # Install other peer dependencies
         npm install @azure/cognitiveservices-speechservices@^1.0.0
         npm install @google-cloud/text-to-speech@^4.2.3
         npm install decompress@^4.2.1
