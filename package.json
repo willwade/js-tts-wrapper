@@ -45,7 +45,16 @@
     "prepublishOnly": "npm run clean && npm run build && node scripts/package.js",
     "prepare-package": "node scripts/package.js",
     "prepare": "husky",
-    "pre-push": "npm run check"
+    "pre-push": "npm run check",
+    "install:openai": "npm install openai@^4.93.0",
+    "install:google": "npm install @google-cloud/text-to-speech@^6.0.1",
+    "install:azure": "npm install @azure/cognitiveservices-speechservices@^1.0.0 microsoft-cognitiveservices-speech-sdk@^1.43.1",
+    "install:polly": "npm install @aws-sdk/client-polly@^3.782.0",
+    "install:elevenlabs": "npm install node-fetch@^2.0.0",
+    "install:playht": "npm install node-fetch@^2.0.0",
+    "install:sherpaonnx": "npm install sherpa-onnx-node@^1.11.3 decompress@^4.2.1 decompress-bzip2@^4.0.0 decompress-tarbz2@^4.1.1 decompress-targz@^4.1.1 tar-stream@^3.1.7",
+    "install:cloud": "npm run install:openai && npm run install:google && npm run install:azure && npm run install:polly",
+    "install:all": "npm run install:cloud && npm run install:elevenlabs && npm run install:playht && npm run install:sherpaonnx"
   },
   "keywords": [
     "tts",
