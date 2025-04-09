@@ -21,30 +21,61 @@ npm install js-tts-wrapper
 
 ### Optional Dependencies
 
-The library uses a modular approach where TTS engine-specific dependencies are optional. Install only what you need:
+The library uses a modular approach where TTS engine-specific dependencies are optional. Install only what you need using the provided scripts:
 
 ```bash
 # For Azure TTS
-npm install @azure/cognitiveservices-speechservices
+npm run install:azure
 
 # For Google Cloud TTS
-npm install @google-cloud/text-to-speech
+npm run install:google
 
 # For ElevenLabs TTS
-npm install node-fetch
+npm run install:elevenlabs
 
 # For AWS Polly TTS
-npm install @aws-sdk/client-polly
+npm run install:polly
 
 # For OpenAI TTS
-npm install openai
+npm run install:openai
 
 # For PlayHT TTS
-npm install node-fetch
+npm run install:playht
+
+# For SherpaOnnx TTS (offline TTS)
+npm run install:sherpaonnx
+
+# Install all cloud-based engines (Azure, Google, OpenAI, Polly)
+npm run install:cloud
+
+# Install all supported engines
+npm run install:all
+```
+
+Or install dependencies manually:
+
+```bash
+# For Azure TTS
+npm install @azure/cognitiveservices-speechservices@^1.0.0 microsoft-cognitiveservices-speech-sdk@^1.43.1
+
+# For Google Cloud TTS
+npm install @google-cloud/text-to-speech@^6.0.1
+
+# For ElevenLabs TTS
+npm install node-fetch@^2.0.0
+
+# For AWS Polly TTS
+npm install @aws-sdk/client-polly@^3.782.0
+
+# For OpenAI TTS
+npm install openai@^4.93.0
+
+# For PlayHT TTS
+npm install node-fetch@^2.0.0
 
 # For SherpaOnnx TTS (offline TTS)
 # Note: This is a native module that requires compilation
-npm install sherpa-onnx-node
+npm install sherpa-onnx-node@^1.11.3 decompress@^4.2.1 decompress-bzip2@^4.0.0 decompress-tarbz2@^4.1.1 decompress-targz@^4.1.1 tar-stream@^3.1.7
 
 # For native platforms (macOS, Linux, Windows), you need to set environment variables
 # You can use the provided helper scripts which handle all platforms:
@@ -53,13 +84,9 @@ node scripts/run-with-sherpaonnx.js your-script.js
 # - macOS: export DYLD_LIBRARY_PATH=/path/to/your/project/node_modules/sherpa-onnx-darwin-arm64:$DYLD_LIBRARY_PATH
 # - Linux: export LD_LIBRARY_PATH=/path/to/your/project/node_modules/sherpa-onnx-linux-x64:$LD_LIBRARY_PATH
 # - Windows: set PATH=C:\path\to\your\project\node_modules\sherpa-onnx-win32-x64;%PATH%
-
-# If you encounter issues installing or using sherpa-onnx-node, you can still use the wrapper
-# with a mock implementation for testing purposes
-
-# Or install all supported engines
-npm install js-tts-wrapper @azure/cognitiveservices-speechservices @google-cloud/text-to-speech node-fetch @aws-sdk/client-polly openai sherpa-onnx-node
 ```
+
+If you encounter issues installing or using sherpa-onnx-node, you can still use the wrapper with a mock implementation for testing purposes.
 
 ## Quick Start
 
@@ -89,15 +116,15 @@ await tts.speak(ssml);
 
 ## Supported Providers
 
-| Provider      | SSML | Streaming | Word Timing | File Output | Notes                     |
-|---------------|------|-----------|-------------|-------------|---------------------------|
-| Azure         | Yes  | Yes       | Yes         | Yes         | Full SSML support         |
-| Google Cloud  | Yes  | Yes       | Yes         | Yes         | Full SSML + markup        |
-| ElevenLabs    | No*  | Yes       | Partial     | Yes         | Strip SSML automatically  |
-| OpenAI        | No*  | Yes       | Estimated** | Yes         | Multiple voices available |
-| PlayHT        | No*  | Yes       | Estimated** | Yes         | Multiple voice engines    |
-| AWS Polly     | Yes  | Yes       | Yes         | Yes         | Full SSML support         |
-| SherpaOnnx    | No*  | Yes       | Estimated** | Yes         | Offline TTS, no internet  |
+| Provider      | SSML | Streaming | Word Timing | File Output | Notes                     | Version      |
+|---------------|------|-----------|-------------|-------------|---------------------------|-------------|
+| Azure         | Yes  | Yes       | Yes         | Yes         | Full SSML support         | 1.43.1      |
+| Google Cloud  | Yes  | Yes       | Yes         | Yes         | Full SSML + markup        | 6.0.1       |
+| ElevenLabs    | No*  | Yes       | Partial     | Yes         | Strip SSML automatically  | node-fetch 2.0.0 |
+| OpenAI        | No*  | Yes       | Estimated** | Yes         | Multiple voices available | 4.93.0      |
+| PlayHT        | No*  | Yes       | Estimated** | Yes         | Multiple voice engines    | node-fetch 2.0.0 |
+| AWS Polly     | Yes  | Yes       | Yes         | Yes         | Full SSML support         | 3.782.0     |
+| SherpaOnnx    | No*  | Yes       | Estimated** | Yes         | Offline TTS, no internet  | 1.11.3      |
 
 *Engines that don't support SSML will automatically strip SSML tags and process the plain text.
 
@@ -384,6 +411,17 @@ npm run example:google
 npm run example:polly
 npm run example:sherpaonnx
 ```
+
+## Compatibility
+
+This library is designed to be compatible with modern JavaScript frameworks and environments:
+
+- **Node.js**: Compatible with Node.js 18.x and 20.x
+- **React**: Compatible with React 18 and React 19
+- **Next.js**: Compatible with Next.js 13 and 14
+- **TypeScript**: Full TypeScript support with type definitions
+
+The library uses a modular dependency approach that allows you to install only what you need, reducing bundle size and avoiding unnecessary dependencies.
 
 ## License
 
