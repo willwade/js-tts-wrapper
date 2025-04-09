@@ -1,7 +1,7 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { estimateWordBoundaries, WordBoundary } from "../utils/word-timing-estimator";
-import { getFetch, type FetchResponse } from "../utils/fetch-utils";
+import { getFetch } from "../utils/fetch-utils";
 import * as fs from "node:fs";
 import * as path from "node:path";
 

@@ -1,7 +1,7 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import { LanguageNormalizer } from "../core/language-utils";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
-import { getFetch, type FetchResponse } from "../utils/fetch-utils";
+import { getFetch } from "../utils/fetch-utils";
 
 // Get the fetch implementation for the current environment
 const fetch = getFetch();
