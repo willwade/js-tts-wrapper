@@ -3,6 +3,14 @@ import * as SSMLUtils from "../core/ssml-utils";
 import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, UnifiedVoice, WordBoundaryCallback } from "../types";
 
+// Import the SDK dynamically to avoid requiring it for all users
+let sdk: any;
+try {
+  sdk = require("microsoft-cognitiveservices-speech-sdk");
+} catch (_error) {
+  console.warn("microsoft-cognitiveservices-speech-sdk not found, using REST API fallback");
+}
+
 /**
  * Azure TTS Client
  */
@@ -124,11 +132,137 @@ export class AzureTTSClient extends AbstractTTSClient {
     const ssml = this.prepareSSML(text, options);
     const useWordBoundary = options?.useWordBoundary !== false; // Default to true
 
+    // If the SDK is available and word boundary information is requested, use the SDK
+    if (sdk && useWordBoundary) {
+      return this.synthToBytestreamWithSDK(ssml, options);
+    }
+
+    // Otherwise, fall back to the REST API
+    return this.synthToBytestreamWithREST(ssml, options);
+  }
+
+  /**
+   * Synthesize speech using the Microsoft Cognitive Services Speech SDK
+   * @param ssml SSML to synthesize
+   * @param options Synthesis options
+   * @returns Promise resolving to an object containing the audio stream and word boundary information
+   */
+  private async synthToBytestreamWithSDK(
+    ssml: string,
+    options?: SpeakOptions
+  ): Promise<{
+    audioStream: ReadableStream<Uint8Array>;
+    wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
+  }> {
     try {
-      // Use the timeoffset endpoint if word boundary information is requested
-      const endpoint = useWordBoundary
-        ? `https://${this.region}.tts.speech.microsoft.com/cognitiveservices/v1/timeoffset`
-        : `https://${this.region}.tts.speech.microsoft.com/cognitiveservices/v1`;
+      // Create a speech config
+      const speechConfig = sdk.SpeechConfig.fromSubscription(this.subscriptionKey, this.region);
+
+      // Set the output format
+      speechConfig.speechSynthesisOutputFormat = options?.format === "mp3"
+        ? sdk.SpeechSynthesisOutputFormat.Audio24Khz96KBitRateMonoMp3
+        : sdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;
+
+      // Set the voice
+      if (this.voiceId) {
+        speechConfig.speechSynthesisVoiceName = this.voiceId;
+      }
+
+      // Create a synthesizer
+      const synthesizer = new sdk.SpeechSynthesizer(speechConfig);
+
+      // Create a promise that will resolve with the audio data and word boundaries
+      return new Promise((resolve, reject) => {
+        const wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
+        const audioChunks: Uint8Array[] = [];
+
+        // Set up the word boundary event handler
+        synthesizer.wordBoundary = (_s: any, e: any) => {
+          wordBoundaries.push({
+            text: e.text,
+            offset: e.audioOffset / 10000, // Convert to milliseconds
+            duration: 0, // Duration is not provided by the SDK
+          });
+        };
+
+        // Set up the synthesizing event handler to collect audio chunks
+        synthesizer.synthesizing = (_s: any, e: any) => {
+          if (e.result.reason === sdk.ResultReason.SynthesizingAudio) {
+            audioChunks.push(new Uint8Array(e.result.audioData));
+          }
+        };
+
+        // Start the synthesis
+        synthesizer.speakSsmlAsync(
+          ssml,
+          (result: any) => {
+            // Synthesis completed
+            synthesizer.close();
+
+            if (result.reason === sdk.ResultReason.SynthesizingAudioCompleted) {
+              // Add the final audio chunk
+              audioChunks.push(new Uint8Array(result.audioData));
+
+              // Create a readable stream from the audio chunks
+              const stream = new ReadableStream<Uint8Array>({
+                start(controller) {
+                  for (const chunk of audioChunks) {
+                    controller.enqueue(chunk);
+                  }
+                  controller.close();
+                },
+              });
+
+              // Calculate durations for word boundaries
+              if (wordBoundaries.length > 1) {
+                for (let i = 0; i < wordBoundaries.length - 1; i++) {
+                  wordBoundaries[i].duration =
+                    wordBoundaries[i + 1].offset - wordBoundaries[i].offset;
+                }
+                // Estimate duration for the last word
+                if (wordBoundaries.length > 0) {
+                  const lastWord = wordBoundaries[wordBoundaries.length - 1];
+                  lastWord.duration = 500; // Estimate 500ms for the last word
+                }
+              }
+
+              resolve({
+                audioStream: stream,
+                wordBoundaries,
+              });
+            } else {
+              reject(new Error(`Synthesis failed: ${result.errorDetails}`));
+            }
+          },
+          (error: any) => {
+            // Synthesis error
+            synthesizer.close();
+            reject(error);
+          }
+        );
+      });
+    } catch (error) {
+      console.error("Error synthesizing speech with SDK:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Synthesize speech using the REST API
+   * @param ssml SSML to synthesize
+   * @param options Synthesis options
+   * @returns Promise resolving to an object containing the audio stream and word boundary information
+   */
+  private async synthToBytestreamWithREST(
+    ssml: string,
+    options?: SpeakOptions
+  ): Promise<{
+    audioStream: ReadableStream<Uint8Array>;
+    wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
+  }> {
+    try {
+      // Use the standard endpoint
+      const endpoint = `https://${this.region}.tts.speech.microsoft.com/cognitiveservices/v1`;
 
       const response = await fetch(endpoint, {
         method: "POST",
@@ -148,30 +282,15 @@ export class AzureTTSClient extends AbstractTTSClient {
         throw new Error(`Failed to synthesize speech: ${response.statusText}`);
       }
 
-      // Extract word boundary information from headers if available
+      // No word boundary information is available with the REST API
       const wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
-
-      if (useWordBoundary) {
-        // The timeoffset endpoint returns word boundary information in the X-WordBoundary header
-        const wordBoundaryHeader = response.headers.get("X-WordBoundary");
-        if (wordBoundaryHeader) {
-          try {
-            // Parse the word boundary information
-            // Format: [{'text':'word1','offset':123,'duration':456},{'text':'word2',...}]
-            const boundaryData = JSON.parse(wordBoundaryHeader);
-            wordBoundaries.push(...boundaryData);
-          } catch (e) {
-            console.warn("Failed to parse word boundary information:", e);
-          }
-        }
-      }
 
       return {
         audioStream: response.body as ReadableStream<Uint8Array>,
         wordBoundaries,
       };
     } catch (error) {
-      console.error("Error synthesizing speech stream:", error);
+      console.error("Error synthesizing speech with REST API:", error);
       throw error;
     }
   }
@@ -187,14 +306,95 @@ export class AzureTTSClient extends AbstractTTSClient {
     callback: WordBoundaryCallback,
     options?: SpeakOptions
   ): Promise<void> {
-    // Register the callback
-    this.on("boundary", callback);
+    // If the SDK is available, use it for better word boundary support
+    if (sdk) {
+      await this.startPlaybackWithCallbacksSDK(text, callback, options);
+    } else {
+      // Fall back to the abstract implementation
+      // Register the callback
+      this.on("boundary", callback);
 
-    // Enable word boundary information
-    const enhancedOptions = { ...options, useWordBoundary: true };
+      // Enable word boundary information
+      const enhancedOptions = { ...options, useWordBoundary: true };
 
-    // Start playback with word boundary information
-    await this.speakStreamed(text, enhancedOptions);
+      // Start playback with word boundary information
+      await this.speakStreamed(text, enhancedOptions);
+    }
+  }
+
+  /**
+   * Start playback with word boundary callbacks using the SDK
+   * @param text Text or SSML to speak
+   * @param callback Callback function for word boundaries
+   * @param options Synthesis options
+   */
+  private async startPlaybackWithCallbacksSDK(
+    text: string,
+    callback: WordBoundaryCallback,
+    options?: SpeakOptions
+  ): Promise<void> {
+    const ssml = this.prepareSSML(text, options);
+
+    try {
+      // Create a speech config
+      const speechConfig = sdk.SpeechConfig.fromSubscription(this.subscriptionKey, this.region);
+
+      // Set the output format
+      speechConfig.speechSynthesisOutputFormat = options?.format === "mp3"
+        ? sdk.SpeechSynthesisOutputFormat.Audio24Khz96KBitRateMonoMp3
+        : sdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;
+
+      // Set the voice
+      if (this.voiceId) {
+        speechConfig.speechSynthesisVoiceName = this.voiceId;
+      }
+
+      // Create an audio config for playback
+      const audioConfig = sdk.AudioConfig.fromDefaultSpeakerOutput();
+
+      // Create a synthesizer
+      const synthesizer = new sdk.SpeechSynthesizer(speechConfig, audioConfig);
+
+      // Emit the start event
+      this.emit("start");
+
+      // Set up the word boundary event handler
+      synthesizer.wordBoundary = (_s: any, e: any) => {
+        // Call the callback with the word boundary information
+        const offset = e.audioOffset / 10000; // Convert to milliseconds
+        const duration = 500; // Estimate 500ms for each word
+
+        // Store the word boundary information for internal use
+        this.timings.push([offset, offset + duration, e.text]);
+
+        // Call the callback with the word boundary information
+        callback(e.text, offset, offset + duration);
+      };
+
+      // Set up the synthesis completed event handler
+      synthesizer.synthesisCompleted = (_s: any, _e: any) => {
+        // Emit the end event
+        this.emit("end");
+        // Close the synthesizer
+        synthesizer.close();
+      };
+
+      // Start the synthesis
+      await new Promise<void>((resolve, reject) => {
+        synthesizer.speakSsmlAsync(
+          ssml,
+          () => {
+            resolve();
+          },
+          (error: any) => {
+            reject(error);
+          }
+        );
+      });
+    } catch (error) {
+      console.error("Error starting playback with callbacks:", error);
+      throw error;
+    }
   }
 
   /**

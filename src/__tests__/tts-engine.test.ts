@@ -8,10 +8,19 @@ import { PollyTTSClient } from "../engines/polly";
 import { SherpaOnnxTTSClient } from "../engines/sherpaonnx";
 import { OpenAITTSClient } from "../engines/openai";
 import { PlayHTTTSClient } from "../engines/playht";
+import { MockTTSClient } from "./mock-tts-client";
+
+// Use mocks for tests to avoid API calls
+const USE_MOCKS = true;
 
 // Define a factory function to create TTS clients
 async function createTTSClient(engine: string): Promise<AbstractTTSClient | null> {
   let client: AbstractTTSClient | null = null;
+
+  // Use mock client for tests to avoid API calls
+  if (USE_MOCKS) {
+    return new MockTTSClient({});
+  }
 
   try {
     switch (engine.toLowerCase()) {

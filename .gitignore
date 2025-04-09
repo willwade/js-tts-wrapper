@@ -37,3 +37,9 @@ TEST-results.xml
 .envrc
 examples/*.wav
 examples/*.mp3
+
+# Credentials files
+aacspeakhelper-73ef9c911de3.json
+*.json.key
+*.p8
+*.pem

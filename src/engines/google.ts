@@ -39,11 +39,19 @@ export class GoogleTTSClient extends AbstractTTSClient {
   private useBetaApi = false;
 
   /**
+   * Google Cloud credentials
+   */
+  private googleCredentials: GoogleTTSCredentials;
+
+  /**
    * Create a new Google TTS client
    * @param credentials Google Cloud credentials
    */
   constructor(credentials: GoogleTTSCredentials) {
     super(credentials);
+
+    // Store the credentials for later use
+    this.googleCredentials = credentials;
 
     try {
       // Try to load the Google Cloud Text-to-Speech client
@@ -122,17 +130,37 @@ export class GoogleTTSClient extends AbstractTTSClient {
       // Determine if we should use the beta API for word timings
       const useWordTimings = options?.useWordBoundary && this.useBetaApi;
 
+      // Check if the voice supports SSML
+      const voiceName = options?.voice || this.voiceId;
+      // Only Standard and Wavenet voices support SSML
+      const supportsSSML = !voiceName || (voiceName.includes("Standard") || voiceName.includes("Wavenet"));
+
+      // Extract language code from voice name if available
+      let languageCode = this.lang || "en-US";
+      if (voiceName) {
+        // Extract language code from voice name (e.g., en-AU-Chirp-HD-D -> en-AU)
+        const parts = voiceName.split("-");
+        if (parts.length >= 2) {
+          languageCode = `${parts[0]}-${parts[1]}`;
+        }
+      }
+
       // Prepare the request
       const request: any = {
-        input: SSMLUtils.isSSML(ssml) ? { ssml } : { text: ssml },
+        input: supportsSSML && SSMLUtils.isSSML(ssml) ? { ssml } : { text: SSMLUtils.isSSML(ssml) ? SSMLUtils.stripSSML(ssml) : ssml },
         voice: {
-          languageCode: options?.voice?.split("-")[0] || this.lang || "en-US",
-          name: options?.voice || this.voiceId,
+          languageCode: languageCode,
+          name: voiceName,
         },
         audioConfig: {
           audioEncoding: options?.format === "mp3" ? "MP3" : "LINEAR16",
         },
       };
+
+      // Log a warning if SSML is being stripped
+      if (!supportsSSML && SSMLUtils.isSSML(ssml)) {
+        console.warn(`Voice ${voiceName} does not support SSML. Falling back to plain text.`);
+      }
 
       // Add voice gender if no specific voice is set
       if (!options?.voice && !this.voiceId) {
@@ -148,8 +176,12 @@ export class GoogleTTSClient extends AbstractTTSClient {
       let response;
       if (useWordTimings) {
         // Use beta API for word timings
-        const betaClient =
-          new (require("@google-cloud/text-to-speech").v1beta1.TextToSpeechClient)();
+        const { v1beta1 } = require("@google-cloud/text-to-speech");
+        const betaClient = new v1beta1.TextToSpeechClient({
+          projectId: this.googleCredentials.projectId,
+          credentials: this.googleCredentials.credentials,
+          keyFilename: this.googleCredentials.keyFilename,
+        });
         [response] = await betaClient.synthesizeSpeech(request);
       } else {
         // Use standard API

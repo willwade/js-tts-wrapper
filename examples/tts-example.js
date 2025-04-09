@@ -199,6 +199,40 @@ async function runEngineExample(engine) {
       console.log("Output format set to: wav");
     }
 
+    // Special settings for Google TTS
+    if (engine === "google") {
+      console.log("\nSetting Google-specific properties...");
+
+      // Find a voice that supports SSML (Standard or Wavenet voices)
+      const ssmlVoices = enVoices.filter(voice => voice.id.includes("Standard") || voice.id.includes("Wavenet"));
+      if (ssmlVoices.length > 0) {
+        const ssmlVoice = ssmlVoices[0];
+        console.log(`Switching to voice that supports SSML: ${ssmlVoice.name}`);
+        client.setVoice(ssmlVoice.id);
+      }
+    }
+
+    // Special settings for Azure TTS
+    if (engine === "azure") {
+      console.log("\nSetting Azure-specific properties...");
+
+      // Find a multilingual neural voice for better quality and word boundary support
+      const multilingualVoices = enVoices.filter(voice => voice.id.includes("MultilingualNeural"));
+      if (multilingualVoices.length > 0) {
+        const multilingualVoice = multilingualVoices[0];
+        console.log(`Switching to multilingual voice with word boundary support: ${multilingualVoice.name}`);
+        client.setVoice(multilingualVoice.id);
+      } else {
+        // Fall back to any neural voice
+        const neuralVoices = enVoices.filter(voice => voice.id.includes("Neural"));
+        if (neuralVoices.length > 0) {
+          const neuralVoice = neuralVoices[0];
+          console.log(`Switching to neural voice: ${neuralVoice.name}`);
+          client.setVoice(neuralVoice.id);
+        }
+      }
+    }
+
     // Convert text to speech
     console.log("\nConverting text to speech...");
     const text = `Hello, this is a test of the ${engine} Text to Speech API. It sounds quite natural, doesn't it?`;
