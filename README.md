@@ -86,8 +86,10 @@ node scripts/run-with-sherpaonnx.js your-script.js
 # - Windows: set PATH=C:\path\to\your\project\node_modules\sherpa-onnx-win32-x64;%PATH%
 
 # For SherpaOnnx WebAssembly TTS (browser-compatible TTS)
-# This requires building the WebAssembly module first
-# See docs/sherpaonnx-wasm.md for details
+# No additional npm packages are needed, but you need to build the WebAssembly module
+npm run install:sherpaonnx-wasm
+
+# Then follow the instructions in docs/sherpaonnx-wasm.md to build the WebAssembly module
 ```
 
 If you encounter issues installing or using sherpa-onnx-node, you can still use the wrapper with a mock implementation for testing purposes.
