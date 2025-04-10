@@ -76,11 +76,23 @@ if (libPathEnvVar) {
 
 // Run the script
 const args = process.argv.slice(3);
+
+console.log(`\nRunning script: ${scriptToRun} ${args.join(' ')}\n`);
+console.log('If you encounter issues with SherpaOnnx TTS, try installing the dependencies:');
+console.log('npm run install:sherpaonnx');
+console.log('');
+
 const nodeProcess = spawn('node', [scriptToRun, ...args], {
   stdio: 'inherit',
   env: process.env
 });
 
 nodeProcess.on('close', (code) => {
+  if (code !== 0) {
+    console.log('\nScript exited with an error. If the error is related to SherpaOnnx, check that:');
+    console.log('1. You have installed the sherpa-onnx-node package: npm run install:sherpaonnx');
+    console.log('2. The model files are downloaded correctly');
+    console.log('3. You are using this helper script to run your application');
+  }
   process.exit(code);
 });

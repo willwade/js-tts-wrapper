@@ -636,6 +636,8 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
             throw new Error(
               `Could not load sherpa-onnx-node. Please set the ${envVarName} environment variable:\n` +
               `${exportCmd}\n\n` +
+              `Or use the provided helper script:\n` +
+              `node scripts/run-with-sherpaonnx.js your-script.js\n\n` +
               `Original error: ${err.message}`
             );
           }
