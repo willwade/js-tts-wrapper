@@ -21,6 +21,7 @@ export { OpenAITTSClient } from "./engines/openai";
 export { PlayHTTTSClient } from "./engines/playht";
 export { PollyTTSClient } from "./engines/polly";
 export { SherpaOnnxTTSClient } from "./engines/sherpaonnx";
+export { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm";
 
 // Type exports
 export type {

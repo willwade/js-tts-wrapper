@@ -84,6 +84,10 @@ node scripts/run-with-sherpaonnx.js your-script.js
 # - macOS: export DYLD_LIBRARY_PATH=/path/to/your/project/node_modules/sherpa-onnx-darwin-arm64:$DYLD_LIBRARY_PATH
 # - Linux: export LD_LIBRARY_PATH=/path/to/your/project/node_modules/sherpa-onnx-linux-x64:$LD_LIBRARY_PATH
 # - Windows: set PATH=C:\path\to\your\project\node_modules\sherpa-onnx-win32-x64;%PATH%
+
+# For SherpaOnnx WebAssembly TTS (browser-compatible TTS)
+# This requires building the WebAssembly module first
+# See docs/sherpaonnx-wasm.md for details
 ```
 
 If you encounter issues installing or using sherpa-onnx-node, you can still use the wrapper with a mock implementation for testing purposes.
@@ -125,6 +129,7 @@ await tts.speak(ssml);
 | PlayHT        | No*  | Yes       | Estimated** | Yes         | Multiple voice engines    | node-fetch 2.0.0 |
 | AWS Polly     | Yes  | Yes       | Yes         | Yes         | Full SSML support         | 3.782.0     |
 | SherpaOnnx    | No*  | Yes       | Estimated** | Yes         | Offline TTS, no internet  | 1.11.3      |
+| SherpaOnnx-Wasm | No* | Yes      | Estimated** | Yes         | Browser-compatible TTS    | WebAssembly  |
 
 *Engines that don't support SSML will automatically strip SSML tags and process the plain text.
 
@@ -422,6 +427,41 @@ This library is designed to be compatible with modern JavaScript frameworks and 
 - **TypeScript**: Full TypeScript support with type definitions
 
 The library uses a modular dependency approach that allows you to install only what you need, reducing bundle size and avoiding unnecessary dependencies.
+
+## SherpaOnnx WebAssembly TTS
+
+SherpaOnnx WebAssembly TTS is a browser-compatible version of SherpaOnnx TTS. It uses WebAssembly to run the TTS engine directly in the browser, without requiring native modules or environment variables.
+
+```javascript
+import { SherpaOnnxWasmTTSClient } from 'js-tts-wrapper';
+
+// Create a SherpaOnnx WebAssembly TTS client
+const tts = new SherpaOnnxWasmTTSClient({
+  wasmPath: './sherpaonnx-wasm/tts.js'
+});
+
+// Initialize the WebAssembly module
+await tts.initializeWasm('./sherpaonnx-wasm/tts.js');
+
+// Get available voices
+const voices = await tts.getVoices();
+console.log(`Found ${voices.length} voices`);
+
+// Set a voice
+await tts.setVoice('piper_en_US');
+
+// Synthesize speech
+const text = 'This is a test of SherpaOnnx WebAssembly Text to Speech synthesis.';
+const audioBytes = await tts.synthToBytes(text, { format: 'wav' });
+
+// Play the audio in a browser
+const audioBlob = new Blob([audioBytes], { type: 'audio/wav' });
+const audioUrl = URL.createObjectURL(audioBlob);
+const audio = new Audio(audioUrl);
+audio.play();
+```
+
+**Note:** SherpaOnnx WebAssembly TTS requires building the WebAssembly module first. See [docs/sherpaonnx-wasm.md](docs/sherpaonnx-wasm.md) for details.
 
 ## License
 
