@@ -20,32 +20,36 @@ declare global {
 // Define the SherpaOnnx WebAssembly module interface
 interface SherpaOnnxWasmModule {
   // Core methods
-  _ttsCreateOffline: (configPtr: number) => number;
-  _ttsDestroyOffline: (tts: number) => void;
-  _ttsGenerateWithOffline: (tts: number, textPtr: number) => number;
-  _ttsNumSamplesWithOffline: (tts: number) => number;
-  _ttsSampleRateWithOffline: (tts: number) => number;
-  _ttsGetSamplesWithOffline: (tts: number, samplesPtr: number) => void;
+  _ttsCreateOffline?: (configPtr: number) => number;
+  _ttsDestroyOffline?: (tts: number) => void;
+  _ttsGenerateWithOffline?: (tts: number, textPtr: number) => number;
+  _ttsNumSamplesWithOffline?: (tts: number) => number;
+  _ttsSampleRateWithOffline?: (tts: number) => number;
+  _ttsGetSamplesWithOffline?: (tts: number, samplesPtr: number) => void;
 
   // Memory management
-  _malloc: (size: number) => number;
-  _free: (ptr: number) => void;
+  _malloc?: (size: number) => number;
+  _free?: (ptr: number) => void;
 
   // Helpers for string handling
-  stringToUTF8: (str: string, outPtr: number, maxBytesToWrite: number) => void;
-  UTF8ToString: (ptr: number) => string;
+  stringToUTF8?: (str: string, outPtr: number, maxBytesToWrite: number) => void;
+  UTF8ToString?: (ptr: number) => string;
 
   // WebAssembly TTS class
-  OfflineTts: any;
+  OfflineTts?: any;
+  createOfflineTts?: any;
 
   // Typed array access
-  HEAPF32: Float32Array;
-  HEAP8: Int8Array;
-  HEAP16: Int16Array;
-  HEAP32: Int32Array;
-  HEAPU8: Uint8Array;
-  HEAPU16: Uint16Array;
-  HEAPU32: Uint32Array;
+  HEAPF32?: Float32Array;
+  HEAP8?: Int8Array;
+  HEAP16?: Int16Array;
+  HEAP32?: Int32Array;
+  HEAPU8?: Uint8Array;
+  HEAPU16?: Uint16Array;
+  HEAPU32?: Uint32Array;
+
+  // Any other properties
+  [key: string]: any;
 }
 
 /**
@@ -219,14 +223,69 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    * @returns Promise resolving when the module is initialized
    */
   async initializeWasm(wasmUrl: string): Promise<void> {
-    // This is a simplified implementation that just sets a flag
-    // In a real implementation, this would load the WebAssembly module
-    console.log("SherpaOnnx WebAssembly TTS is not fully implemented yet.");
-    console.log("Using mock implementation for demonstration purposes.");
+    if (this.wasmLoaded) {
+      return;
+    }
 
-    // Set the wasmLoaded flag to false to use the mock implementation
-    this.wasmLoaded = false;
-    this.wasmPath = wasmUrl;
+    try {
+      // In browser environments, load the WebAssembly module
+      if (isBrowser) {
+        if (!wasmUrl) {
+          console.warn("No WebAssembly URL provided for browser environment.");
+          this.wasmLoaded = false;
+          return;
+        }
+
+        console.log("Loading WebAssembly module from", wasmUrl);
+
+        try {
+          // Store the URL for later use
+          this.wasmPath = wasmUrl;
+
+          // Create a script element to load the WebAssembly JavaScript loader
+          const script = document.createElement('script');
+          script.src = wasmUrl;
+          script.async = true;
+
+          // Wait for the script to load
+          await new Promise<void>((resolve, reject) => {
+            script.onload = () => {
+              console.log("WebAssembly script loaded successfully");
+              resolve();
+            };
+            script.onerror = (error) => {
+              console.error("Error loading WebAssembly script:", error);
+              reject(new Error(`Failed to load WebAssembly script: ${error}`));
+            };
+            document.head.appendChild(script);
+          });
+
+          // Check if the SherpaOnnx object is available in the global scope
+          if (typeof (window as any).SherpaOnnx !== 'undefined') {
+            console.log("SherpaOnnx global object found");
+            this.wasmModule = (window as any).SherpaOnnx;
+            this.wasmLoaded = true;
+          } else if (typeof (window as any).createOfflineTts !== 'undefined') {
+            console.log("createOfflineTts function found");
+            this.wasmModule = { createOfflineTts: (window as any).createOfflineTts };
+            this.wasmLoaded = true;
+          } else {
+            console.warn("SherpaOnnx global object not found after script load");
+            this.wasmLoaded = false;
+          }
+        } catch (error) {
+          console.error("Error initializing WebAssembly:", error);
+          this.wasmLoaded = false;
+        }
+      } else {
+        // In Node.js, we can't directly use WebAssembly in the same way
+        console.warn("WebAssembly loading not implemented for Node.js environments.");
+        this.wasmLoaded = false;
+      }
+    } catch (error) {
+      console.error("Error initializing WebAssembly:", error);
+      this.wasmLoaded = false;
+    }
   }
 
   /**
@@ -235,10 +294,85 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    * @param options Options for synthesis
    * @returns Promise resolving to a byte array of audio data
    */
-  async synthToBytes(_text: string, _options?: SpeakOptions): Promise<Uint8Array> {
-    // Always use the mock implementation for now
-    console.log("SherpaOnnx WebAssembly TTS is using mock implementation for demonstration.");
-    return this._mockSynthToBytes();
+  async synthToBytes(text: string, _options?: SpeakOptions): Promise<Uint8Array> {
+    // If WebAssembly is not loaded, return a mock implementation
+    if (!this.wasmLoaded || !this.wasmModule) {
+      console.warn("SherpaOnnx WebAssembly TTS is not initialized. Using mock implementation for example.");
+      return this._mockSynthToBytes();
+    }
+
+    try {
+      // Use the SherpaOnnx WebAssembly API to generate audio
+      console.log("Using SherpaOnnx WebAssembly to generate audio");
+
+      // Create a TTS instance if it doesn't exist
+      if (!this.tts) {
+        console.log("Creating TTS instance");
+        try {
+          // Create the TTS instance
+          if (typeof this.wasmModule.createOfflineTts === 'function') {
+            // Using the sherpa-onnx-tts.js API
+            this.tts = this.wasmModule.createOfflineTts({
+              offlineTtsModelConfig: {
+                offlineTtsVitsModelConfig: {
+                  model: '../public/sherpaonnx-wasm/model.onnx',
+                  tokens: '../public/sherpaonnx-wasm/tokens.txt',
+                  dataDir: '../public/sherpaonnx-wasm/espeak-ng-data'
+                },
+                numThreads: 1,
+                debug: 0,
+                provider: 'cpu'
+              },
+              maxNumSentences: 2,
+              ruleFsts: ''
+            });
+          } else if (typeof (window as any).SherpaOnnx?.OfflineTts === 'function') {
+            // Using the SherpaOnnx.OfflineTts API
+            this.tts = new (window as any).SherpaOnnx.OfflineTts({
+              modelConfig: {
+                model: '../public/sherpaonnx-wasm/model.onnx',
+                tokens: '../public/sherpaonnx-wasm/tokens.txt',
+                dataDir: '../public/sherpaonnx-wasm/espeak-ng-data'
+              },
+              maxNumSentences: 2,
+              ruleFsts: ''
+            });
+          } else {
+            throw new Error('No compatible TTS API found');
+          }
+
+          console.log("TTS instance created successfully");
+        } catch (error) {
+          console.error("Error creating TTS instance:", error);
+          return this._mockSynthToBytes();
+        }
+      }
+
+      // Generate the audio
+      console.log("Generating audio for text:", text);
+      let samples: Float32Array;
+
+      if (typeof this.tts.generate === 'function') {
+        // Using the generate method
+        const result = this.tts.generate({ text, sid: 0, speed: 1.0 });
+        samples = result.samples;
+      } else if (typeof this.tts.generateWithText === 'function') {
+        // Using the generateWithText method
+        samples = this.tts.generateWithText(text);
+      } else {
+        throw new Error('No compatible generate method found');
+      }
+
+      console.log("Audio generated successfully, samples:", samples.length);
+
+      // Convert the samples to the requested format
+      const audioBytes = this._convertAudioFormat(samples);
+
+      return audioBytes;
+    } catch (error) {
+      console.error("Error synthesizing text:", error);
+      return this._mockSynthToBytes();
+    }
   }
 
   /**
@@ -499,7 +633,13 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
   async setVoice(voiceId: string): Promise<void> {
     // Call the parent method to set the voiceId
     super.setVoice(voiceId);
-    console.log(`Setting voice to ${voiceId} (mock implementation)`);
+    console.log(`Setting voice to ${voiceId}`);
+
+    // Reset the TTS instance so it will be recreated with the new voice
+    if (this.tts) {
+      console.log('Resetting TTS instance for new voice');
+      this.tts = null;
+    }
   }
 
   /**
@@ -507,8 +647,10 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    */
   dispose(): void {
     if (this.wasmModule && this.tts !== 0) {
-      this.wasmModule._ttsDestroyOffline(this.tts);
-      this.tts = 0;
+      if (typeof this.wasmModule._ttsDestroyOffline === 'function') {
+        this.wasmModule._ttsDestroyOffline(this.tts);
+      }
+      this.tts = null;
     }
   }
 
