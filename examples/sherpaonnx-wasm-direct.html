@@ -70,6 +70,15 @@
         const checkModuleReady = () => {
           if (window.Module) {
             console.log('Module is available, checking functions...');
+
+            // Log all functions in the Module
+            console.log('All Module functions:');
+            for (const key in window.Module) {
+              if (typeof window.Module[key] === 'function') {
+                console.log(`- ${key}: ${typeof window.Module[key]}`);
+              }
+            }
+
             console.log('_SherpaOnnxCreateOfflineTts type:', typeof window.Module._SherpaOnnxCreateOfflineTts);
             console.log('_SherpaOnnxDestroyOfflineTts type:', typeof window.Module._SherpaOnnxDestroyOfflineTts);
 
@@ -125,8 +134,29 @@
 
         // Create an offline TTS instance using ccall
         try {
-          ttsHandle = Module.ccall('SherpaOnnxCreateOfflineTts', 'number', ['number'], [0]);
+          // Create a configuration string
+          const configStr = JSON.stringify({
+            "offline_tts": {
+              "vits": {
+                "model": "/public/sherpaonnx-wasm/model.onnx",
+                "tokens": "/public/sherpaonnx-wasm/tokens.txt",
+                "data_dir": "/public/sherpaonnx-wasm/espeak-ng-data"
+              },
+              "rule_fsts": "",
+              "max_num_sentences": 2
+            }
+          });
+
+          // Allocate memory for the configuration string
+          const configPtr = Module.ccall('malloc', 'number', ['number'], [configStr.length + 1]);
+          Module.stringToUTF8(configStr, configPtr, configStr.length + 1);
+
+          // Create an offline TTS instance with the configuration
+          ttsHandle = Module.ccall('SherpaOnnxCreateOfflineTts', 'number', ['number'], [configPtr]);
           console.log('Created OfflineTts instance with handle:', ttsHandle);
+
+          // Free the configuration string memory
+          Module.ccall('free', null, ['number'], [configPtr]);
 
           // Get the sample rate
           const sampleRate = Module.ccall('SherpaOnnxOfflineTtsSampleRate', 'number', ['number'], [ttsHandle]);

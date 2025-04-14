@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SherpaOnnx WebAssembly TTS - Simple Direct Example</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #status {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f8f8f8;
+      border-left: 4px solid #4CAF50;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>SherpaOnnx WebAssembly TTS - Simple Direct Example</h1>
+  
+  <div>
+    <textarea id="text-to-speak" placeholder="Enter text to speak...">Hello, this is a test of the SherpaOnnx WebAssembly text-to-speech engine.</textarea>
+  </div>
+  
+  <div>
+    <button id="inspect-button">Inspect Module</button>
+    <button id="speak-button">Speak</button>
+    <button id="stop-button">Stop</button>
+  </div>
+  
+  <div id="status">Status: Loading...</div>
+  
+  <pre id="log"></pre>
+  
+  <!-- Load the SherpaOnnx WebAssembly module -->
+  <script src="/public/sherpaonnx-wasm/sherpa-onnx-wasm-main-tts.js"></script>
+  
+  <script>
+    // Helper function to log messages
+    function log(message) {
+      const logElement = document.getElementById('log');
+      logElement.textContent += message + '\n';
+      console.log(message);
+    }
+    
+    // Helper function to update status
+    function updateStatus(message) {
+      document.getElementById('status').textContent = 'Status: ' + message;
+    }
+    
+    // Audio context and variables
+    let audioContext;
+    let audioSource;
+    
+    // Wait for the page to load
+    window.addEventListener('load', function() {
+      updateStatus('Page loaded, waiting for WebAssembly module...');
+      log('Page loaded, waiting for WebAssembly module...');
+      
+      // Check if the Module is available
+      if (typeof window.Module !== 'undefined') {
+        log('Module object is available');
+        
+        // Add a listener for when the Module is ready
+        window.Module.onRuntimeInitialized = function() {
+          log('Module runtime initialized');
+          updateStatus('WebAssembly module loaded');
+          
+          // Log all functions in the Module
+          log('Module functions:');
+          for (const key in window.Module) {
+            if (typeof window.Module[key] === 'function') {
+              log(`- ${key}`);
+            }
+          }
+          
+          // Initialize audio context
+          try {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            log('Audio context initialized');
+          } catch (error) {
+            log('Error initializing audio context: ' + error.message);
+            updateStatus('Error initializing audio context');
+          }
+          
+          // Add event listeners
+          document.getElementById('inspect-button').addEventListener('click', inspectModule);
+          document.getElementById('speak-button').addEventListener('click', speak);
+          document.getElementById('stop-button').addEventListener('click', stop);
+        };
+      } else {
+        log('Module object is not available');
+        updateStatus('WebAssembly module not available');
+      }
+    });
+    
+    // Inspect the Module
+    function inspectModule() {
+      log('Inspecting Module...');
+      
+      if (typeof window.Module === 'undefined') {
+        log('Module is not available');
+        updateStatus('WebAssembly module not available');
+        return;
+      }
+      
+      log('Module properties:');
+      for (const key in window.Module) {
+        log(`- ${key}: ${typeof window.Module[key]}`);
+      }
+      
+      // Check specific functions
+      log('Checking specific functions:');
+      log(`- _SherpaOnnxCreateOfflineTts: ${typeof window.Module._SherpaOnnxCreateOfflineTts}`);
+      log(`- _SherpaOnnxDestroyOfflineTts: ${typeof window.Module._SherpaOnnxDestroyOfflineTts}`);
+      log(`- _SherpaOnnxOfflineTtsSampleRate: ${typeof window.Module._SherpaOnnxOfflineTtsSampleRate}`);
+      log(`- _SherpaOnnxOfflineTtsGenerate: ${typeof window.Module._SherpaOnnxOfflineTtsGenerate}`);
+      log(`- _CopyHeap: ${typeof window.Module._CopyHeap}`);
+      log(`- ccall: ${typeof window.Module.ccall}`);
+      
+      updateStatus('Module inspection complete');
+    }
+    
+    // Speak function
+    function speak() {
+      log('Speaking...');
+      updateStatus('Generating speech...');
+      
+      try {
+        // Get the text to speak
+        const text = document.getElementById('text-to-speak').value;
+        
+        if (!text) {
+          log('No text to speak');
+          updateStatus('No text to speak');
+          return;
+        }
+        
+        // Generate a simple beep sound for now
+        const sampleRate = 16000;
+        const duration = 0.5; // seconds
+        const frequency = 440; // Hz (A4 note)
+        const numSamples = Math.floor(sampleRate * duration);
+        const samples = new Float32Array(numSamples);
+        
+        // Generate a simple sine wave
+        for (let i = 0; i < numSamples; i++) {
+          const t = i / sampleRate;
+          samples[i] = Math.sin(2 * Math.PI * frequency * t) * 0.5;
+        }
+        
+        // Create an audio buffer
+        const audioBuffer = audioContext.createBuffer(1, numSamples, sampleRate);
+        const channelData = audioBuffer.getChannelData(0);
+        
+        // Copy the samples to the audio buffer
+        for (let i = 0; i < numSamples; i++) {
+          channelData[i] = samples[i];
+        }
+        
+        // Create a source node
+        audioSource = audioContext.createBufferSource();
+        audioSource.buffer = audioBuffer;
+        
+        // Connect the source to the destination
+        audioSource.connect(audioContext.destination);
+        
+        // Play the audio
+        audioSource.start();
+        
+        // Update status
+        updateStatus('Speaking');
+        
+        // Add an event listener for when the audio ends
+        audioSource.onended = function() {
+          updateStatus('Done');
+        };
+      } catch (error) {
+        log('Error speaking: ' + error.message);
+        updateStatus('Error speaking');
+      }
+    }
+    
+    // Stop function
+    function stop() {
+      if (audioSource) {
+        audioSource.stop();
+        updateStatus('Stopped');
+      }
+    }
+  </script>
+</body>
+</html>
