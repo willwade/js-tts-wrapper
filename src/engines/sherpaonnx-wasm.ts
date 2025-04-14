@@ -405,56 +405,116 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         console.log("Creating TTS instance");
         try {
           // Create the TTS instance
-          if (typeof this.wasmModule.OfflineTts === 'function') {
-            // Using the Module.OfflineTts API from sherpa-onnx-wasm-main-tts.js
-            console.log("Using Module.OfflineTts API");
-            this.tts = new this.wasmModule.OfflineTts();
-          } else if (typeof this.wasmModule.createOfflineTts === 'function') {
+          if (typeof this.wasmModule.createOfflineTts === 'function') {
             // Using the sherpa-onnx-tts.js API
-            console.log("Using createOfflineTts API");
-            this.tts = this.wasmModule.createOfflineTts({
-              offlineTtsModelConfig: {
-                offlineTtsVitsModelConfig: {
-                  model: '/public/sherpaonnx-wasm/model.onnx',
-                  tokens: '/public/sherpaonnx-wasm/tokens.txt',
-                  dataDir: '/public/sherpaonnx-wasm/espeak-ng-data'
-                },
-                numThreads: 1,
-                debug: 0,
-                provider: 'cpu'
-              },
-              maxNumSentences: 2,
-              ruleFsts: ''
-            });
-          } else if (typeof (window as any).SherpaOnnx?.OfflineTts === 'function') {
-            // Using the SherpaOnnx.OfflineTts API
-            console.log("Using SherpaOnnx.OfflineTts API");
-            this.tts = new (window as any).SherpaOnnx.OfflineTts({
-              modelConfig: {
-                model: '/public/sherpaonnx-wasm/model.onnx',
-                tokens: '/public/sherpaonnx-wasm/tokens.txt',
-                dataDir: '/public/sherpaonnx-wasm/espeak-ng-data'
-              },
-              maxNumSentences: 2,
-              ruleFsts: ''
-            });
+            console.log("Using createOfflineTts API from wasmModule");
+
+            // Create the configuration
+            const offlineTtsVitsModelConfig = {
+              model: '/public/sherpaonnx-wasm/model.onnx',
+              lexicon: '',
+              tokens: '/public/sherpaonnx-wasm/tokens.txt',
+              dataDir: '/public/sherpaonnx-wasm/espeak-ng-data',
+              dictDir: '',
+              noiseScale: 0.667,
+              noiseScaleW: 0.8,
+              lengthScale: 1.0,
+            };
+
+            const offlineTtsMatchaModelConfig = {
+              acousticModel: '',
+              vocoder: '',
+              lexicon: '',
+              tokens: '',
+              dataDir: '',
+              dictDir: '',
+              noiseScale: 0.667,
+              lengthScale: 1.0,
+            };
+
+            const offlineTtsKokoroModelConfig = {
+              model: '',
+              voices: '',
+              tokens: '',
+              dataDir: '',
+              lengthScale: 1.0,
+              dictDir: '',
+              lexicon: '',
+            };
+
+            const offlineTtsModelConfig = {
+              offlineTtsVitsModelConfig: offlineTtsVitsModelConfig,
+              offlineTtsMatchaModelConfig: offlineTtsMatchaModelConfig,
+              offlineTtsKokoroModelConfig: offlineTtsKokoroModelConfig,
+              numThreads: 1,
+              debug: 1,
+              provider: 'cpu',
+            };
+
+            const offlineTtsConfig = {
+              offlineTtsModelConfig: offlineTtsModelConfig,
+              ruleFsts: '',
+              ruleFars: '',
+              maxNumSentences: 1,
+            };
+
+            // Create the TTS instance
+            this.tts = this.wasmModule.createOfflineTts(offlineTtsConfig);
           } else if (typeof (window as any).createOfflineTts === 'function') {
             // Using the global createOfflineTts function
             console.log("Using global createOfflineTts function");
-            this.tts = (window as any).createOfflineTts({
-              offlineTtsModelConfig: {
-                offlineTtsVitsModelConfig: {
-                  model: '/public/sherpaonnx-wasm/model.onnx',
-                  tokens: '/public/sherpaonnx-wasm/tokens.txt',
-                  dataDir: '/public/sherpaonnx-wasm/espeak-ng-data'
-                },
-                numThreads: 1,
-                debug: 0,
-                provider: 'cpu'
-              },
-              maxNumSentences: 2,
-              ruleFsts: ''
-            });
+
+            // Create the configuration
+            const offlineTtsVitsModelConfig = {
+              model: '/public/sherpaonnx-wasm/model.onnx',
+              lexicon: '',
+              tokens: '/public/sherpaonnx-wasm/tokens.txt',
+              dataDir: '/public/sherpaonnx-wasm/espeak-ng-data',
+              dictDir: '',
+              noiseScale: 0.667,
+              noiseScaleW: 0.8,
+              lengthScale: 1.0,
+            };
+
+            const offlineTtsMatchaModelConfig = {
+              acousticModel: '',
+              vocoder: '',
+              lexicon: '',
+              tokens: '',
+              dataDir: '',
+              dictDir: '',
+              noiseScale: 0.667,
+              lengthScale: 1.0,
+            };
+
+            const offlineTtsKokoroModelConfig = {
+              model: '',
+              voices: '',
+              tokens: '',
+              dataDir: '',
+              lengthScale: 1.0,
+              dictDir: '',
+              lexicon: '',
+            };
+
+            const offlineTtsModelConfig = {
+              offlineTtsVitsModelConfig: offlineTtsVitsModelConfig,
+              offlineTtsMatchaModelConfig: offlineTtsMatchaModelConfig,
+              offlineTtsKokoroModelConfig: offlineTtsKokoroModelConfig,
+              numThreads: 1,
+              debug: 1,
+              provider: 'cpu',
+            };
+
+            const offlineTtsConfig = {
+              offlineTtsModelConfig: offlineTtsModelConfig,
+              ruleFsts: '',
+              ruleFars: '',
+              maxNumSentences: 1,
+            };
+
+            // Create the TTS instance
+            this.tts = (window as any).createOfflineTts(offlineTtsConfig);
           } else {
             throw new Error('No compatible TTS API found');
           }
@@ -470,27 +530,15 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       console.log("Generating audio for text:", text);
       let samples: Float32Array;
 
-      if (typeof this.wasmModule.OfflineTts === 'function') {
-        // Using the Module.OfflineTts API from sherpa-onnx-wasm-main-tts.js
-        console.log("Using Module.OfflineTts API");
-
-        // Create a new instance for each generation to avoid issues
-        const tts = new this.wasmModule.OfflineTts();
-        samples = tts.generateWithText(text);
-
-        // Clean up the TTS instance
-        if (typeof tts.delete === 'function') {
-          tts.delete();
-        }
+      if (typeof this.tts.generate === 'function') {
+        // Using the generate method from sherpa-onnx-tts.js
+        console.log("Using generate method");
+        const result = this.tts.generate({ text, sid: 0, speed: 1.0 });
+        samples = result.samples;
       } else if (typeof this.tts.generateWithText === 'function') {
         // Using the generateWithText method
         console.log("Using generateWithText method");
         samples = this.tts.generateWithText(text);
-      } else if (typeof this.tts.generate === 'function') {
-        // Using the generate method
-        console.log("Using generate method");
-        const result = this.tts.generate({ text, sid: 0, speed: 1.0 });
-        samples = result.samples;
       } else {
         throw new Error('No compatible generate method found');
       }
