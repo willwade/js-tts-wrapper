@@ -204,6 +204,16 @@
   <!-- Load the SherpaOnnx WebAssembly module -->
   <script src="/public/sherpaonnx-wasm/sherpa-onnx-tts.js"></script>
 
+  <!-- Check if SherpaOnnx is loaded -->
+  <script>
+    window.addEventListener('load', function() {
+      console.log('Window loaded, checking for SherpaOnnx...');
+      console.log('SherpaOnnx available:', typeof window.SherpaOnnx !== 'undefined');
+      console.log('createOfflineTts available:', typeof window.createOfflineTts !== 'undefined');
+      console.log('Window keys:', Object.keys(window));
+    });
+  </script>
+
   <!-- Load the JS TTS Wrapper library -->
   <script type="module">
     // Import the library

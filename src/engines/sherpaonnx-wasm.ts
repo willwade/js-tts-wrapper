@@ -198,6 +198,8 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         model.engine === "sherpaonnx" || model.engine === "sherpaonnx-wasm"
       );
 
+      console.log("Found SherpaOnnx models:", sherpaOnnxModels);
+
       return sherpaOnnxModels.map(model => ({
         id: model.id,
         name: model.name,
@@ -316,12 +318,13 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           // Create the TTS instance
           if (typeof this.wasmModule.createOfflineTts === 'function') {
             // Using the sherpa-onnx-tts.js API
+            console.log("Using createOfflineTts API");
             this.tts = this.wasmModule.createOfflineTts({
               offlineTtsModelConfig: {
                 offlineTtsVitsModelConfig: {
-                  model: '../public/sherpaonnx-wasm/model.onnx',
-                  tokens: '../public/sherpaonnx-wasm/tokens.txt',
-                  dataDir: '../public/sherpaonnx-wasm/espeak-ng-data'
+                  model: '/public/sherpaonnx-wasm/model.onnx',
+                  tokens: '/public/sherpaonnx-wasm/tokens.txt',
+                  dataDir: '/public/sherpaonnx-wasm/espeak-ng-data'
                 },
                 numThreads: 1,
                 debug: 0,
@@ -332,11 +335,29 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
             });
           } else if (typeof (window as any).SherpaOnnx?.OfflineTts === 'function') {
             // Using the SherpaOnnx.OfflineTts API
+            console.log("Using SherpaOnnx.OfflineTts API");
             this.tts = new (window as any).SherpaOnnx.OfflineTts({
               modelConfig: {
-                model: '../public/sherpaonnx-wasm/model.onnx',
-                tokens: '../public/sherpaonnx-wasm/tokens.txt',
-                dataDir: '../public/sherpaonnx-wasm/espeak-ng-data'
+                model: '/public/sherpaonnx-wasm/model.onnx',
+                tokens: '/public/sherpaonnx-wasm/tokens.txt',
+                dataDir: '/public/sherpaonnx-wasm/espeak-ng-data'
+              },
+              maxNumSentences: 2,
+              ruleFsts: ''
+            });
+          } else if (typeof (window as any).createOfflineTts === 'function') {
+            // Using the global createOfflineTts function
+            console.log("Using global createOfflineTts function");
+            this.tts = (window as any).createOfflineTts({
+              offlineTtsModelConfig: {
+                offlineTtsVitsModelConfig: {
+                  model: '/public/sherpaonnx-wasm/model.onnx',
+                  tokens: '/public/sherpaonnx-wasm/tokens.txt',
+                  dataDir: '/public/sherpaonnx-wasm/espeak-ng-data'
+                },
+                numThreads: 1,
+                debug: 0,
+                provider: 'cpu'
               },
               maxNumSentences: 2,
               ruleFsts: ''

@@ -6,6 +6,6 @@
     "engine": "sherpaonnx-wasm",
     "language": "en-US",
     "language_display": "English (US)",
-    "url": "../public/sherpaonnx-wasm/model.onnx"
+    "url": "/public/sherpaonnx-wasm/model.onnx"
   }
 ]
