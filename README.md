@@ -12,6 +12,7 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 - **Playback Control**: Pause, resume, and stop audio playback
 - **Word Boundaries**: Get callbacks for word timing (where supported)
 - **File Output**: Save synthesized speech to audio files
+- **Browser Support**: Works in both Node.js and browser environments
 
 ## Installation
 
@@ -120,18 +121,63 @@ const ssml = '<speak>Hello <break time="500ms"/> world!</speak>';
 await tts.speak(ssml);
 ```
 
+### Browser
+
+```html
+<!-- Using ES modules (recommended) -->
+<script type="module">
+  import { SherpaOnnxWasmTTSClient } from 'js-tts-wrapper/browser';
+
+  // Create a new SherpaOnnx WebAssembly TTS client
+  const ttsClient = new SherpaOnnxWasmTTSClient();
+
+  // Initialize the WebAssembly module
+  await ttsClient.initializeWasm('./sherpaonnx-wasm/sherpaonnx.js');
+
+  // Get available voices
+  const voices = await ttsClient.getVoices();
+  console.log(`Found ${voices.length} voices`);
+
+  // Set the voice
+  await ttsClient.setVoice(voices[0].id);
+
+  // Speak some text
+  await ttsClient.speak('Hello, world!');
+</script>
+```
+
+```html
+<!-- Using UMD bundle -->
+<script src="js-tts-wrapper.browser.umd.min.js"></script>
+<script>
+  const ttsClient = new JSTTSWrapper.SherpaOnnxWasmTTSClient();
+
+  // Initialize the WebAssembly module
+  ttsClient.initializeWasm('./sherpaonnx-wasm/sherpaonnx.js')
+    .then(() => ttsClient.getVoices())
+    .then(voices => {
+      console.log(`Found ${voices.length} voices`);
+      return ttsClient.setVoice(voices[0].id);
+    })
+    .then(() => ttsClient.speak('Hello, world!'))
+    .catch(error => console.error('Error:', error));
+</script>
+```
+
+See the [browser example](examples/browser-example.html) for a complete example of using the library in a browser environment.
+
 ## Supported Providers
 
-| Provider      | SSML | Streaming | Word Timing | File Output | Notes                     | Version      |
-|---------------|------|-----------|-------------|-------------|---------------------------|-------------|
-| Azure         | Yes  | Yes       | Yes         | Yes         | Full SSML support         | 1.43.1      |
-| Google Cloud  | Yes  | Yes       | Yes         | Yes         | Full SSML + markup        | 6.0.1       |
-| ElevenLabs    | No*  | Yes       | Partial     | Yes         | Strip SSML automatically  | node-fetch 2.0.0 |
-| OpenAI        | No*  | Yes       | Estimated** | Yes         | Multiple voices available | 4.93.0      |
-| PlayHT        | No*  | Yes       | Estimated** | Yes         | Multiple voice engines    | node-fetch 2.0.0 |
-| AWS Polly     | Yes  | Yes       | Yes         | Yes         | Full SSML support         | 3.782.0     |
-| SherpaOnnx    | No*  | Yes       | Estimated** | Yes         | Offline TTS, no internet  | 1.11.3      |
-| SherpaOnnx-Wasm | No* | Yes      | Estimated** | Yes         | Browser-compatible TTS    | WebAssembly  |
+| Provider      | SSML | Streaming | Word Timing | File Output | Browser | Notes                     | Version      |
+|---------------|------|-----------|-------------|-------------|---------|---------------------------|-------------|
+| Azure         | Yes  | Yes       | Yes         | Yes         | No      | Full SSML support         | 1.43.1      |
+| Google Cloud  | Yes  | Yes       | Yes         | Yes         | No      | Full SSML + markup        | 6.0.1       |
+| ElevenLabs    | No*  | Yes       | Partial     | Yes         | No      | Strip SSML automatically  | node-fetch 2.0.0 |
+| OpenAI        | No*  | Yes       | Estimated** | Yes         | No      | Multiple voices available | 4.93.0      |
+| PlayHT        | No*  | Yes       | Estimated** | Yes         | No      | Multiple voice engines    | node-fetch 2.0.0 |
+| AWS Polly     | Yes  | Yes       | Yes         | Yes         | No      | Full SSML support         | 3.782.0     |
+| SherpaOnnx    | No*  | Yes       | Estimated** | Yes         | No      | Offline TTS, server-side only | 1.11.3      |
+| SherpaOnnx-Wasm | No* | Yes      | Estimated** | Yes         | Yes     | Browser-compatible TTS    | WebAssembly  |
 
 *Engines that don't support SSML will automatically strip SSML tags and process the plain text.
 

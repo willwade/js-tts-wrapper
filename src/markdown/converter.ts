@@ -7,6 +7,50 @@ import { SpeechMarkdown } from "speechmarkdown-js";
  * using the speechmarkdown-js library (https://github.com/speechmarkdown/speechmarkdown-js)
  */
 
+/**
+ * SpeechMarkdownConverter class for converting Speech Markdown to SSML
+ */
+export class SpeechMarkdownConverter {
+  private speechMarkdownInstance: SpeechMarkdown;
+
+  /**
+   * Create a new SpeechMarkdownConverter
+   */
+  constructor() {
+    this.speechMarkdownInstance = new SpeechMarkdown();
+  }
+
+  /**
+   * Convert Speech Markdown to SSML
+   *
+   * @param markdown Speech Markdown text
+   * @param platform Target platform (amazon-alexa, google-assistant, microsoft-azure, etc.)
+   * @returns SSML text
+   */
+  toSSML(markdown: string, platform = "amazon-alexa"): string {
+    return this.speechMarkdownInstance.toSSML(markdown, { platform });
+  }
+
+  /**
+   * Check if text is Speech Markdown
+   *
+   * @param text Text to check
+   * @returns True if the text contains Speech Markdown syntax
+   */
+  isSpeechMarkdown(text: string): boolean {
+    return isSpeechMarkdown(text);
+  }
+
+  /**
+   * Get the available platforms supported by the Speech Markdown library
+   *
+   * @returns Array of platform names
+   */
+  getAvailablePlatforms(): string[] {
+    return getAvailablePlatforms();
+  }
+}
+
 // Create a SpeechMarkdown instance with default options
 const speechMarkdownInstance = new SpeechMarkdown();
 

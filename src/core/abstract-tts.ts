@@ -10,6 +10,7 @@ import type {
 } from "../types";
 import { LanguageNormalizer } from "./language-utils";
 import * as SSMLUtils from "./ssml-utils";
+import { isBrowser, isNode } from "../utils/environment";
 
 /**
  * Abstract base class for all TTS clients
@@ -175,15 +176,11 @@ export abstract class AbstractTTSClient {
     const audioBytes = await this.synthToBytes(text, options);
 
     // Check if we're in a browser environment
-    let url = "";
-    if (typeof Blob !== "undefined" && typeof URL !== "undefined") {
+    if (isBrowser) {
       // Create audio blob and URL
       const blob = new Blob([audioBytes], { type: "audio/wav" }); // default to WAV
-      url = URL.createObjectURL(blob);
-    }
+      const url = URL.createObjectURL(blob);
 
-    // Check if we're in a browser environment
-    if (typeof Audio !== "undefined") {
       // Create and play audio element
       const audio = new Audio(url);
       this.audio.audioElement = audio;
@@ -196,18 +193,16 @@ export abstract class AbstractTTSClient {
         this.audio.isPlaying = false;
         URL.revokeObjectURL(url); // Clean up the URL
       };
+
+      // Create estimated word timings if needed
+      this._createEstimatedWordTimings(text);
+
+      // Play the audio
+      await audio.play();
     } else {
       // In Node.js environment, we can't play audio
       // Just emit the end event immediately
       this.emit("end");
-    }
-
-    // Create estimated word timings if needed
-    this._createEstimatedWordTimings(text);
-
-    // Play the audio if in browser environment
-    if (this.audio.audioElement) {
-      await this.audio.audioElement.play();
     }
   }
 
@@ -271,11 +266,7 @@ export abstract class AbstractTTSClient {
       }
 
       // Check if we're in a browser environment
-      if (
-        typeof Blob !== "undefined" &&
-        typeof URL !== "undefined" &&
-        typeof Audio !== "undefined"
-      ) {
+      if (isBrowser) {
         // Create audio blob and URL
         const blob = new Blob([audioBytes], { type: "audio/wav" });
         const url = URL.createObjectURL(blob);
@@ -326,25 +317,36 @@ export abstract class AbstractTTSClient {
     // Convert text to audio bytes
     const audioBytes = await this.synthToBytes(text, options);
 
-    // Create blob with appropriate MIME type
-    const mimeType = format === "mp3" ? "audio/mpeg" : "audio/wav";
-    const blob = new Blob([audioBytes], { type: mimeType });
+    if (isBrowser) {
+      // Create blob with appropriate MIME type
+      const mimeType = format === "mp3" ? "audio/mpeg" : "audio/wav";
+      const blob = new Blob([audioBytes], { type: mimeType });
 
-    // Create download link
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename.endsWith(`.${format}`) ? filename : `${filename}.${format}`;
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename.endsWith(`.${format}`) ? filename : `${filename}.${format}`;
 
-    // Trigger download
-    document.body.appendChild(a);
-    a.click();
+      // Trigger download
+      document.body.appendChild(a);
+      a.click();
 
-    // Clean up
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
+      // Clean up
+      setTimeout(() => {
+        if (document && document.body) {
+          document.body.removeChild(a);
+        }
+        URL.revokeObjectURL(url);
+      }, 100);
+    } else if (isNode) {
+      // In Node.js, use the file system
+      const fs = require('node:fs');
+      const outputPath = filename.endsWith(`.${format}`) ? filename : `${filename}.${format}`;
+      fs.writeFileSync(outputPath, Buffer.from(audioBytes));
+    } else {
+      console.warn("File saving not implemented for this environment.");
+    }
   }
 
   /**

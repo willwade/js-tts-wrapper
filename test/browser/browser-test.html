@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JS TTS Wrapper Browser Tests</title>
+  <link rel="stylesheet" href="https://unpkg.com/mocha/mocha.css" />
+</head>
+<body>
+  <div id="mocha"></div>
+
+  <!-- Load testing libraries -->
+  <script src="https://unpkg.com/chai/chai.js"></script>
+  <script src="https://unpkg.com/mocha/mocha.js"></script>
+
+  <script>
+    mocha.setup('bdd');
+    const expect = chai.expect;
+  </script>
+
+  <!-- Load the JS TTS Wrapper library -->
+  <script type="module">
+    // Import the library
+    import { 
+      SherpaOnnxWasmTTSClient, 
+      SSMLBuilder, 
+      SpeechMarkdownConverter,
+      isBrowser 
+    } from '../../dist/js-tts-wrapper.browser.js';
+
+    describe('JS TTS Wrapper Browser Tests', function() {
+      this.timeout(10000); // Set timeout to 10 seconds
+
+      describe('Environment Detection', function() {
+        it('should detect browser environment', function() {
+          expect(isBrowser).to.be.true;
+        });
+      });
+
+      describe('SSMLBuilder', function() {
+        it('should create valid SSML', function() {
+          const ssmlBuilder = new SSMLBuilder();
+          const ssml = ssmlBuilder
+            .say('Hello')
+            .pause('500ms')
+            .say('World')
+            .toString();
+          
+          expect(ssml).to.include('<speak>');
+          expect(ssml).to.include('Hello');
+          expect(ssml).to.include('<break time="500ms"/>');
+          expect(ssml).to.include('World');
+          expect(ssml).to.include('</speak>');
+        });
+      });
+
+      describe('SpeechMarkdownConverter', function() {
+        it('should convert speech markdown to SSML', function() {
+          const converter = new SpeechMarkdownConverter();
+          const ssml = converter.toSSML('Hello (500ms) World');
+          
+          expect(ssml).to.include('<speak>');
+          expect(ssml).to.include('Hello');
+          expect(ssml).to.include('<break time="500ms"/>');
+          expect(ssml).to.include('World');
+          expect(ssml).to.include('</speak>');
+        });
+      });
+
+      describe('SherpaOnnxWasmTTSClient', function() {
+        let ttsClient;
+
+        before(function() {
+          ttsClient = new SherpaOnnxWasmTTSClient();
+        });
+
+        it('should be instantiated', function() {
+          expect(ttsClient).to.be.an.instanceof(SherpaOnnxWasmTTSClient);
+        });
+
+        it('should have default properties', function() {
+          expect(ttsClient.getProperty('rate')).to.equal(1.0);
+          expect(ttsClient.getProperty('pitch')).to.equal(1.0);
+          expect(ttsClient.getProperty('volume')).to.equal(1.0);
+        });
+
+        it('should set and get properties', function() {
+          ttsClient.setProperty('rate', 1.5);
+          ttsClient.setProperty('pitch', 0.8);
+          ttsClient.setProperty('volume', 0.9);
+          
+          expect(ttsClient.getProperty('rate')).to.equal(1.5);
+          expect(ttsClient.getProperty('pitch')).to.equal(0.8);
+          expect(ttsClient.getProperty('volume')).to.equal(0.9);
+        });
+
+        it('should get voices', async function() {
+          const voices = await ttsClient.getVoices();
+          expect(voices).to.be.an('array');
+          // In browser environment without proper setup, we might get a default voice
+          expect(voices.length).to.be.at.least(1);
+        });
+
+        it('should set voice by ID', async function() {
+          const voices = await ttsClient.getVoices();
+          const voiceId = voices[0].id;
+          
+          await ttsClient.setVoice(voiceId);
+          const currentVoice = ttsClient.getProperty('voice');
+          
+          expect(currentVoice).to.equal(voiceId);
+        });
+      });
+    });
+
+    // Run the tests
+    mocha.run();
+  </script>
+</body>
+</html>

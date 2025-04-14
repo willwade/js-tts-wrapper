@@ -3,10 +3,22 @@
   "version": "0.1.6",
   "description": "A JavaScript/TypeScript library that provides a unified API for working with multiple cloud-based Text-to-Speech (TTS) services",
   "main": "dist/index.js",
+  "browser": "dist/browser.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "browser": "./dist/browser.js"
+    },
+    "./browser": {
+      "import": "./dist/browser.js",
+      "require": "./dist/browser.js"
+    }
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/willwade/js-tts-wrapper.git"
@@ -14,7 +26,9 @@
   "author": "Will Wade <willwade@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run build:browser",
+    "build:browser": "tsc -p tsconfig.browser.json",
+    "build:bundle": "rollup -c rollup.config.js",
     "dev": "tsc --watch",
     "test": "jest",
     "test:env": "node load-env.js && jest",
@@ -77,7 +91,9 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@rollup/plugin-commonjs": "^28.0.3",
+    "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^12.1.2",
     "@types/jest": "^29.5.14",
     "@types/node-fetch": "^2.6.12",

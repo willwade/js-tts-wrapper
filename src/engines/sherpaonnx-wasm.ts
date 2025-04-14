@@ -8,8 +8,7 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
 import { estimateWordBoundaries } from "../utils/word-timing-estimator";
-import * as fs from "node:fs";
-import * as path from "node:path";
+import { isBrowser, isNode, fileSystem, pathUtils } from "../utils/environment";
 
 // Define the SherpaOnnx WebAssembly module interface
 interface SherpaOnnxWasmModule {
@@ -75,13 +74,13 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    */
   private _getDefaultModelsDir(): string {
     // In browser environments, use a relative path
-    if (typeof window !== "undefined") {
+    if (isBrowser) {
       return "./models";
     }
 
     // In Node.js, use the home directory
     const homeDir = process.env.HOME || process.env.USERPROFILE || ".";
-    return path.join(homeDir, ".js-tts-wrapper", "models");
+    return pathUtils.join(homeDir, ".js-tts-wrapper", "models");
   }
 
   /**
@@ -97,7 +96,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       }
 
       // In Node.js, check if the WASM file exists
-      if (this.wasmPath && fs.existsSync(this.wasmPath)) {
+      if (isNode && this.wasmPath && fileSystem.existsSync(this.wasmPath)) {
         return true;
       }
 
@@ -126,30 +125,53 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
 
       try {
         // In Node.js, read from the file system
-        if (typeof window === "undefined") {
-          const modelsJsonPath = path.join(__dirname, "..", "data", "merged_models.json");
-          if (fs.existsSync(modelsJsonPath)) {
-            const modelsJson = fs.readFileSync(modelsJsonPath, "utf-8");
+        if (isNode) {
+          const modelsJsonPath = pathUtils.join(__dirname, "..", "data", "merged_models.json");
+          if (fileSystem.existsSync(modelsJsonPath)) {
+            const modelsJson = fileSystem.readFileSync(modelsJsonPath);
             voiceModels = JSON.parse(modelsJson);
           }
         } else {
-          // In browser environments, fetch from a URL
-          // This would need to be implemented by the application
-          console.warn("Voice models JSON file not available in browser environment.");
-          // Return a default voice for testing
-          return [{
-            id: "piper_en_US",
-            name: "Piper English (US)",
-            gender: "Unknown",
-            provider: "sherpaonnx-wasm" as const,
-            languageCodes: [
-              {
-                bcp47: "en-US",
-                iso639_3: "eng",
-                display: "English (US)"
-              }
-            ]
-          }];
+          // In browser environments, try to fetch from a URL
+          try {
+            const response = await fetch("./data/merged_models.json");
+            if (response.ok) {
+              const modelsJson = await response.text();
+              voiceModels = JSON.parse(modelsJson);
+            } else {
+              console.warn("Voice models JSON file not available in browser environment.");
+              // Return a default voice for testing
+              return [{
+                id: "piper_en_US",
+                name: "Piper English (US)",
+                gender: "Unknown",
+                provider: "sherpaonnx-wasm" as const,
+                languageCodes: [
+                  {
+                    bcp47: "en-US",
+                    iso639_3: "eng",
+                    display: "English (US)"
+                  }
+                ]
+              }];
+            }
+          } catch (fetchError) {
+            console.warn("Failed to fetch voice models JSON file:", fetchError);
+            // Return a default voice for testing
+            return [{
+              id: "piper_en_US",
+              name: "Piper English (US)",
+              gender: "Unknown",
+              provider: "sherpaonnx-wasm" as const,
+              languageCodes: [
+                {
+                  bcp47: "en-US",
+                  iso639_3: "eng",
+                  display: "English (US)"
+                }
+              ]
+            }];
+          }
         }
       } catch (error) {
         console.error("Error loading voice models:", error);
@@ -184,21 +206,38 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    * @param wasmUrl URL to the WebAssembly file
    * @returns Promise resolving when the module is initialized
    */
-  async initializeWasm(_wasmUrl: string): Promise<void> {
+  async initializeWasm(wasmUrl: string): Promise<void> {
     if (this.wasmLoaded) {
       return;
     }
 
     try {
       // In browser environments, load the WebAssembly module
-      if (typeof window !== "undefined") {
-        // This would need to be implemented by the application
-        console.warn("WebAssembly loading not implemented for browser environments.");
+      if (isBrowser) {
+        if (!wasmUrl) {
+          console.warn("No WebAssembly URL provided for browser environment.");
+          this.wasmLoaded = false;
+          return;
+        }
+
+        // This is a placeholder for the actual WebAssembly loading code
+        // The actual implementation would depend on the specific WebAssembly module
+        // and how it's exported
+        console.log("Loading WebAssembly module from", wasmUrl);
+
+        // Example of how this might be implemented:
+        // const wasmModule = await import(wasmUrl);
+        // this.wasmModule = await wasmModule.default();
+        // this.wasmLoaded = true;
+
+        // For now, just set wasmLoaded to false
         this.wasmLoaded = false;
         return;
       }
 
       // In Node.js, we can't directly use WebAssembly in the same way
+      // This would require a different approach, possibly using the
+      // WebAssembly API directly
       console.warn("WebAssembly loading not implemented for Node.js environments.");
       this.wasmLoaded = false;
     } catch (error) {
@@ -445,7 +484,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       const audioBytes = await this.synthToBytes(text, { ...options, format });
 
       // Check if we're in a browser environment
-      if (typeof window !== "undefined" && typeof document !== "undefined") {
+      if (isBrowser) {
         // Create blob with appropriate MIME type
         const mimeType = format === "mp3" ? "audio/mpeg" : "audio/wav";
         const blob = new Blob([audioBytes], { type: mimeType });
@@ -469,12 +508,8 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         }, 100);
       } else {
         // In Node.js, use the file system
-        if (typeof fs !== "undefined") {
-          const outputPath = filename.endsWith(`.${format}`) ? filename : `${filename}.${format}`;
-          fs.writeFileSync(outputPath, Buffer.from(audioBytes));
-        } else {
-          console.warn("File saving not implemented for this environment.");
-        }
+        const outputPath = filename.endsWith(`.${format}`) ? filename : `${filename}.${format}`;
+        fileSystem.writeFileSync(outputPath, Buffer.from(audioBytes));
       }
     } catch (error) {
       console.error("Error synthesizing text to file:", error);
