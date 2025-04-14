@@ -1,328 +1,265 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SherpaOnnx WebAssembly TTS Example</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        textarea {
-            width: 100%;
-            height: 100px;
-            margin-bottom: 10px;
-        }
-        button {
-            padding: 10px 15px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-            margin-right: 10px;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        #status {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-        }
-        #audioContainer {
-            margin-top: 20px;
-        }
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(0,0,0,.3);
-            border-radius: 50%;
-            border-top-color: #000;
-            animation: spin 1s ease-in-out infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SherpaOnnx WebAssembly TTS Example</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #status {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f8f8f8;
+      border-left: 4px solid #4CAF50;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+    }
+  </style>
 </head>
 <body>
-    <h1>SherpaOnnx WebAssembly TTS Example</h1>
+  <h1>SherpaOnnx WebAssembly TTS Example</h1>
+  
+  <div>
+    <textarea id="text-to-speak" placeholder="Enter text to speak...">Hello, this is a test of the SherpaOnnx WebAssembly text-to-speech engine.</textarea>
+  </div>
+  
+  <div>
+    <button id="speak-button" disabled>Speak</button>
+    <button id="stop-button" disabled>Stop</button>
+  </div>
+  
+  <div id="status">Status: Loading...</div>
+  
+  <pre id="log"></pre>
+  
+  <!-- Load the SherpaOnnx WebAssembly module -->
+  <script src="/public/sherpaonnx-wasm/sherpa-onnx-tts.js"></script>
+  <script src="/public/sherpaonnx-wasm/sherpa-onnx-wasm-main-tts.js"></script>
+  
+  <script>
+    // Helper function to log messages
+    function log(message) {
+      const logElement = document.getElementById('log');
+      logElement.textContent += message + '\n';
+      console.log(message);
+    }
     
-    <div>
-        <p>This example demonstrates using SherpaOnnx TTS with WebAssembly in a browser environment.</p>
-        <p>Enter text below and click "Speak" to generate speech.</p>
-    </div>
+    // Helper function to update status
+    function updateStatus(message) {
+      document.getElementById('status').textContent = 'Status: ' + message;
+    }
     
-    <textarea id="textInput" placeholder="Enter text to synthesize...">Hello, this is a test of SherpaOnnx Text to Speech using WebAssembly.</textarea>
+    // Audio context and variables
+    let audioContext;
+    let audioSource;
+    let tts = null;
     
-    <div>
-        <button id="speakButton" onclick="speak()">Speak</button>
-        <button id="stopButton" onclick="stop()" disabled>Stop</button>
-    </div>
+    // Initialize the Module
+    Module = {};
     
-    <div id="status">Status: Ready</div>
+    // Set up the Module locateFile function
+    Module.locateFile = function(path, scriptDirectory = '') {
+      log(`locateFile path: ${path}, scriptDirectory: ${scriptDirectory}`);
+      return scriptDirectory + path;
+    };
     
-    <div id="audioContainer"></div>
+    // Set up the Module setStatus function
+    Module.setStatus = function(status) {
+      log(`setStatus: ${status}`);
+      if (status === '') {
+        updateStatus('WebAssembly module loaded');
+      } else {
+        updateStatus(status);
+      }
+    };
     
-    <script>
-        // Global variables
-        let ttsModule = null;
-        let ttsInstance = null;
-        let audioContext = null;
-        let isPlaying = false;
+    // Set up the Module onRuntimeInitialized function
+    Module.onRuntimeInitialized = function() {
+      log('Module runtime initialized');
+      
+      try {
+        // Initialize audio context
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        log('Audio context initialized');
         
-        // Initialize the WebAssembly module
-        async function initWasm() {
-            updateStatus("Loading WebAssembly module...");
-            
-            try {
-                // Load the WebAssembly module
-                const Module = await import('./sherpaonnx-wasm/tts.js');
-                
-                // Wait for the module to initialize
-                ttsModule = await Module.default();
-                
-                updateStatus("WebAssembly module loaded successfully");
-                document.getElementById('speakButton').disabled = false;
-            } catch (error) {
-                updateStatus(`Error loading WebAssembly module: ${error.message}`);
-                console.error("Error loading WebAssembly module:", error);
-            }
+        // Initialize TTS
+        log('Initializing TTS...');
+        
+        // Create TTS configuration
+        const offlineTtsVitsModelConfig = {
+          model: '/public/sherpaonnx-wasm/model.onnx',
+          lexicon: '',
+          tokens: '/public/sherpaonnx-wasm/tokens.txt',
+          dataDir: '/public/sherpaonnx-wasm/espeak-ng-data',
+          dictDir: '',
+          noiseScale: 0.667,
+          noiseScaleW: 0.8,
+          lengthScale: 1.0,
+        };
+        
+        const offlineTtsMatchaModelConfig = {
+          acousticModel: '',
+          vocoder: '',
+          lexicon: '',
+          tokens: '',
+          dataDir: '',
+          dictDir: '',
+          noiseScale: 0.667,
+          lengthScale: 1.0,
+        };
+        
+        const offlineTtsKokoroModelConfig = {
+          model: '',
+          voices: '',
+          tokens: '',
+          dataDir: '',
+          lengthScale: 1.0,
+          dictDir: '',
+          lexicon: '',
+        };
+        
+        const offlineTtsModelConfig = {
+          offlineTtsVitsModelConfig: offlineTtsVitsModelConfig,
+          offlineTtsMatchaModelConfig: offlineTtsMatchaModelConfig,
+          offlineTtsKokoroModelConfig: offlineTtsKokoroModelConfig,
+          numThreads: 1,
+          debug: 1,
+          provider: 'cpu',
+        };
+        
+        const offlineTtsConfig = {
+          offlineTtsModelConfig: offlineTtsModelConfig,
+          ruleFsts: '',
+          ruleFars: '',
+          maxNumSentences: 1,
+        };
+        
+        // Create TTS instance
+        tts = createOfflineTts(Module, offlineTtsConfig);
+        log('TTS initialized');
+        log(`Sample rate: ${tts.sampleRate}`);
+        log(`Number of speakers: ${tts.numSpeakers}`);
+        
+        // Enable buttons
+        document.getElementById('speak-button').disabled = false;
+        document.getElementById('stop-button').disabled = false;
+        
+        // Update status
+        updateStatus('Ready');
+      } catch (error) {
+        log('Error initializing TTS: ' + error.message);
+        updateStatus('Error initializing TTS');
+      }
+    };
+    
+    // Speak function
+    function speak() {
+      log('Speaking...');
+      updateStatus('Generating speech...');
+      
+      try {
+        // Get the text to speak
+        const text = document.getElementById('text-to-speak').value;
+        
+        if (!text) {
+          log('No text to speak');
+          updateStatus('No text to speak');
+          return;
         }
         
-        // Speak the text
-        async function speak() {
-            const text = document.getElementById('textInput').value.trim();
-            
-            if (!text) {
-                updateStatus("Please enter text to synthesize");
-                return;
-            }
-            
-            if (!ttsModule) {
-                updateStatus("WebAssembly module not loaded");
-                return;
-            }
-            
-            try {
-                // Disable the speak button and enable the stop button
-                document.getElementById('speakButton').disabled = true;
-                document.getElementById('stopButton').disabled = false;
-                isPlaying = true;
-                
-                updateStatus("Synthesizing speech...");
-                
-                // Create the TTS configuration
-                const config = {
-                    model: "model.onnx",
-                    tokens: "tokens.txt"
-                };
-                
-                // Create the TTS instance
-                ttsInstance = ttsModule.ttsCreateOffline(JSON.stringify(config));
-                
-                // Generate the audio
-                const result = ttsModule.ttsGenerateWithOffline(ttsInstance, text);
-                
-                if (result !== 0) {
-                    throw new Error(`Failed to generate audio: ${result}`);
-                }
-                
-                // Get the number of samples and sample rate
-                const numSamples = ttsModule.ttsNumSamplesWithOffline(ttsInstance);
-                const sampleRate = ttsModule.ttsSampleRateWithOffline(ttsInstance);
-                
-                // Get the samples
-                const samplesPtr = ttsModule._malloc(numSamples * 4); // 4 bytes per float
-                ttsModule.ttsGetSamplesWithOffline(ttsInstance, samplesPtr);
-                
-                // Create a Float32Array view of the samples
-                const samplesView = new Float32Array(ttsModule.HEAPF32.buffer, samplesPtr, numSamples);
-                
-                // Copy the samples to a new array
-                const samples = new Float32Array(samplesView);
-                
-                // Free the samples memory
-                ttsModule._free(samplesPtr);
-                
-                // Play the audio
-                playAudio(samples, sampleRate);
-                
-                updateStatus("Speech synthesis complete");
-            } catch (error) {
-                updateStatus(`Error synthesizing speech: ${error.message}`);
-                console.error("Error synthesizing speech:", error);
-            } finally {
-                // Clean up
-                if (ttsInstance) {
-                    ttsModule.ttsDestroyOffline(ttsInstance);
-                    ttsInstance = null;
-                }
-                
-                // Enable the speak button and disable the stop button
-                document.getElementById('speakButton').disabled = false;
-                document.getElementById('stopButton').disabled = true;
-            }
+        // Generate audio
+        const audio = tts.generate({
+          text: text,
+          sid: 0,
+          speed: 1.0
+        });
+        
+        log(`Generated audio with sample rate: ${audio.sampleRate} and samples: ${audio.samples.length}`);
+        
+        // Create an audio buffer
+        const audioBuffer = audioContext.createBuffer(1, audio.samples.length, audio.sampleRate);
+        const channelData = audioBuffer.getChannelData(0);
+        
+        // Copy the samples to the audio buffer
+        for (let i = 0; i < audio.samples.length; i++) {
+          channelData[i] = audio.samples[i];
         }
+        
+        // Create a source node
+        audioSource = audioContext.createBufferSource();
+        audioSource.buffer = audioBuffer;
+        
+        // Connect the source to the destination
+        audioSource.connect(audioContext.destination);
         
         // Play the audio
-        function playAudio(samples, sampleRate) {
-            // Create an audio context if it doesn't exist
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            
-            // Create a buffer source
-            const source = audioContext.createBufferSource();
-            
-            // Create an audio buffer
-            const buffer = audioContext.createBuffer(1, samples.length, sampleRate);
-            
-            // Fill the buffer with the samples
-            const channelData = buffer.getChannelData(0);
-            for (let i = 0; i < samples.length; i++) {
-                channelData[i] = samples[i];
-            }
-            
-            // Set the buffer and connect to the destination
-            source.buffer = buffer;
-            source.connect(audioContext.destination);
-            
-            // Play the audio
-            source.start();
-            
-            // Add the audio element to the page
-            const audioContainer = document.getElementById('audioContainer');
-            audioContainer.innerHTML = '';
-            
-            const audio = document.createElement('audio');
-            audio.controls = true;
-            
-            // Convert the samples to a WAV file
-            const wavBlob = createWavBlob(samples, sampleRate);
-            const wavUrl = URL.createObjectURL(wavBlob);
-            
-            audio.src = wavUrl;
-            audioContainer.appendChild(audio);
-            
-            // Clean up when the audio ends
-            source.onended = function() {
-                isPlaying = false;
-                document.getElementById('stopButton').disabled = true;
-            };
-        }
+        audioSource.start();
         
-        // Create a WAV blob from audio samples
-        function createWavBlob(samples, sampleRate) {
-            // Convert Float32Array to Int16Array
-            const int16Samples = new Int16Array(samples.length);
-            for (let i = 0; i < samples.length; i++) {
-                // Scale to 16-bit range and clamp
-                const sample = Math.max(-1, Math.min(1, samples[i]));
-                int16Samples[i] = Math.floor(sample * 32767);
-            }
-            
-            // Create a WAV file header
-            const wavHeader = new ArrayBuffer(44);
-            const view = new DataView(wavHeader);
-            
-            // "RIFF" chunk descriptor
-            view.setUint8(0, "R".charCodeAt(0));
-            view.setUint8(1, "I".charCodeAt(0));
-            view.setUint8(2, "F".charCodeAt(0));
-            view.setUint8(3, "F".charCodeAt(0));
-            
-            // Chunk size (file size - 8)
-            view.setUint32(4, 36 + int16Samples.length * 2, true);
-            
-            // Format ("WAVE")
-            view.setUint8(8, "W".charCodeAt(0));
-            view.setUint8(9, "A".charCodeAt(0));
-            view.setUint8(10, "V".charCodeAt(0));
-            view.setUint8(11, "E".charCodeAt(0));
-            
-            // "fmt " sub-chunk
-            view.setUint8(12, "f".charCodeAt(0));
-            view.setUint8(13, "m".charCodeAt(0));
-            view.setUint8(14, "t".charCodeAt(0));
-            view.setUint8(15, " ".charCodeAt(0));
-            
-            // Sub-chunk size (16 for PCM)
-            view.setUint32(16, 16, true);
-            
-            // Audio format (1 for PCM)
-            view.setUint16(20, 1, true);
-            
-            // Number of channels (1 for mono)
-            view.setUint16(22, 1, true);
-            
-            // Sample rate
-            view.setUint32(24, sampleRate, true);
-            
-            // Byte rate (sample rate * channels * bytes per sample)
-            view.setUint32(28, sampleRate * 1 * 2, true);
-            
-            // Block align (channels * bytes per sample)
-            view.setUint16(32, 1 * 2, true);
-            
-            // Bits per sample
-            view.setUint16(34, 16, true);
-            
-            // "data" sub-chunk
-            view.setUint8(36, "d".charCodeAt(0));
-            view.setUint8(37, "a".charCodeAt(0));
-            view.setUint8(38, "t".charCodeAt(0));
-            view.setUint8(39, "a".charCodeAt(0));
-            
-            // Sub-chunk size (number of samples * channels * bytes per sample)
-            view.setUint32(40, int16Samples.length * 1 * 2, true);
-            
-            // Combine the header and the samples
-            const wavBytes = new Uint8Array(wavHeader.byteLength + int16Samples.length * 2);
-            wavBytes.set(new Uint8Array(wavHeader), 0);
-            
-            // Convert Int16Array to Uint8Array
-            const samplesBytes = new Uint8Array(int16Samples.buffer);
-            wavBytes.set(samplesBytes, wavHeader.byteLength);
-            
-            // Create a blob from the WAV bytes
-            return new Blob([wavBytes], { type: 'audio/wav' });
-        }
+        // Update status
+        updateStatus('Speaking');
         
-        // Stop the audio
-        function stop() {
-            if (audioContext) {
-                audioContext.close();
-                audioContext = null;
-            }
-            
-            isPlaying = false;
-            document.getElementById('stopButton').disabled = true;
-            document.getElementById('speakButton').disabled = false;
-            updateStatus("Playback stopped");
-        }
-        
-        // Update the status message
-        function updateStatus(message) {
-            const statusElement = document.getElementById('status');
-            statusElement.textContent = `Status: ${message}`;
-        }
-        
-        // Initialize when the page loads
-        window.onload = function() {
-            document.getElementById('speakButton').disabled = true;
-            document.getElementById('stopButton').disabled = true;
-            initWasm();
+        // Add an event listener for when the audio ends
+        audioSource.onended = function() {
+          updateStatus('Done');
         };
-    </script>
+      } catch (error) {
+        log('Error speaking: ' + error.message);
+        updateStatus('Error speaking');
+      }
+    }
+    
+    // Stop function
+    function stop() {
+      if (audioSource) {
+        audioSource.stop();
+        updateStatus('Stopped');
+      }
+    }
+    
+    // Add event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('speak-button').addEventListener('click', speak);
+      document.getElementById('stop-button').addEventListener('click', stop);
+    });
+    
+    // Clean up when the page is unloaded
+    window.addEventListener('unload', function() {
+      if (tts) {
+        try {
+          tts.free();
+        } catch (error) {
+          console.error('Error cleaning up TTS:', error);
+        }
+      }
+    });
+  </script>
 </body>
 </html>
