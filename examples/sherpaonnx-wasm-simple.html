@@ -68,6 +68,9 @@
     <div id="log"></div>
   </div>
 
+  <!-- Load the SherpaOnnx WebAssembly module -->
+  <script src="/public/sherpaonnx-wasm/sherpa-onnx-tts.js"></script>
+
   <script type="module">
     // Import the SherpaOnnxWasmTTSClient from the browser bundle
     import { SherpaOnnxWasmTTSClient } from './js-tts-wrapper.browser.bundle.js';
@@ -95,7 +98,7 @@
 
         // Initialize the WebAssembly module
         log('Loading WebAssembly module...');
-        await tts.initializeWasm('../public/sherpaonnx-wasm/sherpa-onnx-tts.js');
+        await tts.initializeWasm('/public/sherpaonnx-wasm/sherpa-onnx-tts.js');
 
         // Get available voices
         log('Getting available voices...');

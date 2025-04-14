@@ -201,6 +201,9 @@
     Powered by <a href="https://github.com/willwade/js-tts-wrapper" target="_blank">js-tts-wrapper</a> and <a href="https://github.com/k2-fsa/sherpa-onnx" target="_blank">SherpaOnnx</a>
   </div>
 
+  <!-- Load the SherpaOnnx WebAssembly module -->
+  <script src="/public/sherpaonnx-wasm/sherpa-onnx-tts.js"></script>
+
   <!-- Load the JS TTS Wrapper library -->
   <script type="module">
     // Import the library
@@ -252,7 +255,7 @@
 
         // Initialize the WebAssembly module
         // The path should point to where the WebAssembly files are located
-        await ttsClient.initializeWasm('../public/sherpaonnx-wasm/sherpa-onnx-tts.js');
+        await ttsClient.initializeWasm('/public/sherpaonnx-wasm/sherpa-onnx-tts.js');
 
         log('Loading voices...');
 

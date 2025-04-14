@@ -261,6 +261,9 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           });
 
           // Check if the SherpaOnnx object is available in the global scope
+          console.log("Checking for SherpaOnnx global object...");
+          console.log("Window object keys:", Object.keys(window));
+
           if (typeof (window as any).SherpaOnnx !== 'undefined') {
             console.log("SherpaOnnx global object found");
             this.wasmModule = (window as any).SherpaOnnx;
@@ -271,6 +274,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
             this.wasmLoaded = true;
           } else {
             console.warn("SherpaOnnx global object not found after script load");
+            console.log("Available global objects:", Object.keys(window).filter(key => key.includes('Sherpa') || key.includes('sherpa') || key.includes('tts') || key.includes('TTS')));
             this.wasmLoaded = false;
           }
         } catch (error) {
