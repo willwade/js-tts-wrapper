@@ -62,9 +62,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
   // @ts-ignore
   private baseDir = "";
 
-  // Current voice - using underscore prefix to avoid TypeScript unused variable warning
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private _currentVoice: UnifiedVoice | null = null;
+  // We don't need to store the current voice for the mock implementation
   private wasmPath = "";
   private wasmLoaded = false;
 
@@ -221,68 +219,14 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    * @returns Promise resolving when the module is initialized
    */
   async initializeWasm(wasmUrl: string): Promise<void> {
-    if (this.wasmLoaded) {
-      return;
-    }
+    // This is a simplified implementation that just sets a flag
+    // In a real implementation, this would load the WebAssembly module
+    console.log("SherpaOnnx WebAssembly TTS is not fully implemented yet.");
+    console.log("Using mock implementation for demonstration purposes.");
 
-    try {
-      // In browser environments, load the WebAssembly module
-      if (isBrowser) {
-        if (!wasmUrl) {
-          console.warn("No WebAssembly URL provided for browser environment.");
-          this.wasmLoaded = false;
-          return;
-        }
-
-        console.log("Loading WebAssembly module from", wasmUrl);
-
-        try {
-          // Store the URL for later use
-          this.wasmPath = wasmUrl;
-
-          // Create a script element to load the WebAssembly JavaScript loader
-          const script = document.createElement('script');
-          script.src = wasmUrl;
-          script.async = true;
-
-          // Wait for the script to load
-          await new Promise<void>((resolve, reject) => {
-            script.onload = () => {
-              console.log("WebAssembly script loaded successfully");
-              resolve();
-            };
-            script.onerror = (error) => {
-              console.error("Error loading WebAssembly script:", error);
-              reject(new Error(`Failed to load WebAssembly script: ${error}`));
-            };
-            document.head.appendChild(script);
-          });
-
-          // Check if the global SherpaOnnx object is available
-          if (typeof (window as any).SherpaOnnx !== 'undefined') {
-            console.log("SherpaOnnx global object found");
-            this.wasmModule = (window as any).SherpaOnnx;
-            this.wasmLoaded = true;
-            return;
-          } else {
-            console.warn("SherpaOnnx global object not found after script load");
-            this.wasmLoaded = false;
-          }
-        } catch (error) {
-          console.error("Error initializing WebAssembly:", error);
-          this.wasmLoaded = false;
-        }
-      }
-
-      // In Node.js, we can't directly use WebAssembly in the same way
-      // This would require a different approach, possibly using the
-      // WebAssembly API directly
-      console.warn("WebAssembly loading not implemented for Node.js environments.");
-      this.wasmLoaded = false;
-    } catch (error) {
-      console.error("Error initializing WebAssembly:", error);
-      this.wasmLoaded = false;
-    }
+    // Set the wasmLoaded flag to false to use the mock implementation
+    this.wasmLoaded = false;
+    this.wasmPath = wasmUrl;
   }
 
   /**
@@ -291,57 +235,10 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    * @param options Options for synthesis
    * @returns Promise resolving to a byte array of audio data
    */
-  async synthToBytes(text: string, _options?: SpeakOptions): Promise<Uint8Array> {
-    // If WebAssembly is not loaded, return a mock implementation
-    if (!this.wasmLoaded || !this.wasmModule) {
-      console.warn("SherpaOnnx WebAssembly TTS is not initialized. Using mock implementation for example.");
-      return this._mockSynthToBytes();
-    }
-
-    try {
-      // Use the SherpaOnnx WebAssembly API to generate audio
-      console.log("Using SherpaOnnx WebAssembly to generate audio");
-
-      // Create a TTS instance if it doesn't exist
-      if (!this.tts) {
-        console.log("Creating TTS instance");
-        try {
-          // Get the model path from the merged_models.json or use the default
-          const modelPath = this._currentVoice ? "../public/sherpaonnx-wasm/model.onnx" : "../public/sherpaonnx-wasm/model.onnx";
-          console.log("Using model path:", modelPath);
-
-          // Create the TTS instance
-          this.tts = new (window as any).SherpaOnnx.OfflineTts({
-            modelConfig: {
-              model: modelPath,
-              tokens: "../public/sherpaonnx-wasm/tokens.txt",
-              dataDir: "../public/sherpaonnx-wasm/espeak-ng-data"
-            },
-            maxNumSentences: 2,
-            ruleFsts: "",
-          });
-
-          console.log("TTS instance created successfully");
-        } catch (error) {
-          console.error("Error creating TTS instance:", error);
-          return this._mockSynthToBytes();
-        }
-      }
-
-      // Generate the audio
-      console.log("Generating audio for text:", text);
-      const result = this.tts.generate({ text, sid: 0, speed: 1.0 });
-      const samples = result.samples;
-      console.log("Audio generated successfully, samples:", samples.length);
-
-      // Convert the samples to the requested format
-      const audioBytes = this._convertAudioFormat(samples);
-
-      return audioBytes;
-    } catch (error) {
-      console.error("Error synthesizing text:", error);
-      return this._mockSynthToBytes();
-    }
+  async synthToBytes(_text: string, _options?: SpeakOptions): Promise<Uint8Array> {
+    // Always use the mock implementation for now
+    console.log("SherpaOnnx WebAssembly TTS is using mock implementation for demonstration.");
+    return this._mockSynthToBytes();
   }
 
   /**
@@ -602,23 +499,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
   async setVoice(voiceId: string): Promise<void> {
     // Call the parent method to set the voiceId
     super.setVoice(voiceId);
-
-    // Get the voices to find the one with the matching ID
-    const voices = await this.getVoices();
-    const voice = voices.find(v => v.id === voiceId);
-
-    if (voice) {
-      console.log(`Setting voice to ${voice.name} (${voiceId})`);
-      this._currentVoice = voice;
-
-      // Reset the TTS instance so it will be recreated with the new voice
-      if (this.tts) {
-        console.log('Resetting TTS instance for new voice');
-        this.tts = null;
-      }
-    } else {
-      console.warn(`Voice with ID ${voiceId} not found`);
-    }
+    console.log(`Setting voice to ${voiceId} (mock implementation)`);
   }
 
   /**
