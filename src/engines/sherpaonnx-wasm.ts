@@ -245,27 +245,47 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           // Store the URL for later use
           this.wasmPath = wasmUrl;
 
-          // Create a script element to load the WebAssembly JavaScript loader
-          const script = document.createElement('script');
-          script.src = wasmUrl;
-          script.async = true;
+          // Load the required scripts
+          const ttsJsUrl = wasmUrl.replace('sherpa-onnx-wasm-main-tts.js', 'sherpa-onnx-tts.js');
 
-          // Wait for the script to load
-          await new Promise<void>((resolve, reject) => {
-            script.onload = () => {
-              console.log("WebAssembly script loaded successfully");
-              console.log("Module available after script load:", typeof (window as any).Module !== 'undefined');
-              if (typeof (window as any).Module !== 'undefined') {
-                console.log("Module keys after script load:", Object.keys((window as any).Module));
-              }
-              resolve();
-            };
-            script.onerror = (error) => {
-              console.error("Error loading WebAssembly script:", error);
-              reject(new Error(`Failed to load WebAssembly script: ${error}`));
-            };
-            document.head.appendChild(script);
-          });
+          // Create script elements to load the WebAssembly JavaScript loaders
+          const ttsScript = document.createElement('script');
+          ttsScript.src = ttsJsUrl;
+          ttsScript.async = true;
+
+          const wasmScript = document.createElement('script');
+          wasmScript.src = wasmUrl;
+          wasmScript.async = true;
+
+          // Wait for the scripts to load
+          await Promise.all([
+            new Promise<void>((resolve, reject) => {
+              ttsScript.onload = () => {
+                console.log("sherpa-onnx-tts.js loaded successfully");
+                resolve();
+              };
+              ttsScript.onerror = (error) => {
+                console.error("Error loading sherpa-onnx-tts.js:", error);
+                reject(new Error(`Failed to load sherpa-onnx-tts.js: ${error}`));
+              };
+              document.head.appendChild(ttsScript);
+            }),
+            new Promise<void>((resolve, reject) => {
+              wasmScript.onload = () => {
+                console.log("WebAssembly script loaded successfully");
+                console.log("Module available after script load:", typeof (window as any).Module !== 'undefined');
+                if (typeof (window as any).Module !== 'undefined') {
+                  console.log("Module keys after script load:", Object.keys((window as any).Module));
+                }
+                resolve();
+              };
+              wasmScript.onerror = (error) => {
+                console.error("Error loading WebAssembly script:", error);
+                reject(new Error(`Failed to load WebAssembly script: ${error}`));
+              };
+              document.head.appendChild(wasmScript);
+            })
+          ]);
 
           // Check if the SherpaOnnx object is available in the global scope
           console.log("Checking for SherpaOnnx global object...");
@@ -279,16 +299,18 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
             // Wait for the Module to be fully initialized
             await new Promise<void>((resolve) => {
               const checkModuleReady = () => {
-                if ((window as any).Module && (window as any).Module.calledRun) {
-                  console.log("Module is fully initialized (calledRun is true)");
+                if ((window as any).Module && (window as any).Module.calledRun && typeof (window as any).createOfflineTts === 'function') {
+                  console.log("Module is fully initialized and createOfflineTts is available");
                   // Wait a bit more to make sure all functions are available
                   setTimeout(() => {
                     console.log("Module functions after initialization:", Object.keys((window as any).Module).filter(key => typeof (window as any).Module[key] === 'function'));
                     resolve();
                   }, 1000);
                 } else {
-                  console.log("Waiting for Module to be fully initialized (calledRun is false)...");
-                  console.log("Current Module keys:", Object.keys((window as any).Module));
+                  console.log("Waiting for Module to be fully initialized and createOfflineTts to be available...");
+                  console.log("Module available:", typeof (window as any).Module !== 'undefined');
+                  console.log("Module.calledRun:", (window as any).Module?.calledRun);
+                  console.log("createOfflineTts available:", typeof (window as any).createOfflineTts === 'function');
                   setTimeout(checkModuleReady, 500);
                 }
               };
@@ -406,116 +428,19 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         console.log("Creating TTS instance");
         try {
           // Create the TTS instance
-          if (typeof this.wasmModule.createOfflineTts === 'function') {
+          if (typeof (window as any).createOfflineTts === 'function') {
             // Using the sherpa-onnx-tts.js API
-            console.log("Using createOfflineTts API from wasmModule");
+            console.log("Using createOfflineTts API from global scope");
 
-            // Create the configuration
-            const offlineTtsVitsModelConfig = {
-              model: '/public/sherpaonnx-wasm/model.onnx',
-              lexicon: '',
-              tokens: '/public/sherpaonnx-wasm/tokens.txt',
-              dataDir: '/public/sherpaonnx-wasm/espeak-ng-data',
-              dictDir: '',
-              noiseScale: 0.667,
-              noiseScaleW: 0.8,
-              lengthScale: 1.0,
-            };
-
-            const offlineTtsMatchaModelConfig = {
-              acousticModel: '',
-              vocoder: '',
-              lexicon: '',
-              tokens: '',
-              dataDir: '',
-              dictDir: '',
-              noiseScale: 0.667,
-              lengthScale: 1.0,
-            };
-
-            const offlineTtsKokoroModelConfig = {
-              model: '',
-              voices: '',
-              tokens: '',
-              dataDir: '',
-              lengthScale: 1.0,
-              dictDir: '',
-              lexicon: '',
-            };
-
-            const offlineTtsModelConfig = {
-              offlineTtsVitsModelConfig: offlineTtsVitsModelConfig,
-              offlineTtsMatchaModelConfig: offlineTtsMatchaModelConfig,
-              offlineTtsKokoroModelConfig: offlineTtsKokoroModelConfig,
-              numThreads: 1,
-              debug: 1,
-              provider: 'cpu',
-            };
-
-            const offlineTtsConfig = {
-              offlineTtsModelConfig: offlineTtsModelConfig,
-              ruleFsts: '',
-              ruleFars: '',
-              maxNumSentences: 1,
-            };
-
-            // Create the TTS instance
-            this.tts = this.wasmModule.createOfflineTts(offlineTtsConfig);
-          } else if (typeof (window as any).createOfflineTts === 'function') {
-            // Using the global createOfflineTts function
-            console.log("Using global createOfflineTts function");
-
-            // Create the configuration
-            const offlineTtsVitsModelConfig = {
-              model: '/public/sherpaonnx-wasm/model.onnx',
-              lexicon: '',
-              tokens: '/public/sherpaonnx-wasm/tokens.txt',
-              dataDir: '/public/sherpaonnx-wasm/espeak-ng-data',
-              dictDir: '',
-              noiseScale: 0.667,
-              noiseScaleW: 0.8,
-              lengthScale: 1.0,
-            };
-
-            const offlineTtsMatchaModelConfig = {
-              acousticModel: '',
-              vocoder: '',
-              lexicon: '',
-              tokens: '',
-              dataDir: '',
-              dictDir: '',
-              noiseScale: 0.667,
-              lengthScale: 1.0,
-            };
-
-            const offlineTtsKokoroModelConfig = {
-              model: '',
-              voices: '',
-              tokens: '',
-              dataDir: '',
-              lengthScale: 1.0,
-              dictDir: '',
-              lexicon: '',
-            };
-
-            const offlineTtsModelConfig = {
-              offlineTtsVitsModelConfig: offlineTtsVitsModelConfig,
-              offlineTtsMatchaModelConfig: offlineTtsMatchaModelConfig,
-              offlineTtsKokoroModelConfig: offlineTtsKokoroModelConfig,
-              numThreads: 1,
-              debug: 1,
-              provider: 'cpu',
-            };
-
-            const offlineTtsConfig = {
-              offlineTtsModelConfig: offlineTtsModelConfig,
-              ruleFsts: '',
-              ruleFars: '',
-              maxNumSentences: 1,
-            };
-
-            // Create the TTS instance
-            this.tts = (window as any).createOfflineTts(offlineTtsConfig);
+            // Create the TTS instance with default configuration
+            this.tts = (window as any).createOfflineTts((window as any).Module);
+            console.log("TTS initialized with default configuration");
+            console.log(`Sample rate: ${this.tts.sampleRate}`);
+            console.log(`Number of speakers: ${this.tts.numSpeakers}`);
+          } else if (this.wasmModule && this.wasmModule.OfflineTts) {
+            // Using the Module.OfflineTts API
+            console.log("Using Module.OfflineTts API");
+            this.tts = new this.wasmModule.OfflineTts();
           } else {
             throw new Error('No compatible TTS API found');
           }
@@ -536,10 +461,12 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         console.log("Using generate method");
         const result = this.tts.generate({ text, sid: 0, speed: 1.0 });
         samples = result.samples;
+        console.log(`Generated audio with sample rate: ${result.sampleRate} and samples: ${samples.length}`);
       } else if (typeof this.tts.generateWithText === 'function') {
         // Using the generateWithText method
         console.log("Using generateWithText method");
         samples = this.tts.generateWithText(text);
+        console.log(`Generated audio with samples: ${samples.length}`);
       } else {
         throw new Error('No compatible generate method found');
       }
