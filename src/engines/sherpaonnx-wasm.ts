@@ -279,14 +279,15 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
             // Wait for the Module to be fully initialized
             await new Promise<void>((resolve) => {
               const checkModuleReady = () => {
-                if ((window as any).Module &&
-                    (window as any).Module._SherpaOnnxCreateOfflineTts &&
-                    (window as any).Module._SherpaOnnxDestroyOfflineTts) {
-                  console.log("Module._SherpaOnnxCreateOfflineTts is available");
-                  console.log("Module is fully initialized");
-                  resolve();
+                if ((window as any).Module && (window as any).Module.calledRun) {
+                  console.log("Module is fully initialized (calledRun is true)");
+                  // Wait a bit more to make sure all functions are available
+                  setTimeout(() => {
+                    console.log("Module functions after initialization:", Object.keys((window as any).Module).filter(key => typeof (window as any).Module[key] === 'function'));
+                    resolve();
+                  }, 1000);
                 } else {
-                  console.log("Waiting for Module._SherpaOnnxCreateOfflineTts to be available...");
+                  console.log("Waiting for Module to be fully initialized (calledRun is false)...");
                   console.log("Current Module keys:", Object.keys((window as any).Module));
                   setTimeout(checkModuleReady, 500);
                 }
