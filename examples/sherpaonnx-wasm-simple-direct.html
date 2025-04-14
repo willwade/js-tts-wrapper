@@ -175,17 +175,26 @@
         });
         log('Configuration: ' + configStr);
 
-        // Allocate memory for the configuration string
-        const configPtr = Module._malloc(configStr.length + 1);
-        Module.stringToUTF8(configStr, configPtr, configStr.length + 1);
-        log('Configuration pointer: ' + configPtr);
+        // Use ccall to create an offline TTS instance
+        let ttsHandle = 0;
+        try {
+          // Create a simple configuration string
+          const simpleConfigStr = "--vits-model=/public/sherpaonnx-wasm/model.onnx --vits-tokens=/public/sherpaonnx-wasm/tokens.txt --vits-data-dir=/public/sherpaonnx-wasm/espeak-ng-data";
+          log('Simple configuration: ' + simpleConfigStr);
 
-        // Create an offline TTS instance
-        const ttsHandle = Module._SherpaOnnxCreateOfflineTts(configPtr);
-        log('TTS handle: ' + ttsHandle);
-
-        // Free the configuration string memory
-        Module._free(configPtr);
+          // Use ccall to create an offline TTS instance
+          ttsHandle = Module.ccall(
+            'SherpaOnnxCreateOfflineTts',
+            'number',
+            ['string'],
+            [simpleConfigStr]
+          );
+          log('TTS handle: ' + ttsHandle);
+        } catch (error) {
+          log('Error creating TTS instance: ' + error.message);
+          updateStatus('Error creating TTS instance');
+          return;
+        }
 
         if (ttsHandle === 0) {
           log('Failed to create TTS instance');
@@ -194,37 +203,87 @@
         }
 
         // Get the sample rate
-        const sampleRate = Module._SherpaOnnxOfflineTtsSampleRate(ttsHandle);
-        log('Sample rate: ' + sampleRate);
-
-        // Allocate memory for the text
-        const textPtr = Module._malloc(text.length + 1);
-        Module.stringToUTF8(text, textPtr, text.length + 1);
-        log('Text pointer: ' + textPtr);
+        let sampleRate = 0;
+        try {
+          sampleRate = Module.ccall(
+            'SherpaOnnxOfflineTtsSampleRate',
+            'number',
+            ['number'],
+            [ttsHandle]
+          );
+          log('Sample rate: ' + sampleRate);
+        } catch (error) {
+          log('Error getting sample rate: ' + error.message);
+          updateStatus('Error getting sample rate');
+          Module.ccall('SherpaOnnxDestroyOfflineTts', null, ['number'], [ttsHandle]);
+          return;
+        }
 
         // Generate audio
-        const audioHandle = Module._SherpaOnnxOfflineTtsGenerate(ttsHandle, textPtr);
-        log('Audio handle: ' + audioHandle);
-
-        // Free the text memory
-        Module._free(textPtr);
+        let audioHandle = 0;
+        try {
+          audioHandle = Module.ccall(
+            'SherpaOnnxOfflineTtsGenerate',
+            'number',
+            ['number', 'string'],
+            [ttsHandle, text]
+          );
+          log('Audio handle: ' + audioHandle);
+        } catch (error) {
+          log('Error generating audio: ' + error.message);
+          updateStatus('Error generating audio');
+          Module.ccall('SherpaOnnxDestroyOfflineTts', null, ['number'], [ttsHandle]);
+          return;
+        }
 
         if (audioHandle === 0) {
           log('Failed to generate audio');
           updateStatus('Failed to generate audio');
-          Module._SherpaOnnxDestroyOfflineTts(ttsHandle);
+          Module.ccall('SherpaOnnxDestroyOfflineTts', null, ['number'], [ttsHandle]);
           return;
         }
 
         // Get the audio samples
-        const samples = Module._CopyHeap(audioHandle);
-        log('Generated audio samples: ' + (samples ? samples.length : 0));
+        let samples = null;
+        try {
+          samples = Module.ccall(
+            'CopyHeap',
+            'array',
+            ['number'],
+            [audioHandle]
+          );
+          log('Generated audio samples: ' + (samples ? samples.length : 0));
+        } catch (error) {
+          log('Error copying audio samples: ' + error.message);
+          updateStatus('Error copying audio samples');
+          Module.ccall('SherpaOnnxDestroyOfflineTtsGeneratedAudio', null, ['number'], [audioHandle]);
+          Module.ccall('SherpaOnnxDestroyOfflineTts', null, ['number'], [ttsHandle]);
+          return;
+        }
 
         // Destroy the audio handle
-        Module._SherpaOnnxDestroyOfflineTtsGeneratedAudio(audioHandle);
+        try {
+          Module.ccall(
+            'SherpaOnnxDestroyOfflineTtsGeneratedAudio',
+            null,
+            ['number'],
+            [audioHandle]
+          );
+        } catch (error) {
+          log('Error destroying audio handle: ' + error.message);
+        }
 
         // Destroy the TTS instance
-        Module._SherpaOnnxDestroyOfflineTts(ttsHandle);
+        try {
+          Module.ccall(
+            'SherpaOnnxDestroyOfflineTts',
+            null,
+            ['number'],
+            [ttsHandle]
+          );
+        } catch (error) {
+          log('Error destroying TTS instance: ' + error.message);
+        }
 
         if (!samples || samples.length === 0) {
           log('No audio samples generated');
