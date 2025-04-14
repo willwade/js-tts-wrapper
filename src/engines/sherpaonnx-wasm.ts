@@ -10,6 +10,13 @@ import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback }
 import { estimateWordBoundaries } from "../utils/word-timing-estimator";
 import { isBrowser, isNode, fileSystem, pathUtils } from "../utils/environment";
 
+// Add SherpaOnnx to the Window interface
+declare global {
+  interface Window {
+    SherpaOnnx?: any;
+  }
+}
+
 // Define the SherpaOnnx WebAssembly module interface
 interface SherpaOnnxWasmModule {
   // Core methods
@@ -27,6 +34,9 @@ interface SherpaOnnxWasmModule {
   // Helpers for string handling
   stringToUTF8: (str: string, outPtr: number, maxBytesToWrite: number) => void;
   UTF8ToString: (ptr: number) => string;
+
+  // WebAssembly TTS class
+  OfflineTts: any;
 
   // Typed array access
   HEAPF32: Float32Array;
@@ -46,11 +56,15 @@ interface SherpaOnnxWasmModule {
  */
 export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
   private wasmModule: SherpaOnnxWasmModule | null = null;
-  private tts = 0;
+  private tts: any = null;
   private sampleRate = 16000;
   // This property is used in the full implementation
   // @ts-ignore
   private baseDir = "";
+
+  // Current voice - using underscore prefix to avoid TypeScript unused variable warning
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private _currentVoice: UnifiedVoice | null = null;
   private wasmPath = "";
   private wasmLoaded = false;
 
@@ -220,19 +234,44 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           return;
         }
 
-        // This is a placeholder for the actual WebAssembly loading code
-        // The actual implementation would depend on the specific WebAssembly module
-        // and how it's exported
         console.log("Loading WebAssembly module from", wasmUrl);
 
-        // Example of how this might be implemented:
-        // const wasmModule = await import(wasmUrl);
-        // this.wasmModule = await wasmModule.default();
-        // this.wasmLoaded = true;
+        try {
+          // Store the URL for later use
+          this.wasmPath = wasmUrl;
 
-        // For now, just set wasmLoaded to false
-        this.wasmLoaded = false;
-        return;
+          // Create a script element to load the WebAssembly JavaScript loader
+          const script = document.createElement('script');
+          script.src = wasmUrl;
+          script.async = true;
+
+          // Wait for the script to load
+          await new Promise<void>((resolve, reject) => {
+            script.onload = () => {
+              console.log("WebAssembly script loaded successfully");
+              resolve();
+            };
+            script.onerror = (error) => {
+              console.error("Error loading WebAssembly script:", error);
+              reject(new Error(`Failed to load WebAssembly script: ${error}`));
+            };
+            document.head.appendChild(script);
+          });
+
+          // Check if the global SherpaOnnx object is available
+          if (typeof window.SherpaOnnx !== 'undefined') {
+            console.log("SherpaOnnx global object found");
+            this.wasmModule = window.SherpaOnnx;
+            this.wasmLoaded = true;
+            return;
+          } else {
+            console.warn("SherpaOnnx global object not found after script load");
+            this.wasmLoaded = false;
+          }
+        } catch (error) {
+          console.error("Error initializing WebAssembly:", error);
+          this.wasmLoaded = false;
+        }
       }
 
       // In Node.js, we can't directly use WebAssembly in the same way
@@ -254,46 +293,45 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    */
   async synthToBytes(text: string, _options?: SpeakOptions): Promise<Uint8Array> {
     // If WebAssembly is not loaded, return a mock implementation
-    if (!this.wasmLoaded || !this.wasmModule || this.tts === 0) {
+    if (!this.wasmLoaded || !this.wasmModule) {
       console.warn("SherpaOnnx WebAssembly TTS is not initialized. Using mock implementation for example.");
       return this._mockSynthToBytes();
     }
 
     try {
-      // Allocate memory for the text string
-      const textPtr = this.wasmModule._malloc(text.length + 1);
+      // Use the SherpaOnnx WebAssembly API to generate audio
+      console.log("Using SherpaOnnx WebAssembly to generate audio");
 
-      // Write the text string to memory
-      this.wasmModule.stringToUTF8(text, textPtr, text.length + 1);
+      // Create a TTS instance if it doesn't exist
+      if (!this.tts) {
+        console.log("Creating TTS instance");
+        try {
+          // Get the model path from the merged_models.json or use the default
+          const modelPath = this._currentVoice ? "../public/sherpaonnx-wasm/model.onnx" : "../public/sherpaonnx-wasm/model.onnx";
+          console.log("Using model path:", modelPath);
 
-      // Generate the audio
-      const result = this.wasmModule._ttsGenerateWithOffline(this.tts, textPtr);
+          // Create the TTS instance
+          this.tts = new this.wasmModule.OfflineTts({
+            modelConfig: {
+              model: modelPath,
+              tokens: "../public/sherpaonnx-wasm/tokens.txt",
+              dataDir: "../public/sherpaonnx-wasm/espeak-ng-data"
+            },
+            maxNumSentences: 2,
+            ruleFsts: "",
+          });
 
-      // Free the text string memory
-      this.wasmModule._free(textPtr);
-
-      // Check if generation was successful
-      if (result !== 0) {
-        throw new Error(`Failed to generate audio: ${result}`);
+          console.log("TTS instance created successfully");
+        } catch (error) {
+          console.error("Error creating TTS instance:", error);
+          return this._mockSynthToBytes();
+        }
       }
 
-      // Get the number of samples
-      const numSamples = this.wasmModule._ttsNumSamplesWithOffline(this.tts);
-
-      // Allocate memory for the samples
-      const samplesPtr = this.wasmModule._malloc(numSamples * 4); // 4 bytes per float
-
-      // Get the samples
-      this.wasmModule._ttsGetSamplesWithOffline(this.tts, samplesPtr);
-
-      // Create a Float32Array view of the samples
-      const samplesView = new Float32Array(this.wasmModule.HEAPF32.buffer, samplesPtr, numSamples);
-
-      // Copy the samples to a new array
-      const samples = new Float32Array(samplesView);
-
-      // Free the samples memory
-      this.wasmModule._free(samplesPtr);
+      // Generate the audio
+      console.log("Generating audio for text:", text);
+      const samples = this.tts.generateWithText(text);
+      console.log("Audio generated successfully, samples:", samples.length);
 
       // Convert the samples to the requested format
       const audioBytes = this._convertAudioFormat(samples);
@@ -553,6 +591,32 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       default:
         super.setProperty(property, value);
         break;
+    }
+  }
+
+  /**
+   * Set the voice to use for synthesis
+   * @param voiceId Voice ID to use
+   */
+  async setVoice(voiceId: string): Promise<void> {
+    // Call the parent method to set the voiceId
+    super.setVoice(voiceId);
+
+    // Get the voices to find the one with the matching ID
+    const voices = await this.getVoices();
+    const voice = voices.find(v => v.id === voiceId);
+
+    if (voice) {
+      console.log(`Setting voice to ${voice.name} (${voiceId})`);
+      this._currentVoice = voice;
+
+      // Reset the TTS instance so it will be recreated with the new voice
+      if (this.tts) {
+        console.log('Resetting TTS instance for new voice');
+        this.tts = null;
+      }
+    } else {
+      console.warn(`Voice with ID ${voiceId} not found`);
     }
   }
 
