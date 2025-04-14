@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SherpaOnnx WebAssembly TTS - Direct Example</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #status {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f8f8f8;
+      border-left: 4px solid #4CAF50;
+    }
+  </style>
+</head>
+<body>
+  <h1>SherpaOnnx WebAssembly TTS - Direct Example</h1>
+  
+  <div>
+    <textarea id="text-to-speak" placeholder="Enter text to speak...">Hello, this is a test of the SherpaOnnx WebAssembly text-to-speech engine.</textarea>
+  </div>
+  
+  <div>
+    <button id="speak-button">Speak</button>
+    <button id="stop-button">Stop</button>
+  </div>
+  
+  <div id="status">Status: Ready</div>
+  
+  <!-- Load the SherpaOnnx WebAssembly module -->
+  <script src="/public/sherpaonnx-wasm/sherpa-onnx-wasm-main-tts.js"></script>
+  
+  <script>
+    // Wait for the page to load
+    window.addEventListener('load', function() {
+      // Check if the Module is available
+      console.log('Window loaded, checking for Module...');
+      console.log('Module available:', typeof window.Module !== 'undefined');
+      
+      if (typeof window.Module !== 'undefined') {
+        console.log('Module keys:', Object.keys(window.Module));
+        
+        // Wait for the Module to be fully initialized
+        const checkModuleReady = () => {
+          if (window.Module && 
+              window.Module._SherpaOnnxCreateOfflineTts && 
+              window.Module._SherpaOnnxDestroyOfflineTts) {
+            console.log('Module is fully initialized');
+            initTTS();
+          } else {
+            console.log('Waiting for Module to be fully initialized...');
+            setTimeout(checkModuleReady, 500);
+          }
+        };
+        
+        checkModuleReady();
+      }
+    });
+    
+    // Audio context and variables
+    let audioContext;
+    let ttsHandle = 0;
+    let audioSource;
+    
+    // Initialize TTS
+    function initTTS() {
+      try {
+        // Create an audio context
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Create an offline TTS instance
+        ttsHandle = Module._SherpaOnnxCreateOfflineTts(0);
+        console.log('Created OfflineTts instance with handle:', ttsHandle);
+        
+        // Get the sample rate
+        const sampleRate = Module._SherpaOnnxOfflineTtsSampleRate(ttsHandle);
+        console.log('Sample rate:', sampleRate);
+        
+        // Update status
+        document.getElementById('status').textContent = 'Status: TTS initialized';
+        
+        // Add event listeners
+        document.getElementById('speak-button').addEventListener('click', speak);
+        document.getElementById('stop-button').addEventListener('click', stop);
+      } catch (error) {
+        console.error('Error initializing TTS:', error);
+        document.getElementById('status').textContent = 'Status: Error initializing TTS';
+      }
+    }
+    
+    // Speak function
+    function speak() {
+      try {
+        // Get the text to speak
+        const text = document.getElementById('text-to-speak').value;
+        
+        if (!text) {
+          document.getElementById('status').textContent = 'Status: No text to speak';
+          return;
+        }
+        
+        // Update status
+        document.getElementById('status').textContent = 'Status: Generating speech...';
+        
+        // Convert the text to a C string
+        const textPtr = Module._malloc(text.length + 1);
+        Module.stringToUTF8(text, textPtr, text.length + 1);
+        
+        // Generate audio
+        const audioHandle = Module._SherpaOnnxOfflineTtsGenerate(ttsHandle, textPtr);
+        
+        // Get the sample rate
+        const sampleRate = Module._SherpaOnnxOfflineTtsSampleRate(ttsHandle);
+        
+        // Get the audio samples
+        const samplesArray = Module._CopyHeap(audioHandle);
+        console.log('Generated audio with sample rate:', sampleRate, 'and samples:', samplesArray.length);
+        
+        // Create an audio buffer
+        const audioBuffer = audioContext.createBuffer(1, samplesArray.length, sampleRate);
+        const channelData = audioBuffer.getChannelData(0);
+        
+        // Copy the samples to the audio buffer
+        for (let i = 0; i < samplesArray.length; i++) {
+          channelData[i] = samplesArray[i];
+        }
+        
+        // Create a source node
+        audioSource = audioContext.createBufferSource();
+        audioSource.buffer = audioBuffer;
+        
+        // Connect the source to the destination
+        audioSource.connect(audioContext.destination);
+        
+        // Play the audio
+        audioSource.start();
+        
+        // Update status
+        document.getElementById('status').textContent = 'Status: Speaking';
+        
+        // Add an event listener for when the audio ends
+        audioSource.onended = function() {
+          document.getElementById('status').textContent = 'Status: Done';
+        };
+        
+        // Free the memory
+        Module._free(textPtr);
+        Module._SherpaOnnxDestroyOfflineTtsGeneratedAudio(audioHandle);
+      } catch (error) {
+        console.error('Error speaking:', error);
+        document.getElementById('status').textContent = 'Status: Error speaking';
+      }
+    }
+    
+    // Stop function
+    function stop() {
+      if (audioSource) {
+        audioSource.stop();
+        document.getElementById('status').textContent = 'Status: Stopped';
+      }
+    }
+    
+    // Clean up when the page is unloaded
+    window.addEventListener('unload', function() {
+      if (ttsHandle) {
+        Module._SherpaOnnxDestroyOfflineTts(ttsHandle);
+      }
+    });
+  </script>
+</body>
+</html>

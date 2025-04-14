@@ -239,6 +239,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         }
 
         console.log("Loading WebAssembly module from", wasmUrl);
+        console.log(`Current state: wasmLoaded=${this.wasmLoaded}, wasmModule=${!!this.wasmModule}`);
 
         try {
           // Store the URL for later use
@@ -253,6 +254,10 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           await new Promise<void>((resolve, reject) => {
             script.onload = () => {
               console.log("WebAssembly script loaded successfully");
+              console.log("Module available after script load:", typeof (window as any).Module !== 'undefined');
+              if (typeof (window as any).Module !== 'undefined') {
+                console.log("Module keys after script load:", Object.keys((window as any).Module));
+              }
               resolve();
             };
             script.onerror = (error) => {
@@ -269,6 +274,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           // For the sherpa-onnx-wasm-main-tts.js module, we need to check for the Module object
           if (typeof (window as any).Module !== 'undefined') {
             console.log("Module global object found");
+            console.log("Module keys:", Object.keys((window as any).Module));
 
             // Wait for the Module to be fully initialized
             await new Promise<void>((resolve) => {
@@ -277,9 +283,11 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
                     (window as any).Module._SherpaOnnxCreateOfflineTts &&
                     (window as any).Module._SherpaOnnxDestroyOfflineTts) {
                   console.log("Module._SherpaOnnxCreateOfflineTts is available");
+                  console.log("Module is fully initialized");
                   resolve();
                 } else {
                   console.log("Waiting for Module._SherpaOnnxCreateOfflineTts to be available...");
+                  console.log("Current Module keys:", Object.keys((window as any).Module));
                   setTimeout(checkModuleReady, 500);
                 }
               };
@@ -370,6 +378,8 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       console.error("Error initializing WebAssembly:", error);
       this.wasmLoaded = false;
     }
+
+    console.log("End of initializeWasm method. wasmLoaded:", this.wasmLoaded, "wasmModule:", !!this.wasmModule);
   }
 
   /**
@@ -382,6 +392,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
     // If WebAssembly is not loaded, return a mock implementation
     if (!this.wasmLoaded || !this.wasmModule) {
       console.warn("SherpaOnnx WebAssembly TTS is not initialized. Using mock implementation for example.");
+      console.warn("wasmLoaded:", this.wasmLoaded, "wasmModule:", !!this.wasmModule);
       return this._mockSynthToBytes();
     }
 
