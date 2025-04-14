@@ -15,12 +15,13 @@ const MIME_TYPES = {
   '.wav': 'audio/wav',
   '.mp3': 'audio/mpeg',
   '.wasm': 'application/wasm',
-  '.data': 'application/octet-stream'
+  '.data': 'application/octet-stream',
+  '.map': 'application/json'
 };
 
 const server = http.createServer((req, res) => {
   console.log(`${req.method} ${req.url}`);
-  
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
@@ -31,15 +32,15 @@ const server = http.createServer((req, res) => {
     res.end();
     return;
   }
-  
+
   // Parse URL
   let url = req.url;
-  
+
   // Default to index.html
   if (url === '/') {
     url = '/sherpaonnx-wasm-demo.html';
   }
-  
+
   // Map URL to file path
   let filePath = '';
   if (url.startsWith('/dist/')) {
@@ -52,11 +53,11 @@ const server = http.createServer((req, res) => {
     // Serve from examples directory
     filePath = path.join(__dirname, url);
   }
-  
+
   // Get file extension
   const extname = path.extname(filePath);
   const contentType = MIME_TYPES[extname] || 'application/octet-stream';
-  
+
   // Read file
   fs.readFile(filePath, (err, content) => {
     if (err) {
@@ -73,7 +74,7 @@ const server = http.createServer((req, res) => {
       }
     } else {
       // Success
-      res.writeHead(200, { 
+      res.writeHead(200, {
         'Content-Type': contentType,
         'Access-Control-Allow-Origin': '*'
       });

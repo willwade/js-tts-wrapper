@@ -30,9 +30,17 @@ module.exports = [
         inlineDynamicImports: true
       },
     ],
-    plugins: [typescript({ tsconfig: "./tsconfig.json" }), resolve(), commonjs(), json()],
+    plugins: [
+      typescript({
+        tsconfig: "./tsconfig.json",
+        include: ['src/**/*.ts', 'node_modules/**/*.ts']
+      }),
+      resolve(),
+      commonjs(),
+      json()
+    ],
     // External dependencies that should not be bundled
-    external: ["speechmarkdown-js"]
+    external: []
   },
   // Browser build
   {
@@ -76,7 +84,8 @@ module.exports = [
     plugins: [
       typescript({
         tsconfig: "./tsconfig.browser.json",
-        declaration: false
+        declaration: false,
+        include: ['src/**/*.ts', 'node_modules/**/*.ts']
       }),
       resolve({
         browser: true
@@ -85,6 +94,6 @@ module.exports = [
       json()
     ],
     // External dependencies that should not be bundled
-    external: ["speechmarkdown-js"]
+    external: []
   }
 ];

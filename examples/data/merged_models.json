@@ -1,0 +1,18 @@
+{
+  "models": [
+    {
+      "id": "piper_en_US_amy",
+      "name": "Piper English (US) - Amy",
+      "gender": "Female",
+      "provider": "sherpaonnx-wasm",
+      "languageCodes": [
+        {
+          "bcp47": "en-US",
+          "iso639_3": "eng",
+          "display": "English (US)"
+        }
+      ],
+      "url": "../public/sherpaonnx-wasm/model.onnx"
+    }
+  ]
+}
