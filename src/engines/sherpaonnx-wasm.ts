@@ -259,9 +259,9 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           });
 
           // Check if the global SherpaOnnx object is available
-          if (typeof window.SherpaOnnx !== 'undefined') {
+          if (typeof (window as any).SherpaOnnx !== 'undefined') {
             console.log("SherpaOnnx global object found");
-            this.wasmModule = window.SherpaOnnx;
+            this.wasmModule = (window as any).SherpaOnnx;
             this.wasmLoaded = true;
             return;
           } else {
@@ -311,7 +311,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           console.log("Using model path:", modelPath);
 
           // Create the TTS instance
-          this.tts = new this.wasmModule.OfflineTts({
+          this.tts = new (window as any).SherpaOnnx.OfflineTts({
             modelConfig: {
               model: modelPath,
               tokens: "../public/sherpaonnx-wasm/tokens.txt",
@@ -330,7 +330,8 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
 
       // Generate the audio
       console.log("Generating audio for text:", text);
-      const samples = this.tts.generateWithText(text);
+      const result = this.tts.generate({ text, sid: 0, speed: 1.0 });
+      const samples = result.samples;
       console.log("Audio generated successfully, samples:", samples.length);
 
       // Convert the samples to the requested format

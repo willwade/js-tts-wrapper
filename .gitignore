@@ -38,6 +38,16 @@ TEST-results.xml
 examples/*.wav
 examples/*.mp3
 
+# Browser build files
+examples/js-tts-wrapper.browser.bundle.js
+examples/js-tts-wrapper.browser.bundle.js.map
+examples/js-tts-wrapper.browser.bundle.min.js
+examples/js-tts-wrapper.browser.bundle.min.js.map
+examples/js-tts-wrapper.browser.bundle.umd.js
+examples/js-tts-wrapper.browser.bundle.umd.js.map
+examples/js-tts-wrapper.browser.bundle.umd.min.js
+examples/js-tts-wrapper.browser.bundle.umd.min.js.map
+
 # Credentials files
 aacspeakhelper-73ef9c911de3.json
 *.json.key
