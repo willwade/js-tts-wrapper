@@ -273,11 +273,13 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
             // Wait for the Module to be fully initialized
             await new Promise<void>((resolve) => {
               const checkModuleReady = () => {
-                if ((window as any).Module && (window as any).Module.OfflineTts) {
-                  console.log("Module.OfflineTts is available");
+                if ((window as any).Module &&
+                    (window as any).Module._SherpaOnnxCreateOfflineTts &&
+                    (window as any).Module._SherpaOnnxDestroyOfflineTts) {
+                  console.log("Module._SherpaOnnxCreateOfflineTts is available");
                   resolve();
                 } else {
-                  console.log("Waiting for Module.OfflineTts to be available...");
+                  console.log("Waiting for Module._SherpaOnnxCreateOfflineTts to be available...");
                   setTimeout(checkModuleReady, 500);
                 }
               };
@@ -286,6 +288,62 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
 
             this.wasmModule = (window as any).Module;
             this.wasmLoaded = true;
+
+            // Create a wrapper for the OfflineTts class
+            if (this.wasmModule) {
+              this.wasmModule.OfflineTts = class {
+              handle: number;
+              module: any;
+
+              constructor() {
+                this.module = (window as any).Module;
+                // Create an offline TTS instance
+                // We're not passing any config here, using the default model
+                this.handle = this.module._SherpaOnnxCreateOfflineTts(0);
+                console.log("Created OfflineTts instance with handle:", this.handle);
+              }
+
+              generateWithText(text: string): Float32Array {
+                // Convert the text to a C string
+                const textPtr = this.module._malloc(text.length + 1);
+                this.module.stringToUTF8(text, textPtr, text.length + 1);
+
+                // Generate audio
+                const audioHandle = this.module._SherpaOnnxOfflineTtsGenerate(this.handle, textPtr);
+
+                // Get the sample rate
+                const sampleRate = this.module._SherpaOnnxOfflineTtsSampleRate(this.handle);
+
+                // For the number of samples and getting the samples, we need to use a different approach
+                // since the functions _SherpaOnnxOfflineTtsNumSamples and _SherpaOnnxOfflineTtsGetSamples
+                // are not available in the WebAssembly module
+
+                // We'll use the CopyHeap function to get the samples directly
+                // This is a custom function that copies the audio data to a Float32Array
+                const samplesArray = this.module._CopyHeap(audioHandle);
+
+                console.log("Generated audio with sample rate:", sampleRate, "and samples:", samplesArray.length);
+
+                // Copy the samples to a new array (to avoid issues when the memory is freed)
+                const result = new Float32Array(samplesArray);
+
+                // Free the memory
+                this.module._free(textPtr);
+                this.module._SherpaOnnxDestroyOfflineTtsGeneratedAudio(audioHandle);
+
+                return result;
+              }
+
+              delete() {
+                if (this.handle) {
+                  this.module._SherpaOnnxDestroyOfflineTts(this.handle);
+                  this.handle = 0;
+                }
+              }
+            };
+
+            console.log("Created OfflineTts wrapper class");
+            }
           } else if (typeof (window as any).SherpaOnnx !== 'undefined') {
             console.log("SherpaOnnx global object found");
             this.wasmModule = (window as any).SherpaOnnx;

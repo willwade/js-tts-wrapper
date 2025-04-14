@@ -222,6 +222,19 @@
         console.log('Module available:', typeof window.Module !== 'undefined');
         if (typeof window.Module !== 'undefined') {
           console.log('Module keys:', Object.keys(window.Module));
+
+          // Check for specific functions
+          console.log('_SherpaOnnxCreateOfflineTts available:', typeof window.Module._SherpaOnnxCreateOfflineTts !== 'undefined');
+          console.log('_SherpaOnnxDestroyOfflineTts available:', typeof window.Module._SherpaOnnxDestroyOfflineTts !== 'undefined');
+          console.log('_SherpaOnnxOfflineTtsSampleRate available:', typeof window.Module._SherpaOnnxOfflineTtsSampleRate !== 'undefined');
+          console.log('_SherpaOnnxOfflineTtsNumSpeakers available:', typeof window.Module._SherpaOnnxOfflineTtsNumSpeakers !== 'undefined');
+          console.log('_SherpaOnnxOfflineTtsGenerate available:', typeof window.Module._SherpaOnnxOfflineTtsGenerate !== 'undefined');
+          console.log('_SherpaOnnxDestroyOfflineTtsGeneratedAudio available:', typeof window.Module._SherpaOnnxDestroyOfflineTtsGeneratedAudio !== 'undefined');
+
+          // Check for missing functions
+          console.log('_SherpaOnnxOfflineTtsNumSamples available:', typeof window.Module._SherpaOnnxOfflineTtsNumSamples !== 'undefined');
+          console.log('_SherpaOnnxOfflineTtsGetSamples available:', typeof window.Module._SherpaOnnxOfflineTtsGetSamples !== 'undefined');
+
           if (typeof window.Module.OfflineTts !== 'undefined') {
             console.log('Module.OfflineTts available');
           }
