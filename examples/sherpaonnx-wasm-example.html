@@ -46,24 +46,24 @@
 </head>
 <body>
   <h1>SherpaOnnx WebAssembly TTS Example</h1>
-  
+
   <div>
     <textarea id="text-to-speak" placeholder="Enter text to speak...">Hello, this is a test of the SherpaOnnx WebAssembly text-to-speech engine.</textarea>
   </div>
-  
+
   <div>
     <button id="speak-button" disabled>Speak</button>
     <button id="stop-button" disabled>Stop</button>
   </div>
-  
+
   <div id="status">Status: Loading...</div>
-  
+
   <pre id="log"></pre>
-  
+
   <!-- Load the SherpaOnnx WebAssembly module -->
   <script src="/public/sherpaonnx-wasm/sherpa-onnx-tts.js"></script>
   <script src="/public/sherpaonnx-wasm/sherpa-onnx-wasm-main-tts.js"></script>
-  
+
   <script>
     // Helper function to log messages
     function log(message) {
@@ -71,26 +71,26 @@
       logElement.textContent += message + '\n';
       console.log(message);
     }
-    
+
     // Helper function to update status
     function updateStatus(message) {
       document.getElementById('status').textContent = 'Status: ' + message;
     }
-    
+
     // Audio context and variables
     let audioContext;
     let audioSource;
     let tts = null;
-    
+
     // Initialize the Module
     Module = {};
-    
+
     // Set up the Module locateFile function
     Module.locateFile = function(path, scriptDirectory = '') {
       log(`locateFile path: ${path}, scriptDirectory: ${scriptDirectory}`);
       return scriptDirectory + path;
     };
-    
+
     // Set up the Module setStatus function
     Module.setStatus = function(status) {
       log(`setStatus: ${status}`);
@@ -100,19 +100,35 @@
         updateStatus(status);
       }
     };
-    
+
     // Set up the Module onRuntimeInitialized function
     Module.onRuntimeInitialized = function() {
       log('Module runtime initialized');
-      
+
+      // Wait for the data file to be fully loaded
+      const checkDataLoaded = () => {
+        if (Module.calledRun) {
+          log('Module is fully initialized (calledRun is true)');
+          initializeTTS();
+        } else {
+          log('Waiting for Module to be fully initialized (calledRun is false)...');
+          setTimeout(checkDataLoaded, 500);
+        }
+      };
+
+      checkDataLoaded();
+    };
+
+    // Function to initialize TTS
+    function initializeTTS() {
       try {
         // Initialize audio context
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         log('Audio context initialized');
-        
+
         // Initialize TTS
         log('Initializing TTS...');
-        
+
         // Create TTS configuration
         const offlineTtsVitsModelConfig = {
           model: '/public/sherpaonnx-wasm/model.onnx',
@@ -124,7 +140,7 @@
           noiseScaleW: 0.8,
           lengthScale: 1.0,
         };
-        
+
         const offlineTtsMatchaModelConfig = {
           acousticModel: '',
           vocoder: '',
@@ -135,7 +151,7 @@
           noiseScale: 0.667,
           lengthScale: 1.0,
         };
-        
+
         const offlineTtsKokoroModelConfig = {
           model: '',
           voices: '',
@@ -145,7 +161,7 @@
           dictDir: '',
           lexicon: '',
         };
-        
+
         const offlineTtsModelConfig = {
           offlineTtsVitsModelConfig: offlineTtsVitsModelConfig,
           offlineTtsMatchaModelConfig: offlineTtsMatchaModelConfig,
@@ -154,78 +170,79 @@
           debug: 1,
           provider: 'cpu',
         };
-        
+
         const offlineTtsConfig = {
           offlineTtsModelConfig: offlineTtsModelConfig,
           ruleFsts: '',
           ruleFars: '',
           maxNumSentences: 1,
         };
-        
+
         // Create TTS instance
+        log('Creating TTS instance with configuration:', JSON.stringify(offlineTtsConfig, null, 2));
         tts = createOfflineTts(Module, offlineTtsConfig);
         log('TTS initialized');
         log(`Sample rate: ${tts.sampleRate}`);
         log(`Number of speakers: ${tts.numSpeakers}`);
-        
+
         // Enable buttons
         document.getElementById('speak-button').disabled = false;
         document.getElementById('stop-button').disabled = false;
-        
+
         // Update status
         updateStatus('Ready');
       } catch (error) {
         log('Error initializing TTS: ' + error.message);
         updateStatus('Error initializing TTS');
       }
-    };
-    
+    }
+
     // Speak function
     function speak() {
       log('Speaking...');
       updateStatus('Generating speech...');
-      
+
       try {
         // Get the text to speak
         const text = document.getElementById('text-to-speak').value;
-        
+
         if (!text) {
           log('No text to speak');
           updateStatus('No text to speak');
           return;
         }
-        
+
         // Generate audio
         const audio = tts.generate({
           text: text,
           sid: 0,
           speed: 1.0
         });
-        
+
         log(`Generated audio with sample rate: ${audio.sampleRate} and samples: ${audio.samples.length}`);
-        
+
         // Create an audio buffer
         const audioBuffer = audioContext.createBuffer(1, audio.samples.length, audio.sampleRate);
         const channelData = audioBuffer.getChannelData(0);
-        
+
         // Copy the samples to the audio buffer
         for (let i = 0; i < audio.samples.length; i++) {
           channelData[i] = audio.samples[i];
         }
-        
+
         // Create a source node
         audioSource = audioContext.createBufferSource();
         audioSource.buffer = audioBuffer;
-        
+
         // Connect the source to the destination
         audioSource.connect(audioContext.destination);
-        
+
         // Play the audio
         audioSource.start();
-        
+
         // Update status
         updateStatus('Speaking');
-        
+
         // Add an event listener for when the audio ends
         audioSource.onended = function() {
           updateStatus('Done');
@@ -235,7 +252,7 @@
         updateStatus('Error speaking');
       }
     }
-    
+
     // Stop function
     function stop() {
       if (audioSource) {
@@ -243,13 +260,13 @@
         updateStatus('Stopped');
       }
     }
-    
+
     // Add event listeners
     document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('speak-button').addEventListener('click', speak);
       document.getElementById('stop-button').addEventListener('click', stop);
     });
-    
+
     // Clean up when the page is unloaded
     window.addEventListener('unload', function() {
       if (tts) {
