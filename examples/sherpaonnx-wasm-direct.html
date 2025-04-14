@@ -40,70 +40,106 @@
 </head>
 <body>
   <h1>SherpaOnnx WebAssembly TTS - Direct Example</h1>
-  
+
   <div>
     <textarea id="text-to-speak" placeholder="Enter text to speak...">Hello, this is a test of the SherpaOnnx WebAssembly text-to-speech engine.</textarea>
   </div>
-  
+
   <div>
+    <button id="init-button">Initialize</button>
     <button id="speak-button">Speak</button>
     <button id="stop-button">Stop</button>
   </div>
-  
+
   <div id="status">Status: Ready</div>
-  
+
   <!-- Load the SherpaOnnx WebAssembly module -->
   <script src="/public/sherpaonnx-wasm/sherpa-onnx-wasm-main-tts.js"></script>
-  
+
   <script>
     // Wait for the page to load
     window.addEventListener('load', function() {
       // Check if the Module is available
       console.log('Window loaded, checking for Module...');
       console.log('Module available:', typeof window.Module !== 'undefined');
-      
+
       if (typeof window.Module !== 'undefined') {
         console.log('Module keys:', Object.keys(window.Module));
-        
+
         // Wait for the Module to be fully initialized
         const checkModuleReady = () => {
-          if (window.Module && 
-              window.Module._SherpaOnnxCreateOfflineTts && 
-              window.Module._SherpaOnnxDestroyOfflineTts) {
-            console.log('Module is fully initialized');
-            initTTS();
+          if (window.Module) {
+            console.log('Module is available, checking functions...');
+            console.log('_SherpaOnnxCreateOfflineTts type:', typeof window.Module._SherpaOnnxCreateOfflineTts);
+            console.log('_SherpaOnnxDestroyOfflineTts type:', typeof window.Module._SherpaOnnxDestroyOfflineTts);
+
+            // Check if the Module is ready by looking at the calledRun property
+            if (window.Module.calledRun) {
+              console.log('Module is fully initialized (calledRun is true)');
+              // Don't automatically initialize, let the user click the button
+              document.getElementById('status').textContent = 'Status: WebAssembly loaded, click Initialize to continue';
+            } else {
+              console.log('Waiting for Module to be fully initialized (calledRun is false)...');
+              setTimeout(checkModuleReady, 500);
+            }
           } else {
-            console.log('Waiting for Module to be fully initialized...');
+            console.log('Waiting for Module to be available...');
             setTimeout(checkModuleReady, 500);
           }
         };
-        
+
         checkModuleReady();
       }
+
+      // Add event listener for the initialize button
+      document.getElementById('init-button').addEventListener('click', function() {
+        console.log('Initialize button clicked');
+        initTTS();
+      });
     });
-    
+
+    // Add a listener for when the Module is ready
+    if (typeof window.Module !== 'undefined') {
+      window.Module.onRuntimeInitialized = function() {
+        console.log('Module runtime initialized');
+      };
+    }
+
     // Audio context and variables
     let audioContext;
     let ttsHandle = 0;
     let audioSource;
-    
+
     // Initialize TTS
     function initTTS() {
       try {
         // Create an audio context
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // Create an offline TTS instance
-        ttsHandle = Module._SherpaOnnxCreateOfflineTts(0);
-        console.log('Created OfflineTts instance with handle:', ttsHandle);
-        
-        // Get the sample rate
-        const sampleRate = Module._SherpaOnnxOfflineTtsSampleRate(ttsHandle);
-        console.log('Sample rate:', sampleRate);
-        
+
+        // Check if the required functions are available
+        if (typeof Module.ccall !== 'function') {
+          console.error('Module.ccall is not a function');
+          document.getElementById('status').textContent = 'Status: WebAssembly ccall function not available';
+          return;
+        }
+
+        // Create an offline TTS instance using ccall
+        try {
+          ttsHandle = Module.ccall('SherpaOnnxCreateOfflineTts', 'number', ['number'], [0]);
+          console.log('Created OfflineTts instance with handle:', ttsHandle);
+
+          // Get the sample rate
+          const sampleRate = Module.ccall('SherpaOnnxOfflineTtsSampleRate', 'number', ['number'], [ttsHandle]);
+          console.log('Sample rate:', sampleRate);
+        } catch (error) {
+          console.error('Error calling WebAssembly functions:', error);
+          document.getElementById('status').textContent = 'Status: Error calling WebAssembly functions';
+          return;
+        }
+
         // Update status
         document.getElementById('status').textContent = 'Status: TTS initialized';
-        
+
         // Add event listeners
         document.getElementById('speak-button').addEventListener('click', speak);
         document.getElementById('stop-button').addEventListener('click', stop);
@@ -112,71 +148,71 @@
         document.getElementById('status').textContent = 'Status: Error initializing TTS';
       }
     }
-    
+
     // Speak function
     function speak() {
       try {
         // Get the text to speak
         const text = document.getElementById('text-to-speak').value;
-        
+
         if (!text) {
           document.getElementById('status').textContent = 'Status: No text to speak';
           return;
         }
-        
+
         // Update status
         document.getElementById('status').textContent = 'Status: Generating speech...';
-        
+
         // Convert the text to a C string
-        const textPtr = Module._malloc(text.length + 1);
+        const textPtr = Module.ccall('malloc', 'number', ['number'], [text.length + 1]);
         Module.stringToUTF8(text, textPtr, text.length + 1);
-        
+
         // Generate audio
-        const audioHandle = Module._SherpaOnnxOfflineTtsGenerate(ttsHandle, textPtr);
-        
+        const audioHandle = Module.ccall('SherpaOnnxOfflineTtsGenerate', 'number', ['number', 'number'], [ttsHandle, textPtr]);
+
         // Get the sample rate
-        const sampleRate = Module._SherpaOnnxOfflineTtsSampleRate(ttsHandle);
-        
+        const sampleRate = Module.ccall('SherpaOnnxOfflineTtsSampleRate', 'number', ['number'], [ttsHandle]);
+
         // Get the audio samples
-        const samplesArray = Module._CopyHeap(audioHandle);
-        console.log('Generated audio with sample rate:', sampleRate, 'and samples:', samplesArray.length);
-        
+        const samplesArray = Module.ccall('CopyHeap', 'array', ['number'], [audioHandle]);
+        console.log('Generated audio with sample rate:', sampleRate, 'and samples:', samplesArray ? samplesArray.length : 0);
+
         // Create an audio buffer
         const audioBuffer = audioContext.createBuffer(1, samplesArray.length, sampleRate);
         const channelData = audioBuffer.getChannelData(0);
-        
+
         // Copy the samples to the audio buffer
         for (let i = 0; i < samplesArray.length; i++) {
           channelData[i] = samplesArray[i];
         }
-        
+
         // Create a source node
         audioSource = audioContext.createBufferSource();
         audioSource.buffer = audioBuffer;
-        
+
         // Connect the source to the destination
         audioSource.connect(audioContext.destination);
-        
+
         // Play the audio
         audioSource.start();
-        
+
         // Update status
         document.getElementById('status').textContent = 'Status: Speaking';
-        
+
         // Add an event listener for when the audio ends
         audioSource.onended = function() {
           document.getElementById('status').textContent = 'Status: Done';
         };
-        
+
         // Free the memory
-        Module._free(textPtr);
-        Module._SherpaOnnxDestroyOfflineTtsGeneratedAudio(audioHandle);
+        Module.ccall('free', null, ['number'], [textPtr]);
+        Module.ccall('SherpaOnnxDestroyOfflineTtsGeneratedAudio', null, ['number'], [audioHandle]);
       } catch (error) {
         console.error('Error speaking:', error);
         document.getElementById('status').textContent = 'Status: Error speaking';
       }
     }
-    
+
     // Stop function
     function stop() {
       if (audioSource) {
@@ -184,11 +220,15 @@
         document.getElementById('status').textContent = 'Status: Stopped';
       }
     }
-    
+
     // Clean up when the page is unloaded
     window.addEventListener('unload', function() {
       if (ttsHandle) {
-        Module._SherpaOnnxDestroyOfflineTts(ttsHandle);
+        try {
+          Module.ccall('SherpaOnnxDestroyOfflineTts', null, ['number'], [ttsHandle]);
+        } catch (error) {
+          console.error('Error cleaning up TTS:', error);
+        }
       }
     });
   </script>
