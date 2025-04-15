@@ -61,7 +61,7 @@ interface SherpaOnnxWasmModule {
 export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
   private wasmModule: SherpaOnnxWasmModule | null = null;
   private tts: any = null;
-  private sampleRate = 16000;
+  private sampleRate = 22050; // Default sample rate for the Piper model
   // This property is used in the full implementation
   // @ts-ignore
   private baseDir = "";
@@ -412,10 +412,10 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to a byte array of audio data
    */
   async synthToBytes(text: string, _options?: SpeakOptions): Promise<Uint8Array> {
-    // If WebAssembly is not loaded, return a mock implementation
-    if (!this.wasmLoaded || !this.wasmModule) {
+    // If WebAssembly is not loaded or createOfflineTts is not available, return a mock implementation
+    if (!this.wasmLoaded || !this.wasmModule || typeof (window as any).createOfflineTts !== 'function') {
       console.warn("SherpaOnnx WebAssembly TTS is not initialized. Using mock implementation for example.");
-      console.warn("wasmLoaded:", this.wasmLoaded, "wasmModule:", !!this.wasmModule);
+      console.warn("wasmLoaded:", this.wasmLoaded, "wasmModule:", !!this.wasmModule, "createOfflineTts:", typeof (window as any).createOfflineTts === 'function');
       return this._mockSynthToBytes();
     }
 
@@ -437,6 +437,9 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
             console.log("TTS initialized with default configuration");
             console.log(`Sample rate: ${this.tts.sampleRate}`);
             console.log(`Number of speakers: ${this.tts.numSpeakers}`);
+
+            // Update the sample rate from the TTS engine
+            this.sampleRate = this.tts.sampleRate;
           } else if (this.wasmModule && this.wasmModule.OfflineTts) {
             // Using the Module.OfflineTts API
             console.log("Using Module.OfflineTts API");
@@ -448,6 +451,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           console.log("TTS instance created successfully");
         } catch (error) {
           console.error("Error creating TTS instance:", error);
+          console.warn("Falling back to mock implementation");
           return this._mockSynthToBytes();
         }
       }
@@ -479,6 +483,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       return audioBytes;
     } catch (error) {
       console.error("Error synthesizing text:", error);
+      console.warn("Falling back to mock implementation");
       return this._mockSynthToBytes();
     }
   }
@@ -573,7 +578,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    */
   private _mockSynthToBytes(): Uint8Array {
     // Generate a simple sine wave as a placeholder
-    const sampleRate = 16000;
+    const sampleRate = this.sampleRate;
     const duration = 2; // seconds
     const numSamples = sampleRate * duration;
     const samples = new Float32Array(numSamples);
