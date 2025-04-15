@@ -244,150 +244,41 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         try {
           // Store the URL for later use
           this.wasmPath = wasmUrl;
+          console.log("Setting wasmPath to:", this.wasmPath);
 
-          // Load the required scripts
-          const ttsJsUrl = wasmUrl.replace('sherpa-onnx-wasm-main-tts.js', 'sherpa-onnx-tts.js');
+          // We don't need to load the scripts here, as they should already be loaded in the HTML file
+          console.log("Checking if createOfflineTts is already available:", typeof (window as any).createOfflineTts === 'function');
 
-          // Create script elements to load the WebAssembly JavaScript loaders
-          const ttsScript = document.createElement('script');
-          ttsScript.src = ttsJsUrl;
-          ttsScript.async = true;
-
-          const wasmScript = document.createElement('script');
-          wasmScript.src = wasmUrl;
-          wasmScript.async = true;
-
-          // Wait for the scripts to load
-          await Promise.all([
-            new Promise<void>((resolve, reject) => {
-              ttsScript.onload = () => {
-                console.log("sherpa-onnx-tts.js loaded successfully");
+          // Wait for the createOfflineTts function to be available
+          await new Promise<void>((resolve) => {
+            const checkCreateOfflineTts = () => {
+              if (typeof (window as any).createOfflineTts === 'function' &&
+                  typeof (window as any).Module !== 'undefined' &&
+                  (window as any).Module.calledRun) {
+                console.log("createOfflineTts and Module are available and initialized");
                 resolve();
-              };
-              ttsScript.onerror = (error) => {
-                console.error("Error loading sherpa-onnx-tts.js:", error);
-                reject(new Error(`Failed to load sherpa-onnx-tts.js: ${error}`));
-              };
-              document.head.appendChild(ttsScript);
-            }),
-            new Promise<void>((resolve, reject) => {
-              wasmScript.onload = () => {
-                console.log("WebAssembly script loaded successfully");
-                console.log("Module available after script load:", typeof (window as any).Module !== 'undefined');
-                if (typeof (window as any).Module !== 'undefined') {
-                  console.log("Module keys after script load:", Object.keys((window as any).Module));
-                }
-                resolve();
-              };
-              wasmScript.onerror = (error) => {
-                console.error("Error loading WebAssembly script:", error);
-                reject(new Error(`Failed to load WebAssembly script: ${error}`));
-              };
-              document.head.appendChild(wasmScript);
-            })
-          ]);
-
-          // Check if the SherpaOnnx object is available in the global scope
-          console.log("Checking for SherpaOnnx global object...");
-          console.log("Window object keys:", Object.keys(window));
-
-          // For the sherpa-onnx-wasm-main-tts.js module, we need to check for the Module object
-          if (typeof (window as any).Module !== 'undefined') {
-            console.log("Module global object found");
-            console.log("Module keys:", Object.keys((window as any).Module));
-
-            // Wait for the Module to be fully initialized
-            await new Promise<void>((resolve) => {
-              const checkModuleReady = () => {
-                if ((window as any).Module && (window as any).Module.calledRun && typeof (window as any).createOfflineTts === 'function') {
-                  console.log("Module is fully initialized and createOfflineTts is available");
-                  // Wait a bit more to make sure all functions are available
-                  setTimeout(() => {
-                    console.log("Module functions after initialization:", Object.keys((window as any).Module).filter(key => typeof (window as any).Module[key] === 'function'));
-                    resolve();
-                  }, 1000);
-                } else {
-                  console.log("Waiting for Module to be fully initialized and createOfflineTts to be available...");
-                  console.log("Module available:", typeof (window as any).Module !== 'undefined');
-                  console.log("Module.calledRun:", (window as any).Module?.calledRun);
-                  console.log("createOfflineTts available:", typeof (window as any).createOfflineTts === 'function');
-                  setTimeout(checkModuleReady, 500);
-                }
-              };
-              checkModuleReady();
-            });
-
-            this.wasmModule = (window as any).Module;
-            this.wasmLoaded = true;
-
-            // Create a wrapper for the OfflineTts class
-            if (this.wasmModule) {
-              this.wasmModule.OfflineTts = class {
-              handle: number;
-              module: any;
-
-              constructor() {
-                this.module = (window as any).Module;
-                // Create an offline TTS instance
-                // We're not passing any config here, using the default model
-                this.handle = this.module._SherpaOnnxCreateOfflineTts(0);
-                console.log("Created OfflineTts instance with handle:", this.handle);
-              }
-
-              generateWithText(text: string): Float32Array {
-                // Convert the text to a C string
-                const textPtr = this.module._malloc(text.length + 1);
-                this.module.stringToUTF8(text, textPtr, text.length + 1);
-
-                // Generate audio
-                const audioHandle = this.module._SherpaOnnxOfflineTtsGenerate(this.handle, textPtr);
-
-                // Get the sample rate
-                const sampleRate = this.module._SherpaOnnxOfflineTtsSampleRate(this.handle);
-
-                // For the number of samples and getting the samples, we need to use a different approach
-                // since the functions _SherpaOnnxOfflineTtsNumSamples and _SherpaOnnxOfflineTtsGetSamples
-                // are not available in the WebAssembly module
-
-                // We'll use the CopyHeap function to get the samples directly
-                // This is a custom function that copies the audio data to a Float32Array
-                const samplesArray = this.module._CopyHeap(audioHandle);
-
-                console.log("Generated audio with sample rate:", sampleRate, "and samples:", samplesArray.length);
-
-                // Copy the samples to a new array (to avoid issues when the memory is freed)
-                const result = new Float32Array(samplesArray);
-
-                // Free the memory
-                this.module._free(textPtr);
-                this.module._SherpaOnnxDestroyOfflineTtsGeneratedAudio(audioHandle);
-
-                return result;
-              }
-
-              delete() {
-                if (this.handle) {
-                  this.module._SherpaOnnxDestroyOfflineTts(this.handle);
-                  this.handle = 0;
-                }
+              } else {
+                console.log("Waiting for createOfflineTts and Module to be available and initialized...");
+                console.log("createOfflineTts available:", typeof (window as any).createOfflineTts === 'function');
+                console.log("Module available:", typeof (window as any).Module !== 'undefined');
+                console.log("Module.calledRun:", (window as any).Module?.calledRun);
+                setTimeout(checkCreateOfflineTts, 500);
               }
             };
+            checkCreateOfflineTts();
+          });
 
-            console.log("Created OfflineTts wrapper class");
-            }
-          } else if (typeof (window as any).SherpaOnnx !== 'undefined') {
-            console.log("SherpaOnnx global object found");
-            this.wasmModule = (window as any).SherpaOnnx;
-            this.wasmLoaded = true;
-          } else if (typeof (window as any).createOfflineTts !== 'undefined') {
-            console.log("createOfflineTts function found");
-            this.wasmModule = { createOfflineTts: (window as any).createOfflineTts };
-            this.wasmLoaded = true;
-          } else {
-            console.warn("SherpaOnnx global object not found after script load");
-            console.log("Available global objects:", Object.keys(window).filter(key => key.includes('Sherpa') || key.includes('sherpa') || key.includes('tts') || key.includes('TTS') || key.includes('Module')));
-            this.wasmLoaded = false;
+          // Now that we know createOfflineTts and Module are available, store them
+          console.log("Storing Module and createOfflineTts");
+          this.wasmModule = (window as any).Module;
+          this.wasmLoaded = true;
+
+          // Store the createOfflineTts function
+          if (this.wasmModule && !this.wasmModule.createOfflineTts) {
+            this.wasmModule.createOfflineTts = (window as any).createOfflineTts;
           }
+
+          console.log("WebAssembly module initialized successfully");
         } catch (error) {
           console.error("Error initializing WebAssembly:", error);
           this.wasmLoaded = false;
@@ -403,6 +294,11 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
     }
 
     console.log("End of initializeWasm method. wasmLoaded:", this.wasmLoaded, "wasmModule:", !!this.wasmModule);
+    console.log("createOfflineTts available at end of initializeWasm:", typeof (window as any).createOfflineTts === 'function');
+    console.log("window.Module available at end of initializeWasm:", typeof (window as any).Module !== 'undefined');
+    if (typeof (window as any).Module !== 'undefined') {
+      console.log("window.Module.calledRun at end of initializeWasm:", (window as any).Module.calledRun);
+    }
   }
 
   /**
@@ -412,10 +308,20 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to a byte array of audio data
    */
   async synthToBytes(text: string, _options?: SpeakOptions): Promise<Uint8Array> {
+    console.log("synthToBytes called with text:", text);
+    console.log("Current state - wasmLoaded:", this.wasmLoaded, "wasmModule:", !!this.wasmModule);
+    console.log("createOfflineTts available:", typeof (window as any).createOfflineTts === 'function');
+    console.log("window.createOfflineTts:", (window as any).createOfflineTts);
+    console.log("window.Module:", (window as any).Module);
+    console.log("window.Module.calledRun:", (window as any).Module?.calledRun);
+
     // If WebAssembly is not loaded or createOfflineTts is not available, return a mock implementation
     if (!this.wasmLoaded || !this.wasmModule || typeof (window as any).createOfflineTts !== 'function') {
       console.warn("SherpaOnnx WebAssembly TTS is not initialized. Using mock implementation for example.");
-      console.warn("wasmLoaded:", this.wasmLoaded, "wasmModule:", !!this.wasmModule, "createOfflineTts:", typeof (window as any).createOfflineTts === 'function');
+      console.warn("Reason for fallback:");
+      if (!this.wasmLoaded) console.warn("- wasmLoaded is false");
+      if (!this.wasmModule) console.warn("- wasmModule is null");
+      if (typeof (window as any).createOfflineTts !== 'function') console.warn("- createOfflineTts is not a function");
       return this._mockSynthToBytes();
     }
 

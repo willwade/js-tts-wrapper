@@ -294,6 +294,21 @@
       try {
         log('Creating SherpaOnnx WebAssembly TTS client...');
 
+        // Wait for the createOfflineTts function to be available
+        log('Waiting for createOfflineTts to be available...');
+        await new Promise(resolve => {
+          const checkCreateOfflineTts = () => {
+            if (typeof window.createOfflineTts === 'function') {
+              log('createOfflineTts is now available');
+              resolve();
+            } else {
+              log('createOfflineTts not available yet, waiting...');
+              setTimeout(checkCreateOfflineTts, 500);
+            }
+          };
+          checkCreateOfflineTts();
+        });
+
         // Create a new SherpaOnnx WebAssembly TTS client
         ttsClient = new SherpaOnnxWasmTTSClient();
 
