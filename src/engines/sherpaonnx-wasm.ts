@@ -310,34 +310,60 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
   async synthToBytes(text: string, _options?: SpeakOptions): Promise<Uint8Array> {
     console.log("synthToBytes called with text:", text);
 
-    // Try to use the global createOfflineTts function directly
-    if (typeof (window as any).createOfflineTts === 'function' &&
-        typeof (window as any).Module !== 'undefined' &&
-        (window as any).Module.calledRun) {
+    // IMPORTANT: We need to access the global window object directly
+    // This is because our code is bundled and the window object might not be accessible in the same way
+    const globalWindow = typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : {});
+    console.log("Global window type:", typeof globalWindow);
 
-      console.log("Using global createOfflineTts function directly");
+    // Check if we're in a browser environment
+    if (typeof globalWindow !== 'undefined' && typeof document !== 'undefined') {
+      console.log("Browser environment detected");
 
-      try {
-        // Create a new TTS instance directly
-        const directTts = (window as any).createOfflineTts((window as any).Module);
-        console.log("Created TTS instance directly");
-        console.log(`Sample rate: ${directTts.sampleRate}, Num speakers: ${directTts.numSpeakers}`);
+      // Check if createOfflineTts is available in the global scope
+      const createOfflineTtsFn = (globalWindow as any).createOfflineTts;
+      const moduleObj = (globalWindow as any).Module;
 
-        // Generate audio
-        console.log("Generating audio directly...");
-        const result = directTts.generate({ text, sid: 0, speed: 1.0 });
-        console.log("Audio generated directly");
-        console.log(`Generated ${result.samples.length} samples at ${result.sampleRate}Hz`);
+      console.log("createOfflineTts available in global scope:", typeof createOfflineTtsFn === 'function');
+      console.log("Module available in global scope:", typeof moduleObj !== 'undefined');
+      console.log("Module.calledRun:", moduleObj?.calledRun);
 
-        // Convert to WAV
-        const audioBytes = this._convertAudioFormat(result.samples);
-        console.log("Converted audio to WAV format");
+      // Try to use the global createOfflineTts function directly
+      if (typeof createOfflineTtsFn === 'function' &&
+          typeof moduleObj !== 'undefined' &&
+          moduleObj.calledRun) {
 
-        return audioBytes;
-      } catch (directError) {
-        console.error("Error using direct approach:", directError);
-        console.log("Falling back to standard approach");
+        console.log("Using global createOfflineTts function directly");
+
+        try {
+          // Create a new TTS instance directly
+          console.log("About to call createOfflineTts...");
+          const directTts = createOfflineTtsFn(moduleObj);
+          console.log("Created TTS instance directly:", directTts);
+          console.log(`Sample rate: ${directTts?.sampleRate}, Num speakers: ${directTts?.numSpeakers}`);
+
+          // Generate audio
+          console.log("Generating audio directly...");
+          const result = directTts.generate({ text, sid: 0, speed: 1.0 });
+          console.log("Audio generated directly:", result);
+          console.log(`Generated ${result?.samples?.length} samples at ${result?.sampleRate}Hz`);
+
+          // Convert to WAV
+          const audioBytes = this._convertAudioFormat(result.samples);
+          console.log("Converted audio to WAV format, returning bytes");
+
+          return audioBytes;
+        } catch (directError) {
+          console.error("Error using direct approach:", directError);
+          console.log("Falling back to standard approach");
+        }
+      } else {
+        console.log("Direct approach not available, reason:");
+        if (typeof createOfflineTtsFn !== 'function') console.log("- createOfflineTts is not a function");
+        if (typeof moduleObj === 'undefined') console.log("- Module is undefined");
+        if (moduleObj && !moduleObj.calledRun) console.log("- Module.calledRun is false");
       }
+    } else {
+      console.log("Not in a browser environment, skipping direct approach");
     }
 
     // If direct approach failed or not available, try the standard approach

@@ -205,6 +205,19 @@
   <script src="/public/sherpaonnx-wasm/sherpa-onnx-tts.js"></script>
   <script src="/public/sherpaonnx-wasm/sherpa-onnx-wasm-main-tts.js"></script>
 
+  <!-- Ensure createOfflineTts is exposed to the global scope -->
+  <script>
+    // Make sure createOfflineTts is available in the global scope
+    if (typeof window.createOfflineTts === 'function') {
+      console.log('createOfflineTts is already in the global scope');
+    } else if (typeof createOfflineTts === 'function') {
+      console.log('Exposing createOfflineTts to the global scope');
+      window.createOfflineTts = createOfflineTts;
+    } else {
+      console.warn('createOfflineTts is not available');
+    }
+  </script>
+
   <!-- Check if SherpaOnnx is loaded -->
   <script>
     window.addEventListener('load', function() {
