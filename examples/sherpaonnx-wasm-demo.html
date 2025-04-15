@@ -298,11 +298,36 @@
         log('Waiting for createOfflineTts to be available...');
         await new Promise(resolve => {
           const checkCreateOfflineTts = () => {
-            if (typeof window.createOfflineTts === 'function') {
-              log('createOfflineTts is now available');
+            if (typeof window.createOfflineTts === 'function' &&
+                typeof window.Module !== 'undefined' &&
+                window.Module.calledRun) {
+              log('createOfflineTts is now available and Module is initialized');
+
+              // Test createOfflineTts directly
+              try {
+                log('Testing createOfflineTts directly...');
+                const tts = window.createOfflineTts(window.Module);
+                log(`Direct test successful! Sample rate: ${tts.sampleRate}, Num speakers: ${tts.numSpeakers}`);
+
+                // Test generating audio directly
+                try {
+                  const result = tts.generate({ text: 'Test', sid: 0, speed: 1.0 });
+                  log(`Direct audio generation successful! Generated ${result.samples.length} samples`);
+                } catch (genError) {
+                  log(`Error in direct audio generation: ${genError.message}`);
+                  console.error('Error in direct audio generation:', genError);
+                }
+              } catch (testError) {
+                log(`Error testing createOfflineTts directly: ${testError.message}`);
+                console.error('Error testing createOfflineTts directly:', testError);
+              }
+
               resolve();
             } else {
-              log('createOfflineTts not available yet, waiting...');
+              log('Waiting for initialization...');
+              log(`createOfflineTts available: ${typeof window.createOfflineTts === 'function'}`);
+              log(`Module available: ${typeof window.Module !== 'undefined'}`);
+              log(`Module.calledRun: ${window.Module?.calledRun}`);
               setTimeout(checkCreateOfflineTts, 500);
             }
           };

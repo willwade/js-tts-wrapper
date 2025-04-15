@@ -309,11 +309,41 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    */
   async synthToBytes(text: string, _options?: SpeakOptions): Promise<Uint8Array> {
     console.log("synthToBytes called with text:", text);
+
+    // Try to use the global createOfflineTts function directly
+    if (typeof (window as any).createOfflineTts === 'function' &&
+        typeof (window as any).Module !== 'undefined' &&
+        (window as any).Module.calledRun) {
+
+      console.log("Using global createOfflineTts function directly");
+
+      try {
+        // Create a new TTS instance directly
+        const directTts = (window as any).createOfflineTts((window as any).Module);
+        console.log("Created TTS instance directly");
+        console.log(`Sample rate: ${directTts.sampleRate}, Num speakers: ${directTts.numSpeakers}`);
+
+        // Generate audio
+        console.log("Generating audio directly...");
+        const result = directTts.generate({ text, sid: 0, speed: 1.0 });
+        console.log("Audio generated directly");
+        console.log(`Generated ${result.samples.length} samples at ${result.sampleRate}Hz`);
+
+        // Convert to WAV
+        const audioBytes = this._convertAudioFormat(result.samples);
+        console.log("Converted audio to WAV format");
+
+        return audioBytes;
+      } catch (directError) {
+        console.error("Error using direct approach:", directError);
+        console.log("Falling back to standard approach");
+      }
+    }
+
+    // If direct approach failed or not available, try the standard approach
+    console.log("Using standard approach");
     console.log("Current state - wasmLoaded:", this.wasmLoaded, "wasmModule:", !!this.wasmModule);
     console.log("createOfflineTts available:", typeof (window as any).createOfflineTts === 'function');
-    console.log("window.createOfflineTts:", (window as any).createOfflineTts);
-    console.log("window.Module:", (window as any).Module);
-    console.log("window.Module.calledRun:", (window as any).Module?.calledRun);
 
     // If WebAssembly is not loaded or createOfflineTts is not available, return a mock implementation
     if (!this.wasmLoaded || !this.wasmModule || typeof (window as any).createOfflineTts !== 'function') {
@@ -337,15 +367,29 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           if (typeof (window as any).createOfflineTts === 'function') {
             // Using the sherpa-onnx-tts.js API
             console.log("Using createOfflineTts API from global scope");
+            console.log("createOfflineTts:", (window as any).createOfflineTts);
+            console.log("Module:", (window as any).Module);
 
-            // Create the TTS instance with default configuration
-            this.tts = (window as any).createOfflineTts((window as any).Module);
-            console.log("TTS initialized with default configuration");
-            console.log(`Sample rate: ${this.tts.sampleRate}`);
-            console.log(`Number of speakers: ${this.tts.numSpeakers}`);
+            try {
+              // Create the TTS instance with default configuration
+              console.log("About to call createOfflineTts...");
+              this.tts = (window as any).createOfflineTts((window as any).Module);
+              console.log("createOfflineTts call successful, tts object:", this.tts);
+              console.log("TTS initialized with default configuration");
+              console.log(`Sample rate: ${this.tts?.sampleRate}`);
+              console.log(`Number of speakers: ${this.tts?.numSpeakers}`);
 
-            // Update the sample rate from the TTS engine
-            this.sampleRate = this.tts.sampleRate;
+              // Update the sample rate from the TTS engine
+              if (this.tts && typeof this.tts.sampleRate === 'number') {
+                this.sampleRate = this.tts.sampleRate;
+                console.log(`Updated sample rate to ${this.sampleRate}`);
+              } else {
+                console.warn("Could not update sample rate, using default");
+              }
+            } catch (error) {
+              console.error("Error creating TTS instance with createOfflineTts:", error);
+              throw error;
+            }
           } else if (this.wasmModule && this.wasmModule.OfflineTts) {
             // Using the Module.OfflineTts API
             console.log("Using Module.OfflineTts API");
@@ -369,15 +413,32 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       if (typeof this.tts.generate === 'function') {
         // Using the generate method from sherpa-onnx-tts.js
         console.log("Using generate method");
-        const result = this.tts.generate({ text, sid: 0, speed: 1.0 });
-        samples = result.samples;
-        console.log(`Generated audio with sample rate: ${result.sampleRate} and samples: ${samples.length}`);
+        console.log("this.tts.generate:", this.tts.generate);
+        try {
+          console.log("Calling generate with:", { text, sid: 0, speed: 1.0 });
+          const result = this.tts.generate({ text, sid: 0, speed: 1.0 });
+          console.log("Generate call successful, result:", result);
+          samples = result.samples;
+          console.log(`Generated audio with sample rate: ${result.sampleRate} and samples: ${samples.length}`);
+        } catch (error) {
+          console.error("Error calling generate:", error);
+          throw error;
+        }
       } else if (typeof this.tts.generateWithText === 'function') {
         // Using the generateWithText method
         console.log("Using generateWithText method");
-        samples = this.tts.generateWithText(text);
-        console.log(`Generated audio with samples: ${samples.length}`);
+        console.log("this.tts.generateWithText:", this.tts.generateWithText);
+        try {
+          console.log("Calling generateWithText with:", text);
+          samples = this.tts.generateWithText(text);
+          console.log(`Generated audio with samples: ${samples.length}`);
+        } catch (error) {
+          console.error("Error calling generateWithText:", error);
+          throw error;
+        }
       } else {
+        console.error("No compatible generate method found");
+        console.log("Available methods on this.tts:", Object.keys(this.tts).filter(key => typeof this.tts[key] === 'function'));
         throw new Error('No compatible generate method found');
       }
 
