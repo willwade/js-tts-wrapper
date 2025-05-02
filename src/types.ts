@@ -76,7 +76,8 @@ export type UnifiedVoice = {
     | "openai"
     | "sherpa"
     | "sherpaonnx"
-    | "sherpaonnx-wasm";
+    | "sherpaonnx-wasm"
+    | "espeak-ng";
 
   /**
    * Language codes supported by this voice
