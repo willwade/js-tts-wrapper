@@ -27,38 +27,31 @@ export class EspeakTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to audio bytes
    */
   async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
-    if (typeof window !== "undefined") {
-      // TODO: Browser: Use speak.js to synthesize
-      throw new Error("Not implemented: eSpeak synthToBytes for browser (speak.js)");
-    } else {
-      // Node.js implementation using child_process and espeak binary
-      const { spawn } = await import('child_process');
-
-      return new Promise<Uint8Array>((resolve, reject) => {
-        const args = [
-          '--stdout',
-          ...(options?.voice ? ['-v', options.voice] : []),
-          ...(options?.rate ? ['-s', String(options.rate)] : []),
-          ...(options?.pitch ? ['-p', String(options.pitch)] : []),
-          text,
-        ];
-        const espeak = spawn('espeak', args);
-        const chunks: Buffer[] = [];
-        espeak.stdout.on('data', (chunk: Buffer) => chunks.push(chunk));
-        espeak.stderr.on('data', (err: Buffer) => {
-          // Only log, don't reject on stderr alone
-          console.error('eSpeak stderr:', err.toString());
-        });
-        espeak.on('error', (err: Error) => reject(err));
-        espeak.on('close', (code: number) => {
-          if (code !== 0) {
-            reject(new Error(`eSpeak exited with code ${code}`));
-          } else {
-            resolve(Buffer.concat(chunks));
-          }
-        });
-      });
+    // Use espeak-ng WASM/JS for both Node.js and browser
+    let espeakng: any;
+    try {
+      // Try dynamic import (ESM environments)
+      espeakng = (await import('espeak-ng')).default || (await import('espeak-ng'));
+    } catch (err) {
+      try {
+        // Fallback to require (CJS environments, Jest)
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        espeakng = require('espeak-ng');
+      } catch (err2) {
+        throw new Error('espeak-ng module not found. Please install with `npm install espeak-ng`.');
+      }
     }
+
+    // Map SpeakOptions to espeak-ng options
+    const synthOptions: Record<string, any> = {
+      ...(options?.voice ? { voice: options.voice } : {}),
+      ...(options?.rate ? { rate: options.rate } : {}),
+      ...(options?.pitch ? { pitch: options.pitch } : {}),
+      // Add more mappings as needed
+    };
+
+    const { buffer } = await espeakng.synthesize(text, synthOptions);
+    return buffer;
   }
 
   /**
@@ -70,7 +63,7 @@ export class EspeakTTSClient extends AbstractTTSClient {
   async synthToBytestream(text: string, options?: SpeakOptions): Promise<ReadableStream<Uint8Array>> {
     const audioBytes = await this.synthToBytes(text, options);
     // "Fake" streaming by wrapping full audio in a ReadableStream
-    return new ReadableStream({
+    return new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(audioBytes);
         controller.close();
@@ -89,7 +82,7 @@ export class EspeakTTSClient extends AbstractTTSClient {
         id: "en",
         name: "English (default)",
         gender: "Unknown",
-        provider: "sherpa",
+        provider: "espeak-ng",
         languageCodes: [
           {
             bcp47: "en",

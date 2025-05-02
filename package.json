@@ -92,7 +92,8 @@
     "sherpaonnx",
     "webassembly",
     "wasm",
-    "offline-tts"
+    "offline-tts",
+    "espeak"
   ],
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -126,7 +127,7 @@
     "decompress-targz": "^4.1.1",
     "microsoft-cognitiveservices-speech-sdk": "^1.43.1",
     "node-fetch": "^2.0.0",
-    "openai": "^4.93.0",
+    "openai": "^4.97.0",
     "sherpa-onnx-node": "^1.11.3",
     "tar-stream": "^3.1.7"
   },
@@ -184,5 +185,8 @@
       "biome lint --write",
       "biome format --write"
     ]
+  },
+  "dependencies": {
+    "espeak-ng": "^1.0.2"
   }
 }

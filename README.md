@@ -17,7 +17,30 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 
 ## eSpeak TTS Support
 
-js-tts-wrapper supports the open-source [eSpeak](https://espeak.sourceforge.net/) TTS engine for local/offline synthesis in Node.js. You must have the `espeak` command-line tool installed and available in your PATH.
+js-tts-wrapper supports the open-source [eSpeak](https://espeak.sourceforge.net/) TTS engine using a pure JavaScript + WebAssembly implementation powered by [`espeak-ng`](https://www.npmjs.com/package/espeak-ng). This works in **both Node.js and browser environments**—no native dependencies or CLI required!
+
+- **Platform:** Node.js and browser (cross-platform)
+- **Dependencies:** Uses `espeak-ng` (WASM/JS) under the hood
+- **No native binaries:** No need for the eSpeak CLI or system libraries
+
+### Usage Example
+
+```typescript
+import { EspeakTTSClient } from 'js-tts-wrapper';
+
+const tts = new EspeakTTSClient();
+const audioBytes = await tts.synthToBytes('Hello, world!', { voice: 'en', rate: 150, pitch: 50 });
+// audioBytes is a Uint8Array containing WAV audio data
+```
+
+- Works in both Node.js and browser (when bundled with a tool like Webpack, Vite, etc.)
+- Accepts options for `voice`, `rate`, `pitch`, and more
+
+### Dual ESM/CommonJS Support
+- Use `import` from `dist/esm` for ESM projects
+- Use `require` from `dist/cjs` for CommonJS projects
+
+See the [examples/test-engines.js](examples/test-engines.js) script for a working demo.
 
 - **Platform:** Node.js only
 - **Dependencies:** eSpeak CLI must be installed (e.g. `brew install espeak` on macOS)

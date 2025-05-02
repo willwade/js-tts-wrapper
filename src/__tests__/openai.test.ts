@@ -128,7 +128,7 @@ describe("OpenAITTSClient", () => {
 
   test("should handle word boundaries", async () => {
     const onWord = jest.fn();
-    await client.textToSpeech("Hello, world!", { onWord, returnWordBoundaries: true });
+    await client.textToSpeechStreaming("Hello, world!", { onWord, returnWordBoundaries: true });
     expect(onWord).toHaveBeenCalled();
     expect(client.getLastWordBoundaries()).toHaveLength(2);
   });
