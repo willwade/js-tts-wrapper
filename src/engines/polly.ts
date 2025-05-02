@@ -3,15 +3,7 @@ import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 
 // Import AWS SDK v3 Polly client
-import {
-  PollyClient,
-  SynthesizeSpeechCommand,
-  DescribeVoicesCommand,
-  OutputFormat,
-  SpeechMarkType,
-  SynthesizeSpeechCommandInput,
-  VoiceId,
-} from "@aws-sdk/client-polly";
+// AWS SDK imports moved inside Node-only code paths for browser compatibility.
 
 /**
  * AWS Polly TTS credentials
@@ -40,7 +32,8 @@ export class PollyTTSClient extends AbstractTTSClient {
   /**
    * AWS Polly client
    */
-  private client!: PollyClient;
+  private client: any; // PollyClient type is only available at runtime in Node
+  private _pollyModule: any;
 
   /**
    * Create a new AWS Polly TTS client
@@ -49,15 +42,14 @@ export class PollyTTSClient extends AbstractTTSClient {
   constructor(credentials: PollyTTSCredentials) {
     super(credentials);
 
+    if (typeof window !== "undefined") {
+      throw new Error("AWS Polly is not supported in the browser. Use synthToBytes or synthToBytestream if available.");
+    }
     try {
-      // Create the Polly client
-      this.client = new PollyClient({
-        region: credentials.region,
-        credentials: {
-          accessKeyId: credentials.accessKeyId,
-          secretAccessKey: credentials.secretAccessKey,
-        },
-      });
+      // Do not import here, only store credentials. Actual import is done in each async method.
+      this._pollyModule = null;
+      this.client = null;
+      this.credentials = credentials;
     } catch (error) {
       console.error("Error initializing AWS Polly client:", error);
       console.warn(
@@ -71,17 +63,22 @@ export class PollyTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to an array of voice objects
    */
   protected async _getVoices(): Promise<any[]> {
-    if (!this.client) {
-      return [];
-    }
-
     try {
-      // Create the command to describe voices
+      const pollyModule = this._pollyModule || (await import("@aws-sdk/client-polly"));
+      if (!this.client) {
+        const PollyClient = pollyModule.PollyClient;
+        this.client = new PollyClient({
+          region: this.credentials.region,
+          credentials: {
+            accessKeyId: this.credentials.accessKeyId,
+            secretAccessKey: this.credentials.secretAccessKey,
+          },
+        });
+        this._pollyModule = pollyModule;
+      }
+      const DescribeVoicesCommand = pollyModule.DescribeVoicesCommand;
       const command = new DescribeVoicesCommand({});
-      
-      // Execute the command
       const response = await this.client.send(command);
-      
       return response.Voices || [];
     } catch (error) {
       console.error("Error getting voices:", error);
@@ -195,13 +192,22 @@ export class PollyTTSClient extends AbstractTTSClient {
       const ssml = this.prepareSSML(text, options);
 
       // Determine output format
+      const pollyModule = this._pollyModule || (await import("@aws-sdk/client-polly"));
+      if (!this.client) {
+        const PollyClient = pollyModule.PollyClient;
+        this.client = new PollyClient({
+          region: this.credentials.region,
+          credentials: {
+            accessKeyId: this.credentials.accessKeyId,
+            secretAccessKey: this.credentials.secretAccessKey,
+          },
+        });
+        this._pollyModule = pollyModule;
+      }
+      const { OutputFormat, VoiceId, SynthesizeSpeechCommandInput, SynthesizeSpeechCommand } = pollyModule;
       const outputFormat = options?.format === "mp3" ? OutputFormat.MP3 : OutputFormat.PCM;
-
-      // Use voice from options or the default voice
-      const voiceId = (options?.voice || this.voiceId || "Joanna") as VoiceId; // Default voice
-
-      // Prepare the command input
-      const input: SynthesizeSpeechCommandInput = {
+      const voiceId = (options?.voice || this.voiceId || "Joanna") as typeof VoiceId; // Default voice
+      const input: typeof SynthesizeSpeechCommandInput = {
         Text: ssml,
         TextType: "ssml",
         OutputFormat: outputFormat,
@@ -303,14 +309,25 @@ export class PollyTTSClient extends AbstractTTSClient {
     inputText: string,
     options?: SpeakOptions
   ): Promise<Array<{ text: string; offset: number; duration: number }>> {
+    const pollyModule = this._pollyModule || (await import("@aws-sdk/client-polly"));
+    if (!this.client) {
+      const PollyClient = pollyModule.PollyClient;
+      this.client = new PollyClient({
+        region: this.credentials.region,
+        credentials: {
+          accessKeyId: this.credentials.accessKeyId,
+          secretAccessKey: this.credentials.secretAccessKey,
+        },
+      });
+      this._pollyModule = pollyModule;
+    }
+    const { OutputFormat, VoiceId, SynthesizeSpeechCommandInput, SynthesizeSpeechCommand, SpeechMarkType } = pollyModule;
     // Prepare SSML
     const ssml = this.prepareSSML(inputText, options);
-
     // Use voice from options or the default voice
-    const voiceId = (options?.voice || this.voiceId || "Joanna") as VoiceId; // Default voice
-
+    const voiceId = (options?.voice || this.voiceId || "Joanna") as typeof VoiceId;
     // Prepare the command input for speech marks
-    const input: SynthesizeSpeechCommandInput = {
+    const input: typeof SynthesizeSpeechCommandInput = {
       Text: ssml,
       TextType: "ssml",
       OutputFormat: OutputFormat.JSON,
@@ -318,7 +335,6 @@ export class PollyTTSClient extends AbstractTTSClient {
       Engine: "neural", // Use neural engine for better quality
       SpeechMarkTypes: [SpeechMarkType.WORD],
     };
-
     // Create the command
     const command = new SynthesizeSpeechCommand(input);
     
@@ -361,10 +377,21 @@ export class PollyTTSClient extends AbstractTTSClient {
     }
 
     try {
-      // Try to list voices as a simple API call to check credentials
+      const pollyModule = this._pollyModule || (await import("@aws-sdk/client-polly"));
+      if (!this.client) {
+        const PollyClient = pollyModule.PollyClient;
+        this.client = new PollyClient({
+          region: this.credentials.region,
+          credentials: {
+            accessKeyId: this.credentials.accessKeyId,
+            secretAccessKey: this.credentials.secretAccessKey,
+          },
+        });
+        this._pollyModule = pollyModule;
+      }
+      const DescribeVoicesCommand = pollyModule.DescribeVoicesCommand;
       const command = new DescribeVoicesCommand({});
       const response = await this.client.send(command);
-      
       return Array.isArray(response.Voices) && response.Voices.length > 0;
     } catch (error) {
       console.error("Error checking AWS Polly credentials:", error);

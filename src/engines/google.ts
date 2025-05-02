@@ -53,42 +53,46 @@ export class GoogleTTSClient extends AbstractTTSClient {
     // Store the credentials for later use
     this.googleCredentials = credentials;
 
-    try {
-      // Try to load the Google Cloud Text-to-Speech client
-      const textToSpeech = require("@google-cloud/text-to-speech");
-
-      // Create the client with the provided credentials
-      this.client = new textToSpeech.TextToSpeechClient({
-        projectId: credentials.projectId,
-        credentials: credentials.credentials,
-        keyFilename: credentials.keyFilename,
-      });
-
-      // Try to load the beta client for word timings
+    if (typeof window === "undefined" && typeof require !== "undefined") {
       try {
-        const { v1beta1 } = require("@google-cloud/text-to-speech");
-        if (v1beta1) {
-          this.useBetaApi = true;
+        // Try to load the Google Cloud Text-to-Speech client (Node.js only)
+        const textToSpeech = require("@google-cloud/text-to-speech");
+        // Create the client with the provided credentials
+        this.client = new textToSpeech.TextToSpeechClient({
+          projectId: credentials.projectId,
+          credentials: credentials.credentials,
+          keyFilename: credentials.keyFilename,
+        });
+        // Try to load the beta client for word timings
+        try {
+          const { v1beta1 } = require("@google-cloud/text-to-speech");
+          if (v1beta1) {
+            this.useBetaApi = true;
+          }
+        } catch (error) {
+          console.warn(
+            "Google Cloud Text-to-Speech beta API not available. Word timing will be estimated."
+          );
         }
       } catch (error) {
-        console.warn(
-          "Google Cloud Text-to-Speech beta API not available. Word timing will be estimated."
-        );
+        // In test mode, we'll just log a warning instead of an error
+        if (process.env.NODE_ENV === "test") {
+          console.warn(
+            "Google TTS client not initialized in test mode. Some tests may be skipped."
+          );
+        } else {
+          console.error("Error initializing Google TTS client:", error);
+          console.warn(
+            "Google TTS will not be available. Install @google-cloud/text-to-speech to use this engine."
+          );
+        }
       }
-    } catch (error) {
-      // In test mode, we'll just log a warning instead of an error
-      if (process.env.NODE_ENV === "test") {
-        console.warn(
-          "Google TTS client not initialized in test mode. Some tests may be skipped."
-        );
-      } else {
-        console.error("Error initializing Google TTS client:", error);
-        console.warn(
-          "Google TTS will not be available. Install @google-cloud/text-to-speech to use this engine."
-        );
-      }
+    } else {
+      // In browser: use REST API (to be implemented as needed)
+      this.client = null;
     }
   }
+
 
   /**
    * Get available voices from the provider

@@ -4,11 +4,14 @@ import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, UnifiedVoice, WordBoundaryCallback } from "../types";
 
 // Import the SDK dynamically to avoid requiring it for all users
-let sdk: any;
-try {
-  sdk = require("microsoft-cognitiveservices-speech-sdk");
-} catch (_error) {
-  console.warn("microsoft-cognitiveservices-speech-sdk not found, using REST API fallback");
+let sdk: any = undefined;
+// Only attempt to require SDK in Node.js
+if (typeof window === "undefined" && typeof require !== "undefined") {
+  try {
+    sdk = require("microsoft-cognitiveservices-speech-sdk");
+  } catch (_error) {
+    console.warn("microsoft-cognitiveservices-speech-sdk not found, using REST API fallback");
+  }
 }
 
 /**

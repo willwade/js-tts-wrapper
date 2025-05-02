@@ -2,8 +2,7 @@ import { AbstractTTSClient } from "../core/abstract-tts";
 import { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { estimateWordBoundaries, WordBoundary } from "../utils/word-timing-estimator";
 import { getFetch } from "../utils/fetch-utils";
-import * as fs from "node:fs";
-import * as path from "node:path";
+// Node-only imports moved inside Node-only code paths below for browser compatibility.
 
 // Get the fetch implementation for the current environment
 const fetch = getFetch();
@@ -304,12 +303,16 @@ export class PlayHTTTSClient extends AbstractTTSClient {
    */
   async textToSpeech(text: string, options: PlayHTTTSOptions = {}): Promise<string> {
     try {
+      if (typeof window !== "undefined") {
+        throw new Error("File output is not supported in the browser. Use synthToBytes or synthToBytestream instead.");
+      }
+      const fs = await import("node:fs");
+      const path = await import("node:path");
       // Create output directory if it doesn't exist
       const outputDir = options.outputDir || ".";
       if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
       }
-
       // Generate output file path
       const outputFile = options.outputFile || `playht-output.${this.outputFormat}`;
       const outputPath = path.join(outputDir, outputFile);
@@ -383,11 +386,6 @@ export class PlayHTTTSClient extends AbstractTTSClient {
    * Convert text to speech with streaming
    * @param text Text to convert to speech
    * @param options TTS options
-   * @returns Promise resolving to the path of the generated audio file
-   */
-  async textToSpeechStreaming(text: string, options: PlayHTTTSOptions = {}): Promise<string> {
-    try {
-      // Create output directory if it doesn't exist
       const outputDir = options.outputDir || ".";
       if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });

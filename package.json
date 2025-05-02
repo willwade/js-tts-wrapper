@@ -2,21 +2,25 @@
   "name": "js-tts-wrapper",
   "version": "0.1.6",
   "description": "A JavaScript/TypeScript library that provides a unified API for working with multiple cloud-based Text-to-Speech (TTS) services",
-  "main": "dist/index.js",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
   "browser": "dist/browser.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist/cjs",
+    "dist/esm",
+    "dist/browser.js",
+    "dist/index.d.ts"
   ],
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
+      "require": "./dist/cjs/index.js",
+      "import": "./dist/esm/index.js",
       "browser": "./dist/browser.js"
     },
     "./browser": {
-      "import": "./dist/browser.js",
-      "require": "./dist/browser.js"
+      "require": "./dist/browser.js",
+      "import": "./dist/browser.js"
     }
   },
   "repository": {
@@ -26,7 +30,9 @@
   "author": "Will Wade <willwade@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "build": "tsc && npm run build:browser",
+    "build": "npm run build:cjs && npm run build:esm && npm run build:browser",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:esm": "tsc -p tsconfig.esm.json && tsc-alias -p tsconfig.esm.json",
     "build:browser": "tsc -p tsconfig.browser.json",
     "build:bundle": "rollup -c rollup.config.js",
     "dev": "tsc --watch",
@@ -104,12 +110,11 @@
     "rimraf": "^6.0.1",
     "rollup": "^4.39.0",
     "sinon": "^20.0.0",
+    "speechmarkdown-js": "^2.1.0",
     "ts-jest": "^29.3.1",
+    "tsc-alias": "^1.8.15",
     "tslib": "^2.8.1",
     "typescript": "^5.8.3"
-  },
-  "dependencies": {
-    "speechmarkdown-js": "^2.1.0"
   },
   "peerDependencies": {
     "@aws-sdk/client-polly": "^3.782.0",

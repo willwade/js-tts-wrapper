@@ -12,7 +12,87 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 - **Playback Control**: Pause, resume, and stop audio playback
 - **Word Boundaries**: Get callbacks for word timing (where supported)
 - **File Output**: Save synthesized speech to audio files
-- **Browser Support**: Works in both Node.js and browser environments
+- **Browser Support**: Works in both Node.js (server) and browser environments (see engine support table below)
+
+## ⚡ Browser Compatibility Table
+
+| Engine         | Browser Support | Notes |
+| -------------- |:--------------:| ----- |
+| ElevenLabs     |      ✅        | Direct browser API, CORS enabled |
+| OpenAI         |      ✅        | Direct browser API, CORS enabled |
+| SherpaOnnx WASM|      ✅        | Local/offline, no network needed |
+| Google         |      ⚠️        | Some endpoints support CORS, API key only, no service account |
+| Azure          |      ⚠️        | Some endpoints support CORS, check your region and endpoint |
+| PlayHT         |      ❌        | No CORS, requires server-side proxy |
+| AWS Polly      |      ❌        | No browser SDK, no CORS, server-side only |
+| IBM Watson     |      ❌        | No CORS, server-side only |
+| SherpaOnnx (native) | ❌      | Native module, Node.js only |
+
+- ✅ = Supported directly in browser
+- ⚠️ = May work, but CORS or credentials limitations apply
+- ❌ = Not supported in browser (use Node.js or a backend proxy)
+
+> **Note:** Most commercial TTS APIs (PlayHT, Polly, Watson) are server-to-server only due to CORS and security. For browser demos, use ElevenLabs, OpenAI, or SherpaOnnx WASM. For others, set up a backend proxy.
+
+
+## Engine Support Matrix
+
+| Engine           | Server (Node.js) | Browser (WASM) | Notes & Known Issues                 |
+|------------------|:---------------:|:--------------:|--------------------------------------|
+| Azure            |      ✅         |      ❌        | Works server-side only                |
+| Google Cloud     |      ✅         |      ❌        | Works server-side only                |
+| AWS Polly        |      ✅         |      ❌        | Works server-side only                |
+| ElevenLabs       |      ✅         |      ❌        | Quota/auth errors possible            |
+| OpenAI           |      ✅         |      ❌        | Quota/rate-limit errors possible      |
+| PlayHT           |      ✅         |      ❌        | May time out or have quota issues     |
+| SherpaOnnx (native) |   ⚠️ (see below) |      ❌        | Requires native libs, DYLD_LIBRARY_PATH (mac), use helper script |
+| SherpaOnnx WASM  |      ❌         |      ✅        | Only engine with browser demo/support |
+| eSpeak           |      ✅         |      ❌        | Node.js only, requires eSpeak CLI installed |
+
+- ✅ = Supported
+- ❌ = Not supported
+- ⚠️ = Native module, setup required
+
+> **Note:** Only SherpaOnnx WASM is currently supported in the browser. All other engines are server-side only.
+> For SherpaOnnx native, see the environment variable and helper script notes below.
+
+## eSpeak TTS Support
+
+js-tts-wrapper supports the open-source [eSpeak](https://espeak.sourceforge.net/) TTS engine for local/offline synthesis in Node.js. You must have the `espeak` command-line tool installed and available in your PATH.
+
+- **Platform:** Node.js only
+- **Dependencies:** eSpeak CLI must be installed (e.g. `brew install espeak` on macOS)
+- **Features:** Fast local synthesis, no API keys required, English and many other languages supported
+
+Example usage:
+```js
+const { EspeakTTSClient } = require('js-tts-wrapper');
+const tts = new EspeakTTSClient();
+await tts.setVoice('en');
+await tts.speak('Hello from eSpeak!');
+```
+
+See the [examples/test-engines.js](examples/test-engines.js) script for a working demo.
+
+## Dual ESM/CommonJS Build
+
+js-tts-wrapper supports both ESM (import/export) and CommonJS (require/module.exports) out of the box.
+
+- **Node.js (CommonJS):**
+  ```js
+  const { AzureTTSClient } = require('js-tts-wrapper');
+  // or, for direct path:
+  const { AzureTTSClient } = require('js-tts-wrapper/dist/cjs');
+  ```
+- **Node.js or Browser Bundlers (ESM):**
+  ```js
+  import { AzureTTSClient } from 'js-tts-wrapper';
+  // or, for direct path:
+  import { AzureTTSClient } from 'js-tts-wrapper/dist/esm';
+  ```
+
+- **Browser:**
+  - Only SherpaOnnx WASM is currently supported. See `examples/browser-example.html` and related files.
 
 ## Installation
 
@@ -178,6 +258,7 @@ See the [browser example](examples/browser-example.html) for a complete example 
 | AWS Polly     | Yes  | Yes       | Yes         | Yes         | No      | Full SSML support         | 3.782.0     |
 | SherpaOnnx    | No*  | Yes       | Estimated** | Yes         | No      | Offline TTS, server-side only | 1.11.3      |
 | SherpaOnnx-Wasm | No* | Yes      | Estimated** | Yes         | Yes     | Browser-compatible TTS    | WebAssembly  |
+| eSpeak         | No*  | Yes       | No          | Yes         | No      | Node.js only, requires eSpeak CLI | CLI
 
 *Engines that don't support SSML will automatically strip SSML tags and process the plain text.
 

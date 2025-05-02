@@ -1,5 +1,4 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
+// Node-only imports moved inside Node-only code paths below for browser compatibility.
 import { AbstractTTSClient } from "../core/abstract-tts";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { type WordBoundary, estimateWordBoundaries } from "../utils/word-timing-estimator";
@@ -304,45 +303,29 @@ export class OpenAITTSClient extends AbstractTTSClient {
    * @returns Promise resolving to the path of the generated audio file
    */
   async textToSpeech(text: string, options: OpenAITTSOptions = {}): Promise<string> {
+    if (typeof window !== "undefined") {
+      throw new Error("textToSpeech with file output is not supported in the browser. Use synthToBytes or synthToBytestream instead.");
+    }
+    // Node.js only
+    const fs = await import("node:fs");
+    const path = await import("node:path");
     try {
       // Create output directory if it doesn't exist
       const outputDir = options.outputDir || ".";
       if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
       }
-
       // Generate output file path
       const outputFile = options.outputFile || `openai-output.${this.responseFormat}`;
       const outputPath = path.join(outputDir, outputFile);
-
-      // Create speech
-      const mp3 = await this.client.audio.speech.create({
-        model: this.model,
-        voice: this.voice,
-        input: text,
-        instructions: this.instructions || undefined,
-        response_format: this.responseFormat as any,
-      });
-
-      // Save to file
-      const buffer = Buffer.from(await mp3.arrayBuffer());
-      fs.writeFileSync(outputPath, buffer);
-
+      // Synthesize audio
+      const audioBytes = await this.synthToBytes(text, options);
+      // Write audio to file
+      fs.writeFileSync(outputPath, audioBytes);
       // Estimate word boundaries
-      if (options.onWord || options.returnWordBoundaries) {
+      if (options.returnWordBoundaries) {
         const wordBoundaries = estimateWordBoundaries(text);
-
-        // Call onWord callback for each word
-        if (options.onWord) {
-          for (const wb of wordBoundaries) {
-            options.onWord(wb);
-          }
-        }
-
-        // Store word boundaries if requested
-        if (options.returnWordBoundaries) {
-          this.setLastWordBoundaries(wordBoundaries);
-        }
+        this.setLastWordBoundaries(wordBoundaries);
       }
 
       // Call onEnd callback
@@ -364,6 +347,11 @@ export class OpenAITTSClient extends AbstractTTSClient {
    * @returns Promise resolving to the path of the generated audio file
    */
   async textToSpeechStreaming(text: string, options: OpenAITTSOptions = {}): Promise<string> {
+    if (typeof window !== "undefined") {
+      throw new Error("textToSpeechStreaming with file output is not supported in the browser. Use synthToBytes or synthToBytestream instead.");
+    }
+    const fs = await import("node:fs");
+    const path = await import("node:path");
     try {
       // Create output directory if it doesn't exist
       const outputDir = options.outputDir || ".";
