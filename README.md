@@ -14,47 +14,6 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 - **File Output**: Save synthesized speech to audio files
 - **Browser Support**: Works in both Node.js (server) and browser environments (see engine support table below)
 
-## ⚡ Browser Compatibility Table
-
-| Engine         | Browser Support | Notes |
-| -------------- |:--------------:| ----- |
-| ElevenLabs     |      ✅        | Direct browser API, CORS enabled |
-| OpenAI         |      ✅        | Direct browser API, CORS enabled |
-| SherpaOnnx WASM|      ✅        | Local/offline, no network needed |
-| Google         |      ⚠️        | Some endpoints support CORS, API key only, no service account |
-| Azure          |      ⚠️        | Some endpoints support CORS, check your region and endpoint |
-| PlayHT         |      ❌        | No CORS, requires server-side proxy |
-| AWS Polly      |      ❌        | No browser SDK, no CORS, server-side only |
-| IBM Watson     |      ❌        | No CORS, server-side only |
-| SherpaOnnx (native) | ❌      | Native module, Node.js only |
-
-- ✅ = Supported directly in browser
-- ⚠️ = May work, but CORS or credentials limitations apply
-- ❌ = Not supported in browser (use Node.js or a backend proxy)
-
-> **Note:** Most commercial TTS APIs (PlayHT, Polly, Watson) are server-to-server only due to CORS and security. For browser demos, use ElevenLabs, OpenAI, or SherpaOnnx WASM. For others, set up a backend proxy.
-
-
-## Engine Support Matrix
-
-| Engine           | Server (Node.js) | Browser (WASM) | Notes & Known Issues                 |
-|------------------|:---------------:|:--------------:|--------------------------------------|
-| Azure            |      ✅         |      ❌        | Works server-side only                |
-| Google Cloud     |      ✅         |      ❌        | Works server-side only                |
-| AWS Polly        |      ✅         |      ❌        | Works server-side only                |
-| ElevenLabs       |      ✅         |      ❌        | Quota/auth errors possible            |
-| OpenAI           |      ✅         |      ❌        | Quota/rate-limit errors possible      |
-| PlayHT           |      ✅         |      ❌        | May time out or have quota issues     |
-| SherpaOnnx (native) |   ⚠️ (see below) |      ❌        | Requires native libs, DYLD_LIBRARY_PATH (mac), use helper script |
-| SherpaOnnx WASM  |      ❌         |      ✅        | Only engine with browser demo/support |
-| eSpeak           |      ✅         |      ❌        | Node.js only, requires eSpeak CLI installed |
-
-- ✅ = Supported
-- ❌ = Not supported
-- ⚠️ = Native module, setup required
-
-> **Note:** Only SherpaOnnx WASM is currently supported in the browser. All other engines are server-side only.
-> For SherpaOnnx native, see the environment variable and helper script notes below.
 
 ## eSpeak TTS Support
 
@@ -74,7 +33,64 @@ await tts.speak('Hello from eSpeak!');
 
 See the [examples/test-engines.js](examples/test-engines.js) script for a working demo.
 
+## SherpaOnnx Native (Offline TTS) Support
+
+js-tts-wrapper supports the [SherpaOnnx](https://github.com/k2-fsa/sherpa-onnx) engine for fast, local/offline synthesis in Node.js via native bindings. **This requires extra setup and is not supported in browser environments.**
+
+- **Platform:** Node.js only (macOS, Linux, Windows)
+- **Dependencies:** Native library (`sherpa-onnx-node`), platform-specific shared libraries
+- **Features:** Fast local synthesis, no API keys required, supports multiple languages and voices
+
+### Installation
+
+```bash
+npm run install:sherpaonnx
+```
+
+### Running with Native Bindings
+
+You must set the correct environment variable so Node.js can find the native library. The easiest way is to use the provided helper script:
+
+```sh
+node scripts/run-with-sherpaonnx.js your-script.js
+```
+
+This script automatically sets the right environment variable for your platform:
+- **macOS:** `DYLD_LIBRARY_PATH`
+- **Linux:** `LD_LIBRARY_PATH`
+- **Windows:** `PATH`
+
+Alternatively, you can set the environment variable manually (replace with your actual path):
+
+- **macOS:**
+  ```sh
+  export DYLD_LIBRARY_PATH=$(pwd)/node_modules/sherpa-onnx-darwin-arm64:$DYLD_LIBRARY_PATH
+  node your-script.js
+  ```
+- **Linux:**
+  ```sh
+  export LD_LIBRARY_PATH=$(pwd)/node_modules/sherpa-onnx-linux-x64:$LD_LIBRARY_PATH
+  node your-script.js
+  ```
+- **Windows:**
+  ```bat
+  set PATH=%cd%\node_modules\sherpa-onnx-win32-x64;%PATH%
+  node your-script.js
+  ```
+
+### Troubleshooting
+- If you see errors like `Could not load sherpa-onnx-node` or `DYLD_LIBRARY_PATH not set`, always try running with the helper script first.
+- Ensure the `.node` file exists in the relevant `node_modules/sherpa-onnx-*` directory.
+- If you upgrade Node.js or move your project, you may need to reinstall native dependencies.
+- For more details, see [SherpaOnnx documentation](https://github.com/k2-fsa/sherpa-onnx).
+
+### CI/CD & GitHub Actions
+- Native TTS tests (SherpaOnnx) are **not run by default in GitHub Actions** due to the need for platform-specific libraries and environment variables.
+- The CI system only runs tests for engines that work in pure JS or cloud APIs.
+- If you want to enable native SherpaOnnx tests in CI, you must customize your workflow to install the native libraries and set environment variables as described above.
+
 ## Dual ESM/CommonJS Build
+
 
 js-tts-wrapper supports both ESM (import/export) and CommonJS (require/module.exports) out of the box.
 
@@ -248,10 +264,27 @@ See the [browser example](examples/browser-example.html) for a complete example 
 
 ## Supported Providers
 
-| Provider      | SSML | Streaming | Word Timing | File Output | Browser | Notes                     | Version      |
-|---------------|------|-----------|-------------|-------------|---------|---------------------------|-------------|
-| Azure         | Yes  | Yes       | Yes         | Yes         | No      | Full SSML support         | 1.43.1      |
-| Google Cloud  | Yes  | Yes       | Yes         | Yes         | No      | Full SSML + markup        | 6.0.1       |
+| Provider          | SSML | Streaming | Word Timing | File Output | Browser | Notes & Known Issues                                         | Version/Type          |
+|-------------------|------|-----------|-------------|-------------|---------|-------------------------------------------------------------|-----------------------|
+| Azure             | Yes  | Yes       | Yes         | Yes         | ⚠️      | Some endpoints support CORS, check region/endpoint           | 1.43.1               |
+| Google Cloud      | Yes  | Yes       | Yes         | Yes         | ⚠️      | Some endpoints support CORS, API key only, no service acct.  | 6.0.1                |
+| AWS Polly         | Yes  | Yes       | Yes         | Yes         | ❌      | No browser SDK, no CORS, server-side only                   | 3.782.0              |
+| ElevenLabs        | No*  | Yes       | Partial     | Yes         | ✅      | Direct browser API, CORS enabled, quota/auth errors possible | node-fetch 2.0.0     |
+| OpenAI            | No*  | Yes       | Estimated** | Yes         | ✅      | Direct browser API, CORS enabled, quota/rate-limit errors    | 4.93.0               |
+| PlayHT            | No*  | Yes       | Estimated** | Yes         | ❌      | No CORS, requires server-side proxy, multiple engines        | node-fetch 2.0.0     |
+| SherpaOnnx (native)| No* | Yes       | Estimated** | Yes         | ❌      | Native module, Node.js only, DYLD_LIBRARY_PATH required      | 1.11.3 (native)      |
+| SherpaOnnx WASM   | No*  | Yes       | Estimated** | Yes         | ✅      | Local/offline, no network needed, browser compatible         | WebAssembly          |
+| eSpeak            | No*  | Yes       | No          | Yes         | ❌      | Node.js only, requires eSpeak CLI installed                  | CLI                  |
+| IBM Watson        | Yes  | Yes       | Yes         | Yes         | ❌      | No CORS, server-side only                                    | Planned              |
+
+*Engines that don't support SSML will automatically strip SSML tags and process the plain text.
+
+**Word timings are estimated based on the total audio duration and word count.
+
+- ✅ = Supported directly in browser
+- ⚠️ = May work, but CORS or credentials limitations apply
+- ❌ = Not supported in browser (use Node.js or a backend proxy)
+
 | ElevenLabs    | No*  | Yes       | Partial     | Yes         | No      | Strip SSML automatically  | node-fetch 2.0.0 |
 | OpenAI        | No*  | Yes       | Estimated** | Yes         | No      | Multiple voices available | 4.93.0      |
 | PlayHT        | No*  | Yes       | Estimated** | Yes         | No      | Multiple voice engines    | node-fetch 2.0.0 |
