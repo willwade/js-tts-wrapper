@@ -1,8 +1,8 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
-import { LanguageNormalizer } from "../core/language-utils";
+import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
 import * as SSMLUtils from "../core/ssml-utils";
 import * as SpeechMarkdown from "../markdown/converter";
-import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
+import { TextToSpeechClient } from "@google-cloud/text-to-speech"; // Assuming v1 library structure
 
 /**
  * Google TTS credentials
@@ -25,13 +25,20 @@ export interface GoogleTTSCredentials extends TTSCredentials {
 }
 
 /**
+ * Extended options for Google TTS
+ */
+export interface GoogleTTSOptions extends SpeakOptions {
+  format?: 'mp3' | 'wav'; // Define formats supported by this client logic (maps to LINEAR16)
+}
+
+/**
  * Google TTS client
  */
 export class GoogleTTSClient extends AbstractTTSClient {
   /**
    * Google Cloud Text-to-Speech client
    */
-  private client: any;
+  private client: TextToSpeechClient | null;
 
   /**
    * Whether to use the beta API for word timings
@@ -52,13 +59,12 @@ export class GoogleTTSClient extends AbstractTTSClient {
 
     // Store the credentials for later use
     this.googleCredentials = credentials;
+    this.client = null;
 
     if (typeof window === "undefined" && typeof require !== "undefined") {
       try {
         // Try to load the Google Cloud Text-to-Speech client (Node.js only)
-        const textToSpeech = require("@google-cloud/text-to-speech");
-        // Create the client with the provided credentials
-        this.client = new textToSpeech.TextToSpeechClient({
+        this.client = new TextToSpeechClient({
           projectId: credentials.projectId,
           credentials: credentials.credentials,
           keyFilename: credentials.keyFilename,
@@ -86,13 +92,13 @@ export class GoogleTTSClient extends AbstractTTSClient {
             "Google TTS will not be available. Install @google-cloud/text-to-speech to use this engine."
           );
         }
+        this.client = null;
       }
     } else {
       // In browser: use REST API (to be implemented as needed)
       this.client = null;
     }
   }
-
 
   /**
    * Get available voices from the provider
@@ -119,7 +125,7 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Promise resolving to audio bytes
    */
-  async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
+  async synthToBytes(text: string, options?: GoogleTTSOptions): Promise<Uint8Array> {
     // If the client is not available, throw an error
     if (!this.client) {
       throw new Error(
@@ -173,7 +179,7 @@ export class GoogleTTSClient extends AbstractTTSClient {
 
       // Add timepoint type for word timings if using beta API
       if (useWordTimings) {
-        request.enableTimePointing = ["SSML_MARK"];
+        request.enableTimePointing = ["SENTENCE", "SSML_MARK"];
       }
 
       // Synthesize speech
@@ -213,7 +219,7 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Promise resolving to an object containing the audio stream and word boundaries
    */
-  async synthToBytestream(text: string, options?: SpeakOptions): Promise<{
+  async synthToBytestream(text: string, options?: GoogleTTSOptions): Promise<{
     audioStream: ReadableStream<Uint8Array>;
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
@@ -229,9 +235,9 @@ export class GoogleTTSClient extends AbstractTTSClient {
       // This is because Google's API doesn't provide a streaming endpoint
       const audioBytes = await this.synthToBytes(text, options);
 
-      // Create a readable stream from the audio bytes
+      // Create a standard ReadableStream
       const stream = new ReadableStream<Uint8Array>({
-        start(controller) {
+        start(controller: ReadableStreamDefaultController<Uint8Array>) {
           controller.enqueue(audioBytes);
           controller.close();
         },
@@ -263,7 +269,7 @@ export class GoogleTTSClient extends AbstractTTSClient {
   async startPlaybackWithCallbacks(
     text: string,
     callback: WordBoundaryCallback,
-    options?: SpeakOptions
+    options?: GoogleTTSOptions
   ): Promise<void> {
     // Register the callback
     this.on("boundary", callback);
@@ -288,18 +294,11 @@ export class GoogleTTSClient extends AbstractTTSClient {
     // Convert Google voices to unified format
     return rawVoices.map((voice: any) => ({
       id: voice.name,
-      name: voice.name,
-      gender: this.mapGender(voice.ssmlGender),
-      languageCodes: voice.languageCodes.map((code: string) => {
-        // Use LanguageNormalizer to get standardized language information
-        const normalized = LanguageNormalizer.normalize(code);
-        return {
-          bcp47: normalized.bcp47,
-          iso639_3: normalized.iso639_3,
-          display: normalized.display,
-        };
-      }),
-      provider: "google",
+      name: voice.name || 'Unknown',
+      gender: voice.ssmlGender?.toLowerCase() || undefined,
+      languageCodes: voice.languageCodes,
+      provider: 'google' as const,
+      raw: voice, // Keep the original raw voice data
     }));
   }
 
@@ -309,7 +308,7 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns SSML ready for synthesis
    */
-  private prepareSSML(text: string, options?: SpeakOptions): string {
+  private prepareSSML(text: string, options?: GoogleTTSOptions): string {
     // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
       text = SpeechMarkdown.toSSML(text, "google");
@@ -436,22 +435,6 @@ export class GoogleTTSClient extends AbstractTTSClient {
 
     // Sort timings by start time
     this.timings.sort((a, b) => a[0] - b[0]);
-  }
-
-  /**
-   * Map Google SSML gender to unified gender format
-   * @param ssmlGender Google SSML gender
-   * @returns Unified gender format
-   */
-  private mapGender(ssmlGender: string): "Male" | "Female" | "Unknown" {
-    switch (ssmlGender) {
-      case "MALE":
-        return "Male";
-      case "FEMALE":
-        return "Female";
-      default:
-        return "Unknown";
-    }
   }
 
   /**

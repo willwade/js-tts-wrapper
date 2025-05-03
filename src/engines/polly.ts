@@ -1,18 +1,19 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
-import * as SpeechMarkdown from "../markdown/converter";
 import type {
   SpeakOptions,
   TTSCredentials,
   UnifiedVoice,
 } from "../types";
-
-// Import AWS SDK v3 Polly client and command
-import type {
-  SynthesizeSpeechCommandInput,
-  SynthesizeSpeechCommandOutput,
-} from "@aws-sdk/client-polly";
-// Utility to read stream (assuming one exists or we add one)
+import * as SpeechMarkdown from "../markdown/converter";
+import type { SynthesizeSpeechCommandInput, SynthesizeSpeechCommandOutput } from "@aws-sdk/client-polly";
 import { streamToBuffer } from "../utils/stream-utils";
+
+/**
+ * Extended options for Polly TTS
+ */
+export interface PollyTTSOptions extends SpeakOptions {
+  format?: 'mp3' | 'wav'; // Define formats supported by this client logic (maps to pcm)
+}
 
 /**
  * AWS Polly TTS credentials
@@ -189,7 +190,10 @@ export class PollyTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Promise resolving to audio bytes
    */
-  async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
+  async synthToBytes(
+    text: string,
+    options?: PollyTTSOptions
+  ): Promise<Uint8Array> {
     try {
       const pollyModule = this._pollyModule || (await import("@aws-sdk/client-polly"));
       if (!this.client) {
@@ -244,8 +248,8 @@ export class PollyTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to an object containing the audio stream and word boundaries
    */
   async synthToBytestream(
-    inputText: string,
-    options?: SpeakOptions
+    text: string,
+    options?: PollyTTSOptions
   ): Promise<{
     audioStream: ReadableStream<Uint8Array>;
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
@@ -267,7 +271,7 @@ export class PollyTTSClient extends AbstractTTSClient {
       const VoiceIdType = VoiceId; // Get the RUNTIME VoiceId enum/object
       const voiceIdString = options?.voice || this.voiceId || "Joanna";
       const voiceId = voiceIdString as unknown as typeof VoiceIdType; // Cast via unknown
-      const ssml = this.prepareSSML(inputText, options);
+      const ssml = this.prepareSSML(text, options);
       const textType = this._isSSML(ssml) ? "ssml" : "text";
       const engine = "neural"; // Or make configurable
       let wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
@@ -285,9 +289,9 @@ export class PollyTTSClient extends AbstractTTSClient {
         const marksCommand = new SynthesizeSpeechCommand(marksParams);
         const marksResponse: SynthesizeSpeechCommandOutput = await this.client.send(marksCommand);
 
-        if (marksResponse.AudioStream) {
-          const streamBuffer = await streamToBuffer(marksResponse.AudioStream as any);
-          const marksJsonString = new TextDecoder().decode(streamBuffer);
+        if (marksResponse.AudioStream) { 
+          const streamData = await streamToBuffer(marksResponse.AudioStream as any); // Use correct util
+          const marksJsonString = new TextDecoder().decode(streamData); // Decode Buffer/Uint8Array
           const jsonLines = marksJsonString.trim().split("\n");
           for (const line of jsonLines) {
             try {

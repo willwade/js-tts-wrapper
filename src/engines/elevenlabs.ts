@@ -1,10 +1,16 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
-import { LanguageNormalizer } from "../core/language-utils";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
 import { getFetch } from "../utils/fetch-utils";
 
 // Get the fetch implementation for the current environment
 const fetch = getFetch();
+
+/**
+ * Extended options for ElevenLabs TTS
+ */
+export interface ElevenLabsTTSOptions extends SpeakOptions {
+  format?: 'mp3' | 'wav'; // Define formats supported by this client logic (maps to pcm)
+}
 
 /**
  * ElevenLabs TTS credentials
@@ -94,7 +100,10 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Promise resolving to audio bytes
    */
-  async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
+  async synthToBytes(
+    text: string,
+    options?: ElevenLabsTTSOptions
+  ): Promise<Uint8Array> {
     try {
       // Use voice from options or the default voice
       const voiceId = options?.voice || this.voiceId || "21m00Tcm4TlvDq8ikWAM"; // Default voice (Rachel)
@@ -146,7 +155,10 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Promise resolving to an object containing the audio stream and an empty word boundaries array
    */
-  async synthToBytestream(text: string, options?: SpeakOptions): Promise<{
+  async synthToBytestream(
+    text: string,
+    options?: ElevenLabsTTSOptions
+  ): Promise<{
     audioStream: ReadableStream<Uint8Array>;
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
@@ -232,27 +244,20 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to an array of unified voice objects
    */
   protected async _mapVoicesToUnified(rawVoices: any[]): Promise<UnifiedVoice[]> {
-    // Convert ElevenLabs voices to unified format
-    return rawVoices.map((voice) => {
-      const voiceId = voice.voice_id as string;
-      const name = voice.name as string;
-      const labels = voice.labels as Record<string, string> | undefined;
-
-      return {
-        id: voiceId,
-        name: name,
-        gender:
-          labels?.gender === "female" ? "Female" : labels?.gender === "male" ? "Male" : "Unknown",
-        languageCodes: [
-          {
-            bcp47: labels?.language || "en-US",
-            iso639_3: (labels?.language || "en-US").split("-")[0] || "eng",
-            display: labels?.accent || "English",
-          },
-        ],
-        provider: "elevenlabs",
-      };
-    });
+    // Map raw voices directly without language normalization for now
+    return rawVoices.map((voice) => ({
+      id: voice.voice_id,
+      name: voice.name,
+      gender: undefined, // ElevenLabs doesn't provide gender
+      languageCodes: [
+        {
+          bcp47: voice.labels?.['accent'] || 'en-US',
+          iso639_3: (voice.labels?.['accent'] || 'en-US').split("-")[0] || "eng",
+          display: voice.labels?.['accent'] || "English",
+        },
+      ],
+      provider: 'elevenlabs',
+    }));
   }
 
   /**
@@ -302,20 +307,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
         provider: "elevenlabs",
       };
 
-      // Apply language normalization
-      const normalizedLanguageCodes = unifiedVoice.languageCodes.map((lang) => {
-        const normalized = LanguageNormalizer.normalize(lang.bcp47);
-        return {
-          bcp47: normalized.bcp47,
-          iso639_3: normalized.iso639_3,
-          display: normalized.display,
-        };
-      });
-
-      return {
-        ...unifiedVoice,
-        languageCodes: normalizedLanguageCodes,
-      };
+      return unifiedVoice;
     } catch (error) {
       console.error("Error getting voice:", error);
       throw error;

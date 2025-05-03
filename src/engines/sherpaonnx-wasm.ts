@@ -53,6 +53,13 @@ interface SherpaOnnxWasmModule {
 }
 
 /**
+ * Extended options for SherpaOnnxWasm TTS
+ */
+export interface SherpaOnnxWasmTTSOptions extends SpeakOptions {
+  format?: 'wav'; // Define formats supported by this client (only WAV)
+}
+
+/**
  * SherpaOnnx WebAssembly TTS Client
  *
  * This client uses the WebAssembly build of SherpaOnnx for browser environments
@@ -338,8 +345,18 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           // Create a new TTS instance directly
           console.log("About to call createOfflineTts...");
           const directTts = createOfflineTtsFn(moduleObj);
-          console.log("Created TTS instance directly:", directTts);
-          console.log(`Sample rate: ${directTts?.sampleRate}, Num speakers: ${directTts?.numSpeakers}`);
+          console.log("createOfflineTts call successful, tts object:", directTts);
+          console.log("TTS initialized with default configuration");
+          console.log(`Sample rate: ${directTts?.sampleRate}`);
+          console.log(`Number of speakers: ${directTts?.numSpeakers}`);
+
+          // Update the sample rate from the TTS engine
+          if (directTts && typeof directTts.sampleRate === 'number') {
+            this.sampleRate = directTts.sampleRate;
+            console.log(`Updated sample rate to ${this.sampleRate}`);
+          } else {
+            console.warn("Could not update sample rate, using default");
+          }
 
           // Generate audio
           console.log("Generating audio directly...");
@@ -652,41 +669,18 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
   async synthToFile(
     text: string,
     filename: string,
-    format: "mp3" | "wav" = "wav",
-    options?: SpeakOptions
+    format: "wav" = "wav", // Override base class to only allow 'wav'
+    options?: SherpaOnnxWasmTTSOptions // Use specific options type
   ): Promise<void> {
     try {
-      // Synthesize the audio
-      const audioBytes = await this.synthToBytes(text, { ...options, format });
-
-      // Check if we're in a browser environment
-      if (isBrowser) {
-        // Create blob with appropriate MIME type
-        const mimeType = format === "mp3" ? "audio/mpeg" : "audio/wav";
-        const blob = new Blob([audioBytes], { type: mimeType });
-
-        // Create download link
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename.endsWith(`.${format}`) ? filename : `${filename}.${format}`;
-
-        // Trigger download
-        document.body.appendChild(a);
-        a.click();
-
-        // Clean up
-        setTimeout(() => {
-          if (document && document.body) {
-            document.body.removeChild(a);
-          }
-          URL.revokeObjectURL(url);
-        }, 100);
-      } else {
-        // In Node.js, use the file system
-        const outputPath = filename.endsWith(`.${format}`) ? filename : `${filename}.${format}`;
-        fileSystem.writeFileSync(outputPath, Buffer.from(audioBytes));
+      // Sherpa-ONNX only supports WAV output
+      if (format !== "wav") {
+        console.warn("SherpaOnnx WebAssembly TTS only supports WAV output. Using WAV instead of", format);
+        format = "wav";
       }
+
+      // Use the base class's file saving logic (which detects Node/Browser)
+      await super.synthToFile(text, filename, format, options);
     } catch (error) {
       console.error("Error synthesizing text to file:", error);
       throw error;

@@ -1,17 +1,16 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import * as SSMLUtils from "../core/ssml-utils";
 import * as SpeechMarkdown from "../markdown/converter";
-import type { SpeakOptions, UnifiedVoice, WordBoundaryCallback } from "../types";
+import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
 
-// Import the SDK dynamically to avoid requiring it for all users
-let sdk: any = undefined;
-// Only attempt to require SDK in Node.js
-if (typeof window === "undefined" && typeof require !== "undefined") {
-  try {
-    sdk = require("microsoft-cognitiveservices-speech-sdk");
-  } catch (_error) {
-    console.warn("microsoft-cognitiveservices-speech-sdk not found, using REST API fallback");
-  }
+// SDK will be loaded dynamically
+
+/**
+ * Azure TTS Client Credentials
+ */
+export interface AzureTTSCredentials extends TTSCredentials {
+  subscriptionKey: string;
+  region: string;
 }
 
 /**
@@ -20,15 +19,18 @@ if (typeof window === "undefined" && typeof require !== "undefined") {
 export class AzureTTSClient extends AbstractTTSClient {
   private subscriptionKey: string;
   private region: string;
+  private sdk: any = null; // Store loaded SDK instance
+  private sdkLoadingPromise: Promise<any> | null = null; // Track loading
 
   /**
    * Create a new Azure TTS client
    * @param credentials Azure credentials object with subscriptionKey and region
    */
-  constructor(credentials: { subscriptionKey: string; region: string }) {
+  constructor(credentials: AzureTTSCredentials) {
     super(credentials);
-    this.subscriptionKey = credentials.subscriptionKey;
-    this.region = credentials.region;
+    // Type assertion is safe here due to the AzureTTSCredentials interface
+    this.subscriptionKey = credentials.subscriptionKey as string;
+    this.region = credentials.region as string;
   }
 
   /**
@@ -86,7 +88,7 @@ export class AzureTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Promise resolving to audio bytes
    */
-  async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
+  async synthToBytes(text: string, options?: AzureTTSOptions): Promise<Uint8Array> {
     const ssml = this.prepareSSML(text, options);
 
     try {
@@ -127,7 +129,7 @@ export class AzureTTSClient extends AbstractTTSClient {
    */
   async synthToBytestream(
     text: string,
-    options?: SpeakOptions
+    options?: AzureTTSOptions
   ): Promise<{
     audioStream: ReadableStream<Uint8Array>;
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
@@ -135,36 +137,83 @@ export class AzureTTSClient extends AbstractTTSClient {
     const ssml = this.prepareSSML(text, options);
     const useWordBoundary = options?.useWordBoundary !== false; // Default to true
 
-    // If the SDK is available and word boundary information is requested, use the SDK
-    if (sdk && useWordBoundary) {
-      return this.synthToBytestreamWithSDK(ssml, options);
+    // Attempt to load SDK if needed for word boundaries in Node.js
+    let sdkInstance: any = null;
+    if (useWordBoundary && typeof window === "undefined") { 
+      sdkInstance = await this.loadSDK();
     }
 
-    // Otherwise, fall back to the REST API
+    // If the SDK is available and word boundary information is requested, use the SDK
+    if (sdkInstance && useWordBoundary) {
+      return this.synthToBytestreamWithSDK(ssml, options, sdkInstance);
+    }
+
+    // Otherwise, fall back to the REST API (which doesn't provide word boundaries)
     return this.synthToBytestreamWithREST(ssml, options);
+  }
+
+  /**
+   * Load the Microsoft Speech SDK dynamically.
+   * @returns A promise resolving to the SDK module, or null if loading fails or not applicable.
+   */
+  private async loadSDK(): Promise<any> {
+    if (this.sdk) {
+      return this.sdk;
+    }
+    if (this.sdkLoadingPromise) {
+      return this.sdkLoadingPromise;
+    }
+
+    // Only attempt dynamic import in Node.js environment
+    if (typeof window !== "undefined") {
+      console.warn("Microsoft Speech SDK dynamic import skipped in browser environment.");
+      return null;
+    }
+
+    // @ts-ignore - Suppress module not found error for SDK types during build
+    this.sdkLoadingPromise = import("microsoft-cognitiveservices-speech-sdk")
+      .then(sdkModule => {
+        this.sdk = sdkModule; 
+        this.sdkLoadingPromise = null; // Reset promise after successful load
+        console.log("Microsoft Speech SDK loaded successfully.");
+        return this.sdk;
+      })
+      .catch(_error => {
+        // Log the actual error for debugging if needed: console.error("SDK Load Error:", _error);
+        console.warn("microsoft-cognitiveservices-speech-sdk not found or failed to load, using REST API fallback for word boundaries.");
+        this.sdkLoadingPromise = null; // Reset promise on error
+        this.sdk = null; // Ensure SDK is null if loading failed
+        return null; // Indicate SDK load failed
+      });
+    return this.sdkLoadingPromise;
   }
 
   /**
    * Synthesize speech using the Microsoft Cognitive Services Speech SDK
    * @param ssml SSML to synthesize
    * @param options Synthesis options
+   * @param sdkInstance The loaded SDK instance.
    * @returns Promise resolving to an object containing the audio stream and word boundary information
    */
   private async synthToBytestreamWithSDK(
     ssml: string,
-    options?: SpeakOptions
+    options: AzureTTSOptions | undefined,
+    sdkInstance: any
   ): Promise<{
     audioStream: ReadableStream<Uint8Array>;
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
     try {
+      if (!sdkInstance) { // Should not happen if called correctly, but good practice
+        throw new Error("Attempted to use SDK method, but SDK instance is missing.");
+      }
       // Create a speech config
-      const speechConfig = sdk.SpeechConfig.fromSubscription(this.subscriptionKey, this.region);
+      const speechConfig = sdkInstance.SpeechConfig.fromSubscription(this.subscriptionKey, this.region);
 
       // Set the output format
       speechConfig.speechSynthesisOutputFormat = options?.format === "mp3"
-        ? sdk.SpeechSynthesisOutputFormat.Audio24Khz96KBitRateMonoMp3
-        : sdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;
+        ? sdkInstance.SpeechSynthesisOutputFormat.Audio24Khz96KBitRateMonoMp3
+        : sdkInstance.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;
 
       // Set the voice
       if (this.voiceId) {
@@ -172,7 +221,7 @@ export class AzureTTSClient extends AbstractTTSClient {
       }
 
       // Create a synthesizer
-      const synthesizer = new sdk.SpeechSynthesizer(speechConfig);
+      const synthesizer = new sdkInstance.SpeechSynthesizer(speechConfig);
 
       // Create a promise that will resolve with the audio data and word boundaries
       return new Promise((resolve, reject) => {
@@ -189,8 +238,8 @@ export class AzureTTSClient extends AbstractTTSClient {
         };
 
         // Set up the synthesizing event handler to collect audio chunks
-        synthesizer.synthesizing = (_s: any, e: any) => {
-          if (e.result.reason === sdk.ResultReason.SynthesizingAudio) {
+        synthesizer.synthesizing = (_s: unknown, e: any) => {
+          if (e.result.reason === sdkInstance.ResultReason.SynthesizingAudio) {
             audioChunks.push(new Uint8Array(e.result.audioData));
           }
         };
@@ -202,12 +251,12 @@ export class AzureTTSClient extends AbstractTTSClient {
             // Synthesis completed
             synthesizer.close();
 
-            if (result.reason === sdk.ResultReason.SynthesizingAudioCompleted) {
+            if (result.reason === sdkInstance.ResultReason.SynthesizingAudioCompleted) {
               // Add the final audio chunk
               audioChunks.push(new Uint8Array(result.audioData));
 
               // Create a readable stream from the audio chunks
-              const stream = new ReadableStream<Uint8Array>({
+              const stream = new ReadableStream({
                 start(controller) {
                   for (const chunk of audioChunks) {
                     controller.enqueue(chunk);
@@ -251,14 +300,14 @@ export class AzureTTSClient extends AbstractTTSClient {
   }
 
   /**
-   * Synthesize speech using the REST API
+   * Synthesize speech using the REST API (no word boundaries)
    * @param ssml SSML to synthesize
    * @param options Synthesis options
-   * @returns Promise resolving to an object containing the audio stream and word boundary information
+   * @returns Promise resolving to an object containing the audio stream and an empty word boundary array
    */
   private async synthToBytestreamWithREST(
     ssml: string,
-    options?: SpeakOptions
+    options?: AzureTTSOptions
   ): Promise<{
     audioStream: ReadableStream<Uint8Array>;
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
@@ -307,10 +356,10 @@ export class AzureTTSClient extends AbstractTTSClient {
   async startPlaybackWithCallbacks(
     text: string,
     callback: WordBoundaryCallback,
-    options?: SpeakOptions
+    options?: AzureTTSOptions
   ): Promise<void> {
     // If the SDK is available, use it for better word boundary support
-    if (sdk) {
+    if (this.sdk) {
       await this.startPlaybackWithCallbacksSDK(text, callback, options);
     } else {
       // Fall back to the abstract implementation
@@ -334,18 +383,18 @@ export class AzureTTSClient extends AbstractTTSClient {
   private async startPlaybackWithCallbacksSDK(
     text: string,
     callback: WordBoundaryCallback,
-    options?: SpeakOptions
+    options?: AzureTTSOptions
   ): Promise<void> {
     const ssml = this.prepareSSML(text, options);
 
     try {
       // Create a speech config
-      const speechConfig = sdk.SpeechConfig.fromSubscription(this.subscriptionKey, this.region);
+      const speechConfig = this.sdk.SpeechConfig.fromSubscription(this.subscriptionKey, this.region);
 
       // Set the output format
       speechConfig.speechSynthesisOutputFormat = options?.format === "mp3"
-        ? sdk.SpeechSynthesisOutputFormat.Audio24Khz96KBitRateMonoMp3
-        : sdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;
+        ? this.sdk.SpeechSynthesisOutputFormat.Audio24Khz96KBitRateMonoMp3
+        : this.sdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;
 
       // Set the voice
       if (this.voiceId) {
@@ -353,10 +402,10 @@ export class AzureTTSClient extends AbstractTTSClient {
       }
 
       // Create an audio config for playback
-      const audioConfig = sdk.AudioConfig.fromDefaultSpeakerOutput();
+      const audioConfig = this.sdk.AudioConfig.fromDefaultSpeakerOutput();
 
       // Create a synthesizer
-      const synthesizer = new sdk.SpeechSynthesizer(speechConfig, audioConfig);
+      const synthesizer = new this.sdk.SpeechSynthesizer(speechConfig, audioConfig);
 
       // Emit the start event
       this.emit("start");
@@ -406,7 +455,7 @@ export class AzureTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns SSML ready for synthesis
    */
-  private prepareSSML(text: string, options?: SpeakOptions): string {
+  private prepareSSML(text: string, options?: AzureTTSOptions): string {
     // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
       const ssmlText = SpeechMarkdown.toSSML(text, "microsoft-azure");
@@ -476,4 +525,11 @@ export class AzureTTSClient extends AbstractTTSClient {
 
     return ssml;
   }
+}
+
+/**
+ * Extended options for Azure TTS
+ */
+export interface AzureTTSOptions extends SpeakOptions {
+  format?: 'mp3' | 'wav'; // Define formats supported by this client logic
 }

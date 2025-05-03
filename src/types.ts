@@ -18,11 +18,6 @@ export interface SpeakOptions {
   volume?: number;
 
   /**
-   * Output audio format
-   */
-  format?: "mp3" | "wav";
-
-  /**
    * Whether to convert input from SpeechMarkdown to SSML before processing
    */
   useSpeechMarkdown?: boolean;

@@ -11,6 +11,7 @@ import type {
 import { LanguageNormalizer } from "./language-utils";
 import * as SSMLUtils from "./ssml-utils";
 import { isBrowser, isNode } from "../utils/environment";
+import * as fs from 'node:fs';
 
 /**
  * Abstract base class for all TTS clients
@@ -321,16 +322,15 @@ export abstract class AbstractTTSClient {
       document.body.appendChild(a);
       a.click();
 
-      // Clean up
-      setTimeout(() => {
-        if (document && document.body) {
+      // Clean up: Use requestAnimationFrame for potentially smoother cleanup
+      requestAnimationFrame(() => {
+        if (document?.body?.contains(a)) {
           document.body.removeChild(a);
-        }
+        } 
         URL.revokeObjectURL(url);
-      }, 100);
+      });
     } else if (isNode) {
       // In Node.js, use the file system
-      const fs = require('node:fs');
       const outputPath = filename.endsWith(`.${format}`) ? filename : `${filename}.${format}`;
       fs.writeFileSync(outputPath, Buffer.from(audioBytes));
     } else {

@@ -40,25 +40,7 @@ class MockOpenAI implements OpenAI {
   };
 }
 
-// Use the mock OpenAI class if the openai package is not installed
-let OpenAIClass: any;
-let openaiPackageLoaded = false;
-
-// Function to load OpenAI package on demand
-function getOpenAIClass() {
-  if (!openaiPackageLoaded) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      OpenAIClass = require("openai").OpenAI;
-      openaiPackageLoaded = true;
-    } catch (_error) {
-      console.warn("OpenAI package not found, using mock implementation");
-      OpenAIClass = MockOpenAI;
-      openaiPackageLoaded = true;
-    }
-  }
-  return OpenAIClass;
-}
+// SDK will be loaded dynamically
 
 /**
  * OpenAI TTS Client Credentials
@@ -67,6 +49,15 @@ function getOpenAIClass() {
  * Extended options for OpenAI TTS
  */
 export interface OpenAITTSOptions extends SpeakOptions {
+  /** OpenAI Model */
+  model?: string;
+  /** OpenAI Voice */
+  voice?: string;
+  /** OpenAI Speed (maps to rate) */
+  speed?: number;
+  /** Output format */
+  format?: 'mp3' | 'opus' | 'aac' | 'flac' | 'wav' | 'pcm';
+
   /**
    * Output directory for audio files
    */
@@ -113,7 +104,12 @@ export interface OpenAITTSCredentials extends TTSCredentials {
  * Word boundaries are estimated since OpenAI doesn't provide word events.
  */
 export class OpenAITTSClient extends AbstractTTSClient {
-  private client: OpenAI;
+  // Use 'any' for client to accommodate both real and mock SDK types easily
+  private client: any | null = null;
+  private clientLoadingPromise: Promise<any | null> | null = null;
+  // Make credentials protected to match base class expectations
+  protected credentials: OpenAITTSCredentials;
+
   private model: string;
   private voice: string;
   private instructions: string;
@@ -142,20 +138,64 @@ export class OpenAITTSClient extends AbstractTTSClient {
    */
   constructor(credentials: OpenAITTSCredentials = {}) {
     super(credentials);
+    this.credentials = credentials;
 
-    // Initialize OpenAI client
-    const OpenAIClass = getOpenAIClass();
-    this.client = new OpenAIClass({
-      apiKey: credentials.apiKey || process.env.OPENAI_API_KEY,
-      baseURL: credentials.baseURL,
-      organization: credentials.organization,
-    });
+    // Don't initialize client here, load it on demand
 
     // Set default values
-    this.model = "gpt-4o-mini-tts";
-    this.voice = "coral";
+    this.model = "tts-1"; // Default model
+    this.voice = "alloy"; // Default voice
     this.instructions = "";
-    this.responseFormat = "mp3";
+    this.responseFormat = "mp3"; // Default format
+  }
+
+  /**
+   * Load the OpenAI SDK dynamically.
+   * Returns the initialized client (real or mock).
+   */
+  private async loadClient(): Promise<any> {
+    if (this.client) {
+      return this.client;
+    }
+    if (this.clientLoadingPromise) {
+      const client = await this.clientLoadingPromise;
+      if (client) return client;
+      console.warn("Client loading promise resolved unexpectedly to null, using mock.");
+      this.client = new MockOpenAI();
+      return this.client;
+    }
+
+    // Only attempt dynamic import in Node.js environment
+    if (typeof window !== "undefined") {
+      console.warn("OpenAI SDK dynamic import skipped in browser environment, using mock.");
+      this.client = new MockOpenAI();
+      return this.client;
+    }
+
+    this.clientLoadingPromise = import("openai")
+      .then((openaiModule) => {
+        const OpenAIClass = openaiModule.OpenAI;
+        this.client = new OpenAIClass({
+          apiKey: this.credentials.apiKey || process.env.OPENAI_API_KEY,
+          baseURL: this.credentials.baseURL,
+          organization: this.credentials.organization,
+        });
+        this.clientLoadingPromise = null;
+        console.log("OpenAI SDK loaded successfully.");
+        return this.client;
+      })
+      .catch((_error) => {
+        console.warn("OpenAI package not found or failed to load, using mock implementation.");
+        this.client = new MockOpenAI();
+        this.clientLoadingPromise = null;
+        return this.client; // Return the mock client
+      })
+      .finally(() => {
+        this.clientLoadingPromise = null; // Clear promise once settled (success or fail)
+      });
+
+    // Wait for the promise to resolve and return the client (could be real or mock)
+    return this.clientLoadingPromise;
   }
 
   /**
@@ -164,8 +204,13 @@ export class OpenAITTSClient extends AbstractTTSClient {
    */
   async checkCredentials(): Promise<boolean> {
     try {
-      // Try to list models to check if the API key is valid
-      await this.client.models.list();
+      const client = await this.loadClient();
+      if (client instanceof MockOpenAI) {
+        console.warn("Cannot check credentials with mock OpenAI client.");
+        return false; // Cannot validate with mock
+      }
+      // Try to list models to check if the real API key is valid
+      await client.models.list();
       return true;
     } catch (error) {
       console.error("Error checking OpenAI credentials:", error);
@@ -454,20 +499,23 @@ export class OpenAITTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Promise resolving to audio bytes
    */
-  async synthToBytes(text: string | string[], _options: OpenAITTSOptions = {}): Promise<Uint8Array> {
+  async synthToBytes(text: string | string[], options: OpenAITTSOptions = {}): Promise<Uint8Array> {
     try {
-      // Create speech
-      const mp3 = await this.client.audio.speech.create({
-        model: this.model,
-        voice: this.voice,
+      const client = await this.loadClient();
+      const params: any = {
+        model: options.model || this.model,
+        voice: options.voice || this.voice,
         input: typeof text === "string" ? text : text.join(" "),
         instructions: this.instructions || undefined,
-        response_format: this.responseFormat as any,
-      });
+        response_format: options.format || this.responseFormat,
+        // Map rate to speed if provided (_options.speed takes precedence over _options.rate)
+        speed: options.speed ?? options.rate,
+      };
 
-      // Convert to bytes
-      const buffer = Buffer.from(await mp3.arrayBuffer());
-      return new Uint8Array(buffer);
+      // Use the initialized client (could be mock or real)
+      const response = await client.audio.speech.create(params);
+      const arrayBuffer = await response.arrayBuffer();
+      return new Uint8Array(arrayBuffer);
     } catch (error) {
       console.error("Error converting text to speech bytes:", error);
       throw error;
@@ -485,8 +533,9 @@ export class OpenAITTSClient extends AbstractTTSClient {
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
     try {
-      // Create speech with streaming
-      const response = await this.client.audio.speech.create({
+      const client = await this.loadClient();
+      // Use the initialized client (could be mock or real)
+      const response = await client.audio.speech.create({
         model: this.model,
         voice: this.voice,
         input: text,
