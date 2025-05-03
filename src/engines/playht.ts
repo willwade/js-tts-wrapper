@@ -386,6 +386,16 @@ export class PlayHTTTSClient extends AbstractTTSClient {
    * Convert text to speech with streaming
    * @param text Text to convert to speech
    * @param options TTS options
+   * @returns Promise resolving to the path of the generated audio file
+   */
+  async textToSpeechStreaming(text: string, options: PlayHTTTSOptions = {}): Promise<string> {
+    try {
+      if (typeof window !== "undefined") {
+        throw new Error("File output is not supported in the browser. Use synthToBytes or synthToBytestream instead.");
+      }
+      const fs = await import("node:fs");
+      const path = await import("node:path");
+      // Create output directory if it doesn't exist
       const outputDir = options.outputDir || ".";
       if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
@@ -460,9 +470,19 @@ export class PlayHTTTSClient extends AbstractTTSClient {
         const statusData = await statusResponse.json();
         console.log(`Streaming job status: ${statusData.status}`);
 
-        // Check if the job is completed
-        if ((statusData.status === "completed" || statusData.status === "complete") && statusData.output && statusData.output.url) {
-          audioUrl = statusData.output.url;
+        // Check if the job is completed (using multiple possible status strings and URL paths)
+        const isSuccessStatus = statusData.status === "completed" || statusData.status === "complete" || statusData.status === "SUCCESS";
+        let potentialUrl = null;
+
+        if (statusData.output && statusData.output.url) {
+          potentialUrl = statusData.output.url;
+        } else if (statusData.metadata && statusData.metadata.output && Array.isArray(statusData.metadata.output) && statusData.metadata.output.length > 0) {
+          potentialUrl = statusData.metadata.output[0];
+        }
+
+        if (isSuccessStatus && potentialUrl) {
+          audioUrl = potentialUrl;
+          console.log(`Streaming job finished successfully. Audio URL: ${audioUrl}`);
           break;
         }
 
@@ -482,23 +502,8 @@ export class PlayHTTTSClient extends AbstractTTSClient {
         throw new Error(`Failed to download streaming audio file: ${audioResponse.statusText}`);
       }
 
-      // Get the audio data
-      const audioBuffer = await audioResponse.arrayBuffer();
-
-      // Create a writable stream to the output file
-      const writer = fs.createWriteStream(outputPath);
-
-      // Write the audio data to the file
-      writer.write(Buffer.from(audioBuffer));
-
-      // Close the writer
-      writer.end();
-
-      // Wait for the file to be written
-      await new Promise<void>((resolve, reject) => {
-        writer.on("finish", resolve);
-        writer.on("error", reject);
-      });
+      const buffer = Buffer.from(await audioResponse.arrayBuffer());
+      fs.writeFileSync(outputPath, buffer);
 
       // Estimate word boundaries
       if (options.onWord || options.returnWordBoundaries) {
@@ -559,101 +564,38 @@ export class PlayHTTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Promise resolving to audio bytes
    */
-  async synthToBytes(text: string | string[], _options: PlayHTTTSOptions = {}): Promise<Uint8Array> {
+  async synthToBytes(text: string, options?: PlayHTTTSOptions): Promise<Buffer> {
     try {
-      // Create speech
-      const response = await fetch("https://api.play.ht/api/v2/tts", {
-        method: "POST",
-        headers: {
-          accept: "application/json",
-          "content-type": "application/json",
-          "AUTHORIZATION": this.apiKey,
-          "X-USER-ID": this.userId,
-        },
-        body: JSON.stringify({
-          text: typeof text === 'string' ? text : text.join(' '),
-          voice: this.voice,
-          output_format: this.outputFormat,
-          voice_engine: this.voiceEngine,
-        }),
-      });
+      console.debug('PlayHT synthToBytes: Calling synthToBytestream internally...');
+      const audioStream = await this.synthToBytestream(text, options);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`PlayHT API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`);
-        throw new Error(`Failed to convert text to speech: ${response.statusText}`);
+      if (!audioStream) {
+        throw new Error('synthToBytestream returned null, cannot generate Buffer.');
       }
 
-      const data = await response.json();
-      console.log('PlayHT API response:', JSON.stringify(data, null, 2));
-
-      // Poll for the result
-      const jobId = data.id;
-      if (!jobId) {
-        throw new Error(`PlayHT API did not return a job ID: ${JSON.stringify(data)}`);
-      }
-
-      // Get the job status URL
-      const jobStatusUrl = `https://api.play.ht/api/v2/tts/${jobId}`;
-
-      // Poll for the result
-      let audioUrl = null;
-      let attempts = 0;
-      const maxAttempts = 30; // Maximum number of polling attempts
-      const pollingInterval = 1000; // Polling interval in milliseconds
-
-      while (!audioUrl && attempts < maxAttempts) {
-        attempts++;
-        console.log(`Polling for result (attempt ${attempts}/${maxAttempts})...`);
-
-        // Wait for the polling interval
-        await new Promise(resolve => setTimeout(resolve, pollingInterval));
-
-        // Get the job status
-        const statusResponse = await fetch(jobStatusUrl, {
-          method: "GET",
-          headers: {
-            accept: "application/json",
-            "AUTHORIZATION": this.apiKey,
-            "X-USER-ID": this.userId,
-          },
-        });
-
-        if (!statusResponse.ok) {
-          throw new Error(`Failed to get job status: ${statusResponse.statusText}`);
+      console.debug('PlayHT synthToBytes: Buffering stream...');
+      // Helper function to read the entire stream into a Buffer
+      const streamToBuffer = async (stream: ReadableStream<Uint8Array>): Promise<Buffer> => {
+        const reader = stream.getReader();
+        const chunks: Uint8Array[] = [];
+        let totalLength = 0;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          chunks.push(value);
+          totalLength += value.length;
         }
-
-        const statusData = await statusResponse.json();
-        console.log(`Job status: ${statusData.status}`);
-        console.log(`Job output: ${JSON.stringify(statusData.output)}`);
-
-        // Check if the job is completed
-        if ((statusData.status === "completed" || statusData.status === "complete") && statusData.output && statusData.output.url) {
-          audioUrl = statusData.output.url;
-          break;
-        }
-
-        // Check if the job failed
-        if (statusData.status === "failed") {
-          throw new Error(`Job failed: ${JSON.stringify(statusData)}`);
-        }
+        return Buffer.concat(chunks, totalLength);
       }
 
-      if (!audioUrl) {
-        throw new Error(`Timed out waiting for job to complete after ${maxAttempts} attempts`);
-      }
-
-      // Download the audio file
-      const audioResponse = await fetch(audioUrl);
-      if (!audioResponse.ok) {
-        throw new Error(`Failed to download audio file: ${audioResponse.statusText}`);
-      }
-
-      const buffer = Buffer.from(await audioResponse.arrayBuffer());
-      return new Uint8Array(buffer);
+      const buffer = await streamToBuffer(audioStream);
+      console.debug(`PlayHT synthToBytes: Buffering complete (${buffer.length} bytes).`);
+      return buffer;
     } catch (error) {
-      console.error("Error converting text to speech bytes:", error);
-      throw error;
+      console.error("Error in PlayHT synthToBytes (using streaming internally):", error);
+      throw error; // Re-throw the error
     }
   }
 
@@ -665,95 +607,47 @@ export class PlayHTTTSClient extends AbstractTTSClient {
    */
   async synthToBytestream(text: string, _options: SpeakOptions = {}): Promise<ReadableStream<Uint8Array>> {
     try {
-      // Create speech with streaming - use the regular API since the streaming API returns a WAV file directly
-      const response = await fetch("https://api.play.ht/api/v2/tts", {
+      // Determine the correct Accept header based on the output format
+      let acceptHeader = 'audio/mpeg'; // Default to mp3
+      if (this.outputFormat === 'wav') {
+        acceptHeader = 'audio/wav';
+      } else if (this.outputFormat === 'ogg') {
+        acceptHeader = 'audio/ogg';
+      } // Add other formats if needed
+
+      const response = await fetch("https://api.play.ht/api/v2/tts/stream", {
         method: "POST",
         headers: {
-          accept: "application/json",
-          "content-type": "application/json",
-          "AUTHORIZATION": this.apiKey,
-          "X-USER-ID": this.userId,
+          'accept': acceptHeader,
+          'content-type': 'application/json',
+          'AUTHORIZATION': this.apiKey,
+          'X-USER-ID': this.userId,
         },
         body: JSON.stringify({
-          text,
+          text: text, // Parameter is string, no need for conditional
           voice: this.voice,
           output_format: this.outputFormat,
-          voice_engine: this.voiceEngine,
+          voice_engine: this.voiceEngine, // Ensure this is set appropriately
+          // Add other relevant options like speed, sample_rate if needed
         }),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`PlayHT API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`);
-        throw new Error(`Failed to convert text to speech with streaming: ${response.statusText}`);
+        // Attempt to read error response body for more details
+        let errorBody = '';
+        try {
+          errorBody = await response.text();
+        } catch (e) { /* Ignore error reading body */ }
+        console.error(`PlayHT Streaming API error: ${response.status} ${response.statusText}\nResponse Body: ${errorBody}`);
+        throw new Error(`Failed to stream text to speech: ${response.status} ${response.statusText}`);
       }
 
-      const data = await response.json();
-      console.log('PlayHT API bytestream response:', JSON.stringify(data, null, 2));
-
-      // Poll for the result
-      const jobId = data.id;
-      if (!jobId) {
-        throw new Error(`PlayHT API did not return a job ID: ${JSON.stringify(data)}`);
+      // The response body is the audio stream
+      if (!response.body) {
+        throw new Error('PlayHT Streaming API did not return a response body stream.');
       }
 
-      // Get the job status URL
-      const jobStatusUrl = `https://api.play.ht/api/v2/tts/${jobId}`;
-
-      // Poll for the result
-      let audioUrl = null;
-      let attempts = 0;
-      const maxAttempts = 30; // Maximum number of polling attempts
-      const pollingInterval = 1000; // Polling interval in milliseconds
-
-      while (!audioUrl && attempts < maxAttempts) {
-        attempts++;
-        console.log(`Polling for bytestream result (attempt ${attempts}/${maxAttempts})...`);
-
-        // Wait for the polling interval
-        await new Promise(resolve => setTimeout(resolve, pollingInterval));
-
-        // Get the job status
-        const statusResponse = await fetch(jobStatusUrl, {
-          method: "GET",
-          headers: {
-            accept: "application/json",
-            "AUTHORIZATION": this.apiKey,
-            "X-USER-ID": this.userId,
-          },
-        });
-
-        if (!statusResponse.ok) {
-          throw new Error(`Failed to get job status: ${statusResponse.statusText}`);
-        }
-
-        const statusData = await statusResponse.json();
-        console.log(`Bytestream job status: ${statusData.status}`);
-
-        // Check if the job is completed
-        if ((statusData.status === "completed" || statusData.status === "complete") && statusData.output && statusData.output.url) {
-          audioUrl = statusData.output.url;
-          break;
-        }
-
-        // Check if the job failed
-        if (statusData.status === "failed") {
-          throw new Error(`Bytestream job failed: ${JSON.stringify(statusData)}`);
-        }
-      }
-
-      if (!audioUrl) {
-        throw new Error(`Timed out waiting for bytestream job to complete after ${maxAttempts} attempts`);
-      }
-
-      // Download the audio file
-      const audioResponse = await fetch(audioUrl);
-      if (!audioResponse.ok) {
-        throw new Error(`Failed to download bytestream audio file: ${audioResponse.statusText}`);
-      }
-
-      // Get the audio data as a ReadableStream
-      return audioResponse.body;
+      return response.body;
     } catch (error) {
       console.error("Error converting text to speech stream:", error);
       throw error;
