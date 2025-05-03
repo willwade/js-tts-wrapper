@@ -544,100 +544,18 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    * @param modelPath Path to model file
    * @param tokensPath Path to tokens file
    */
-  private initializeTTS(modelPath: string, tokensPath: string): void {
+  private async initializeTTS(modelPath: string, tokensPath: string): Promise<void> {
     try {
       // Dynamically import sherpa-onnx-node
       let sherpaOnnx;
-      try {
-        // Try to set library path environment variable based on platform
-        let libPathEnvVar = "";
-        let possiblePaths: string[] = [];
-        let pathSeparator = process.platform === "win32" ? ";" : ":";
-
-        if (process.platform === "darwin") {
-          // macOS uses DYLD_LIBRARY_PATH
-          libPathEnvVar = "DYLD_LIBRARY_PATH";
-          possiblePaths = [
-            path.join(process.cwd(), "node_modules", "sherpa-onnx-darwin-arm64"),
-            path.join(process.cwd(), "node_modules", "sherpa-onnx-darwin-x64"),
-            path.join(__dirname, "..", "..", "node_modules", "sherpa-onnx-darwin-arm64"),
-            path.join(__dirname, "..", "..", "node_modules", "sherpa-onnx-darwin-x64")
-          ];
-        } else if (process.platform === "linux") {
-          // Linux uses LD_LIBRARY_PATH
-          libPathEnvVar = "LD_LIBRARY_PATH";
-          possiblePaths = [
-            path.join(process.cwd(), "node_modules", "sherpa-onnx-linux-arm64"),
-            path.join(process.cwd(), "node_modules", "sherpa-onnx-linux-x64"),
-            path.join(__dirname, "..", "..", "node_modules", "sherpa-onnx-linux-arm64"),
-            path.join(__dirname, "..", "..", "node_modules", "sherpa-onnx-linux-x64")
-          ];
-        } else if (process.platform === "win32") {
-          // Windows uses PATH
-          libPathEnvVar = "PATH";
-          possiblePaths = [
-            path.join(process.cwd(), "node_modules", "sherpa-onnx-win32-x64"),
-            path.join(__dirname, "..", "..", "node_modules", "sherpa-onnx-win32-x64")
-          ];
-        }
-
-        if (libPathEnvVar) {
-          for (const libPath of possiblePaths) {
-            if (fs.existsSync(libPath)) {
-              console.log(`Found sherpa-onnx library at ${libPath}`);
-              // Set environment variable
-              const currentPath = process.env[libPathEnvVar] || "";
-              if (!currentPath.includes(libPath)) {
-                process.env[libPathEnvVar] = libPath + (currentPath ? pathSeparator + currentPath : "");
-                console.log(`Set ${libPathEnvVar} to ${process.env[libPathEnvVar]}`);
-              }
-              break;
-            }
-          }
-        }
-
-        // Try to import the module
+      if (typeof require !== 'undefined') {
+        // CommonJS context
         sherpaOnnx = require("sherpa-onnx-node");
-      } catch (importError) {
-        const err = importError as any;
-        if (err.code === "MODULE_NOT_FOUND") {
-          throw new Error(
-            "The sherpa-onnx-node module is not installed. " +
-            "This is an optional dependency that provides offline TTS capabilities. " +
-            "You can install it with 'npm install sherpa-onnx-node'. " +
-            "The wrapper will continue to function with a mock implementation for testing purposes."
-          );
-        } else {
-          // For other errors, suggest setting the appropriate environment variable
-          let envVarName = "";
-          let libPath = "";
-          let exportCmd = "";
-
-          if (process.platform === "darwin" && err.message && err.message.includes("sherpa-onnx-darwin")) {
-            envVarName = "DYLD_LIBRARY_PATH";
-            libPath = path.join(process.cwd(), "node_modules", "sherpa-onnx-darwin-arm64");
-            exportCmd = `export ${envVarName}=${libPath}:$${envVarName}`;
-          } else if (process.platform === "linux" && err.message && err.message.includes("sherpa-onnx-linux")) {
-            envVarName = "LD_LIBRARY_PATH";
-            libPath = path.join(process.cwd(), "node_modules", "sherpa-onnx-linux-x64");
-            exportCmd = `export ${envVarName}=${libPath}:$${envVarName}`;
-          } else if (process.platform === "win32" && err.message && err.message.includes("sherpa-onnx-win32")) {
-            envVarName = "PATH";
-            libPath = path.join(process.cwd(), "node_modules", "sherpa-onnx-win32-x64");
-            exportCmd = `set ${envVarName}=${libPath};%${envVarName}%`;
-          }
-
-          if (envVarName) {
-            throw new Error(
-              `Could not load sherpa-onnx-node. Please set the ${envVarName} environment variable:\n` +
-              `${exportCmd}\n\n` +
-              `Or use the provided helper script:\n` +
-              `node scripts/run-with-sherpaonnx.js your-script.js\n\n` +
-              `Original error: ${err.message}`
-            );
-          }
-          throw err;
-        }
+      } else {
+        // ESM context - use dynamic import
+        const module = await import("sherpa-onnx-node");
+        // Assuming the module exports the necessary functions directly or under a default export
+        sherpaOnnx = module.default || module;
       }
 
       // Create the TTS configuration
@@ -766,7 +684,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         const [modelPath, tokensPath, , ] = await this.checkAndDownloadModel(voiceId);
 
         // Initialize the TTS engine
-        this.initializeTTS(modelPath, tokensPath);
+        await this.initializeTTS(modelPath, tokensPath);
 
         // Set the model path
         this.modelPath = modelPath;
@@ -929,7 +847,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
           if (this.checkFilesExist(modelPath, tokensPath)) {
             // Try to initialize the engine
-            this.initializeTTS(modelPath, tokensPath);
+            await this.initializeTTS(modelPath, tokensPath);
             return !!this.tts;
           }
         } catch (error) {
