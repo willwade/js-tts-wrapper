@@ -32,8 +32,8 @@
   "type": "module",
   "scripts": {
     "build": "npm run build:cjs && npm run build:esm && npm run build:browser",
-    "build:cjs": "tsc -p tsconfig.cjs.json",
-    "build:esm": "tsc -p tsconfig.esm.json && tsc-alias -p tsconfig.esm.json && tsc-esm-fix dist/esm",
+    "build:cjs": "node scripts/generate-models-ts.cjs && tsc -p tsconfig.cjs.json",
+    "build:esm": "node scripts/generate-models-ts.cjs && tsc -p tsconfig.esm.json && tsc-alias -p tsconfig.esm.json && tsc-esm-fix dist/esm",
     "build:browser": "tsc -p tsconfig.browser.json",
     "build:bundle": "rollup -c rollup.config.js",
     "dev": "tsc --watch",

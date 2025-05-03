@@ -3,5 +3,9 @@
   "compilerOptions": {
     "module": "CommonJS",
     "outDir": "dist/cjs"
-  }
+  },
+  "include": [
+    "src/**/*", 
+    "src/engines/sherpaonnx/generated_models.ts" 
+  ]
 }

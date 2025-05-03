@@ -5,9 +5,12 @@ import * as path from "path";
 import * as os from "os";
 import fetch from 'node-fetch';
 // Import necessary modules for ESM path resolution
-import { fileURLToPath } from 'url'; 
+// import { fileURLToPath } from 'url'; // No longer needed
 import decompress from "decompress";
 import decompressTarbz2 from "decompress-tarbz2";
+
+// Import the generated models config
+import { SHERPA_MODELS_CONFIG } from "./sherpaonnx/generated_models";
 
 // Module scope variable to hold the imported module
 let sherpa: any;
@@ -42,10 +45,10 @@ export interface SherpaOnnxTTSCredentials extends TTSCredentials {
  */
 interface ModelConfig {
   url: string;
-  name: string;
-  language: string;
-  gender: "Male" | "Female" | "Unknown";
-  description: string;
+  name?: string;
+  language: ({ lang_code: string; language_name: string; country: string; } | { "Iso Code": string; "Language Name": string; Country: string; })[];
+  gender?: "Male" | "Female" | "Unknown";
+  description?: string;
   compression?: boolean;
 }
 
@@ -87,11 +90,6 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
   private jsonModels: Record<string, ModelConfig> = {};
 
   /**
-   * Path to the models file
-   */
-  private static readonly MODELS_FILE = "merged_models.json";
-
-  /**
    * Create a new SherpaOnnx TTS client
    * @param credentials SherpaOnnx credentials
    */
@@ -104,7 +102,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
     // Use a dedicated models directory if modelPath is not provided
     if (this.modelPath) {
-      this.baseDir = path.dirname(this.modelPath);
+      this.baseDir = this.modelPath;
     } else {
       // Create a models directory in the user's home directory
       const homeDir = os.homedir();
@@ -137,129 +135,11 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    */
   private loadModelsAndVoices(): Record<string, ModelConfig> {
     try {
-      // Determine the directory of the current module, compatible with both ESM and CJS
-      let packageDir: string;
-      if (typeof __dirname !== 'undefined') {
-        // CommonJS environment
-        packageDir = __dirname;
-      } else {
-        // ESM environment
-        // Try accessing import.meta indirectly to potentially bypass TS check for CJS build
-        const importMeta = (globalThis as any).import?.meta;
-        if (importMeta?.url) {
-          const currentFilePath = fileURLToPath(importMeta.url);
-          packageDir = path.dirname(currentFilePath);
-        } else {
-          // Fallback or error if import.meta.url is somehow unavailable in ESM
-          console.error(
-            "[SherpaOnnxTTSClient] Critical Error: Could not determine ESM module path using import.meta.url."
-          );
-          // As a last resort, maybe use cwd, but this is likely wrong.
-          packageDir = process.cwd();
-          // Consider throwing an error instead:
-          // throw new Error("Could not determine module path in ESM environment.");
-        }
-      }
-
-      const modelsFilePath = path.join(packageDir, "sherpaonnx", SherpaOnnxTTSClient.MODELS_FILE);
-
-      if (fs.existsSync(modelsFilePath)) {
-        const modelsJson = fs.readFileSync(modelsFilePath, "utf-8");
-        return JSON.parse(modelsJson);
-      }
-
-      // If that fails, try to load from the models directory
-      const modelsFilePathInModels = path.join(this.baseDir, SherpaOnnxTTSClient.MODELS_FILE);
-
-      if (fs.existsSync(modelsFilePathInModels)) {
-        const modelsJson = fs.readFileSync(modelsFilePathInModels, "utf-8");
-        return JSON.parse(modelsJson);
-      }
-
-      // If that fails too, download the models file
-      console.log("Models file not found, downloading...");
-
-      // Create a temporary models file with a default configuration
-      const defaultModels: Record<string, ModelConfig> = {
-        "mms_eng": {
-          url: "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/eng",
-          name: "MMS English",
-          language: "en-US",
-          gender: "Female",
-          description: "MMS English TTS model"
-        }
-      };
-
-      // Save the default models file
-      fs.writeFileSync(
-        path.join(this.baseDir, SherpaOnnxTTSClient.MODELS_FILE),
-        JSON.stringify(defaultModels, null, 2)
-      );
-
-      // Download the actual models file
-      this.downloadModelsFile();
-
-      return defaultModels;
-    } catch (error) {
-      console.error("Error loading models and voices:", error);
-      return {};
-    }
-  }
-
-  /**
-   * Download the models file from the repository
-   */
-  private async downloadModelsFile(): Promise<void> {
-    try {
-      // Try to download the models file from the repository
-      const url = "https://raw.githubusercontent.com/willwade/tts-wrapper/main/tts_wrapper/engines/sherpaonnx/merged_models.json";
-
-      try {
-        const response = await fetch(url);
-
-        if (!response.ok) {
-          throw new Error(`Failed to download models file: ${response.statusText}`);
-        }
-
-        const modelsJson = await response.text();
-        fs.writeFileSync(
-          path.join(this.baseDir, SherpaOnnxTTSClient.MODELS_FILE),
-          modelsJson
-        );
-
-        console.log("Models file downloaded successfully");
-
-        // Update the models configuration
-        this.jsonModels = JSON.parse(modelsJson);
-        return;
-      } catch (downloadError) {
-        console.warn("Could not download models file from repository, using default configuration");
-      }
-
-      // If download fails, use our default configuration
-      const defaultModels: Record<string, ModelConfig> = {
-        "mms_eng": {
-          url: "https://huggingface.co/willwade/mms-tts-multilingual-models-onnx/resolve/main/eng",
-          name: "MMS English",
-          language: "en-US",
-          gender: "Female",
-          description: "MMS English TTS model"
-        }
-      };
-
-      // Save the models file
-      const modelsJson = JSON.stringify(defaultModels, null, 2);
-      fs.writeFileSync(
-        path.join(this.baseDir, SherpaOnnxTTSClient.MODELS_FILE),
-        modelsJson
-      );
-
-      console.log("Models file created successfully");
-
-      // Update the models configuration
-      this.jsonModels = defaultModels;
-    } catch (error) {
-      console.error("Error creating models file:", error);
+      // Return the embedded models config directly
+      return SHERPA_MODELS_CONFIG;
+    } catch (error: any) {
+      // This should ideally not happen if the generation script ran correctly
+      throw new Error(`Could not load embedded models configuration. Build might be broken. Error: ${error.message}`);
     }
   }
 
