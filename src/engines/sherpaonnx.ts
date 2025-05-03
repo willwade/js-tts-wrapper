@@ -9,13 +9,8 @@ import { fileURLToPath } from 'url';
 import decompress from "decompress";
 import decompressTarbz2 from "decompress-tarbz2";
 
-// Dynamically import sherpa-onnx-node only if it exists
+// Module scope variable to hold the imported module
 let sherpa: any;
-try {
-  sherpa = await import("sherpa-onnx-node");
-} catch (error) {
-  console.error("Error importing sherpa-onnx-node:", error);
-}
 
 /**
  * SherpaOnnx TTS credentials
@@ -142,9 +137,30 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    */
   private loadModelsAndVoices(): Record<string, ModelConfig> {
     try {
-      // First try to load from the package directory using ESM compatible path
-      const currentFilePath = fileURLToPath(import.meta.url);
-      const packageDir = path.dirname(currentFilePath);
+      // Determine the directory of the current module, compatible with both ESM and CJS
+      let packageDir: string;
+      if (typeof __dirname !== 'undefined') {
+        // CommonJS environment
+        packageDir = __dirname;
+      } else {
+        // ESM environment
+        // Try accessing import.meta indirectly to potentially bypass TS check for CJS build
+        const importMeta = (globalThis as any).import?.meta;
+        if (importMeta?.url) {
+          const currentFilePath = fileURLToPath(importMeta.url);
+          packageDir = path.dirname(currentFilePath);
+        } else {
+          // Fallback or error if import.meta.url is somehow unavailable in ESM
+          console.error(
+            "[SherpaOnnxTTSClient] Critical Error: Could not determine ESM module path using import.meta.url."
+          );
+          // As a last resort, maybe use cwd, but this is likely wrong.
+          packageDir = process.cwd();
+          // Consider throwing an error instead:
+          // throw new Error("Could not determine module path in ESM environment.");
+        }
+      }
+
       const modelsFilePath = path.join(packageDir, "sherpaonnx", SherpaOnnxTTSClient.MODELS_FILE);
 
       if (fs.existsSync(modelsFilePath)) {
@@ -557,16 +573,25 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    */
   private async initializeTTS(modelPath: string, tokensPath: string): Promise<void> {
     try {
-      // Dynamically import sherpa-onnx-node
-      let sherpaOnnx;
-      if (typeof require !== 'undefined') {
-        // CommonJS context
-        sherpaOnnx = require("sherpa-onnx-node");
-      } else {
-        // ESM context - use dynamic import
-        const module = await import("sherpa-onnx-node");
-        // Assuming the module exports the necessary functions directly or under a default export
-        sherpaOnnx = module.default || module;
+      // Dynamically import sherpa-onnx-node if not already loaded
+      if (!sherpa) {
+        try {
+          if (typeof require !== 'undefined') {
+            // Attempt require in CommonJS (though build might fail earlier if not optional)
+            sherpa = require("sherpa-onnx-node");
+          } else {
+            // Attempt dynamic import in ESM
+            sherpa = await import("sherpa-onnx-node");
+          }
+        } catch (error) {
+          console.error(
+            "Optional dependency sherpa-onnx-node not found or failed to load:",
+            error
+          );
+          throw new Error(
+            "SherpaOnnxTTSClient requires the 'sherpa-onnx-node' package to be installed for native TTS."
+          );
+        }
       }
 
       // Create the TTS configuration
@@ -584,7 +609,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       };
 
       // Create the TTS instance
-      this.tts = new sherpaOnnx.OfflineTts(config);
+      this.tts = new sherpa.OfflineTts(config);
 
       console.log("SherpaOnnx TTS initialized successfully");
     } catch (error) {
