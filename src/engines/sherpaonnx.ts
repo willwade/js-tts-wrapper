@@ -152,8 +152,15 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
   private async downloadFile(url: string, destination: string): Promise<void> {
     try {
       console.log(`Downloading file from ${url}`);
-      const response = await fetch(url);
+ 
+      // Diagnostic log to check the fetch implementation
+      console.log(`DEBUG: typeof fetch = ${typeof fetch}`);
+      if (typeof fetch === 'function' && fetch.toString) {
+        console.log(`DEBUG: fetch.toString() = ${fetch.toString().substring(0, 200)}...`); // Log first 200 chars
+      }
 
+      const response = await fetch(url);
+ 
       if (!response.ok) {
         throw new Error(`Failed to download file: ${response.statusText}`);
       }
