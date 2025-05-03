@@ -13,10 +13,6 @@ import { OpenAITTSClient } from "../engines/openai";
 import { PlayHTTTSClient } from "../engines/playht";
 import { MockTTSClient } from "./mock-tts-client.helper";
 
-// ESM equivalent for __dirname
-const __filename = url.fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 // Use mocks for tests to avoid API calls
 const USE_MOCKS = true;
 
