@@ -3,7 +3,6 @@ import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import fetch from 'node-fetch';
 // Import necessary modules for ESM path resolution
 // import { fileURLToPath } from 'url'; // No longer needed
 import decompress from "decompress";
