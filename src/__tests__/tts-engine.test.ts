@@ -1,5 +1,8 @@
 import * as fs from "fs";
 import * as path from "path";
+import * as url from 'url';
+import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+
 import type { AbstractTTSClient } from "../core/abstract-tts";
 import { AzureTTSClient } from "../engines/azure";
 import { ElevenLabsTTSClient } from "../engines/elevenlabs";
@@ -9,6 +12,10 @@ import { SherpaOnnxTTSClient } from "../engines/sherpaonnx";
 import { OpenAITTSClient } from "../engines/openai";
 import { PlayHTTTSClient } from "../engines/playht";
 import { MockTTSClient } from "./mock-tts-client.helper";
+
+// ESM equivalent for __dirname
+const __filename = url.fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Use mocks for tests to avoid API calls
 const USE_MOCKS = true;
@@ -232,9 +239,7 @@ engines.forEach((engineName) => {
         const outputPath = path.join(__dirname, `${engineName}-non-streaming-test.mp3`);
 
         // Use synthToBytes (non-streaming)
-        const audioBytes = await client!.synthToBytes(text, {
-          format: "mp3",
-        });
+        const audioBytes = await client!.synthToBytes(text, {});
 
         // Save to file for verification
         fs.writeFileSync(outputPath, Buffer.from(audioBytes));
@@ -275,9 +280,7 @@ engines.forEach((engineName) => {
           const outputPath = path.join(__dirname, `${engineName}-ssml-test.mp3`);
 
           // Use synthToBytes with SSML
-          const audioBytes = await client!.synthToBytes(ssml, {
-            format: "mp3",
-          });
+          const audioBytes = await client!.synthToBytes(ssml, {});
 
           // Save to file for verification
           fs.writeFileSync(outputPath, Buffer.from(audioBytes));
@@ -312,7 +315,6 @@ engines.forEach((engineName) => {
 
         // Use synthToBytestream (streaming)
         const streamResult = await client!.synthToBytestream(text, {
-          format: "mp3",
           useWordBoundary: false, // Don't request word boundaries
         });
 

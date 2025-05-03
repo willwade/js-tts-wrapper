@@ -1,29 +1,52 @@
 module.exports = {
-  preset: "ts-jest",
+  preset: "ts-jest/presets/default-esm", 
   transform: {
-    "^.+\\.(ts|tsx)$": [
+    "^.+\\.tsx?$": [
       "ts-jest",
-      { tsconfig: "tsconfig.cjs.json" }
+      {
+        useESM: true 
+      }
     ]
   },
   testEnvironment: "node",
-  testMatch: ["**/__tests__/**/*.test.ts?(x)", "**/?(*.)+(spec|test).ts?(x)"],
+  testMatch: [
+    "**/__tests__/**/*.+(ts|tsx|js)",
+    "**/?(*.)+(spec|test).+(ts|tsx|js)" 
+  ],
   testPathIgnorePatterns: [
     "<rootDir>/node_modules/",
     "<rootDir>/dist/",
-    "<rootDir>/src/__tests__/.*.helper.ts",
-    "<rootDir>/src/__tests__/.*.mock.ts"
+    "<rootDir>/src/__tests__/.*\\.helper\\.ts",
+    "<rootDir>/src/__tests__/.*\\.mock\\.ts",
+    "<rootDir>/emsdk/"
   ],
-  collectCoverage: true,
+  collectCoverage: false,
   coverageDirectory: "coverage",
-  collectCoverageFrom: [
+  collectCoverageFrom: [ 
     "src/**/*.ts",
     "!src/**/*.d.ts",
-    "!src/**/*.test.ts",
-    "!src/**/__tests__/**"
+    "!src/types/**",
+    "!**/node_modules/**"
+  ],
+  coverageReporters: [ 
+    "json-summary",
+    "text",
+    "lcov"
   ],
   moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1", 
     "sherpa-onnx-node": "<rootDir>/src/__tests__/sherpaonnx.mock.ts",
   },
+  moduleFileExtensions: [ 
+    "ts",
+    "tsx",
+    "js",
+    "jsx",
+    "json",
+    "node"
+  ],
   extensionsToTreatAsEsm: [".ts"],
+  modulePathIgnorePatterns: [
+    "<rootDir>/dist/"
+  ]
 };

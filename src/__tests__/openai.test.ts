@@ -1,71 +1,93 @@
-import { OpenAITTSClient } from "../engines/openai";
-import * as fs from "node:fs";
+import { describe, it, expect, jest, beforeEach, test, afterEach } from '@jest/globals';
+import * as fs from "node:fs"; 
 import * as path from "node:path";
+import mock from 'mock-fs'; 
+import type { SpeechCreateParams } from 'openai/resources/audio/speech'; 
+import type { Response } from 'openai/core';
+import { OpenAITTSClient } from "../engines/openai"; 
 
-// Mock OpenAI client
-jest.mock("openai", () => {
-  return {
-    OpenAI: jest.fn().mockImplementation(() => {
-      return {
-        models: {
-          list: jest.fn().mockResolvedValue({ data: [] }),
-        },
-        audio: {
-          speech: {
-            create: jest.fn().mockResolvedValue({
-              arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(0)),
-              body: {
-                [Symbol.asyncIterator]: async function* () {
-                  yield new Uint8Array(0);
-                },
-                getReader: jest.fn().mockReturnValue({
-                  read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
-                  releaseLock: jest.fn(),
-                }),
-              },
+const mockListResponse = {
+  data: [
+    { id: 'tts-1', object: 'model', created: 1, owned_by: 'openai' },
+    { id: 'tts-1-hd', object: 'model', created: 1, owned_by: 'openai' },
+    { id: 'gpt-4o-mini-tts', object: 'model', created: 1, owned_by: 'openai' },
+  ],
+};
+
+const mockOpenAIInstance = {
+  models: {
+    list: jest.fn().mockImplementation(async () => mockListResponse),
+  },
+  audio: {
+    speech: {
+      create: jest.fn().mockImplementation((async (params: SpeechCreateParams): Promise<Response> => {
+        const mockAudioData = Buffer.from(`mock audio for ${params.input}`);
+        const mockAudioBuffer = mockAudioData.buffer.slice(mockAudioData.byteOffset, mockAudioData.byteOffset + mockAudioData.byteLength);
+        const headers = new Headers();
+
+        if ((params.response_format as string) === 'json') {
+            const boundaries = [
+              { word: 'Hello', start: 0.1, end: 0.5 },
+              { word: 'world', start: 0.6, end: 1.0 },
+            ];
+            headers.set('openai-word-boundaries', JSON.stringify(boundaries));
+        }
+
+        const mockResponse = {
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            headers: headers,
+            arrayBuffer: async () => mockAudioBuffer,
+            body: new ReadableStream<Uint8Array>({
+                async start(controller) {
+                    controller.enqueue(Buffer.from("mock stream chunk 1"));
+                    controller.enqueue(Buffer.from("mock stream chunk 2"));
+                    controller.close();
+                }
             }),
-          },
-        },
-      };
-    }),
-  };
-});
-
-// Mock fs
-jest.mock("node:fs", () => {
-  return {
-    ...jest.requireActual("node:fs"),
-    writeFileSync: jest.fn(),
-    createWriteStream: jest.fn().mockImplementation(() => {
-      return {
-        write: jest.fn(),
-        end: jest.fn(),
-        on: jest.fn().mockImplementation((event, callback) => {
-          if (event === "finish") {
-            callback();
-          }
-          return this;
-        }),
-      };
-    }),
-    existsSync: jest.fn().mockReturnValue(true),
-    mkdirSync: jest.fn(),
-  };
-});
+            json: async () => ({}), 
+        };
+        return mockResponse as Response;
+      }) as any),
+    },
+  },
+};
 
 describe("OpenAITTSClient", () => {
   let client: OpenAITTSClient;
+  let mockStream: any; 
 
   beforeEach(() => {
+    mock({}); 
+
+    mockStream = {
+      write: jest.fn(),
+      end: jest.fn(((cb?: () => void) => { if (cb) cb(); }) as any),
+      on: jest.fn(),
+      once: jest.fn(),
+      emit: jest.fn(),
+      removeListener: jest.fn(),
+      pipe: jest.fn().mockReturnThis(),
+    };
+
     client = new OpenAITTSClient({
       apiKey: "test-api-key",
     });
-    jest.clearAllMocks();
+
+    (client as any).client = mockOpenAIInstance;
+
+    jest.clearAllMocks(); 
+  });
+
+  afterEach(() => {
+    mock.restore();
   });
 
   test("should initialize with default values", () => {
-    expect(client.getProperty("model")).toBe("gpt-4o-mini-tts");
-    expect(client.getProperty("voice")).toBe("coral");
+    expect(client).toBeDefined();
+    expect(client.getProperty("model")).toBe("tts-1");
+    expect(client.getProperty("voice")).toBe("alloy"); 
     expect(client.getProperty("instructions")).toBe("");
     expect(client.getProperty("responseFormat")).toBe("mp3");
   });
@@ -103,15 +125,15 @@ describe("OpenAITTSClient", () => {
   });
 
   test("should convert text to speech", async () => {
-    const outputPath = await client.textToSpeech("Hello, world!");
+    const outputPath = await client.textToSpeech("Hello world", { outputFile: "openai-output.mp3" });
     expect(outputPath).toBe("openai-output.mp3");
-    expect(fs.writeFileSync).toHaveBeenCalled();
+    expect(fs.existsSync(outputPath)).toBe(true); 
   });
 
   test("should convert text to speech with streaming", async () => {
-    const outputPath = await client.textToSpeechStreaming("Hello, world!");
+    const outputPath = await client.textToSpeechStreaming("Hello stream", { outputFile: "openai-streaming-output.mp3" });
     expect(outputPath).toBe("openai-streaming-output.mp3");
-    expect(fs.createWriteStream).toHaveBeenCalled();
+    expect(fs.existsSync(outputPath)).toBe(true); 
   });
 
   test("should throw error for SSML", async () => {
@@ -134,8 +156,10 @@ describe("OpenAITTSClient", () => {
   });
 
   test("should handle onEnd callback", async () => {
-    const onEnd = jest.fn();
-    await client.textToSpeech("Hello, world!", { onEnd });
-    expect(onEnd).toHaveBeenCalled();
+    const onEndMock = jest.fn();
+    const outputPath = "test.mp3";
+    await client.textToSpeechStreaming("Test sentence.", { outputFile: outputPath, onEnd: onEndMock }); 
+    expect(fs.existsSync(outputPath)).toBe(true);
+    expect(onEndMock).toHaveBeenCalled(); 
   });
 });

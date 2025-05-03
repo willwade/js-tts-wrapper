@@ -3,9 +3,19 @@ import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import fetch from "node-fetch";
+import fetch from 'node-fetch';
+// Import necessary modules for ESM path resolution
+import { fileURLToPath } from 'url'; 
 import decompress from "decompress";
 import decompressTarbz2 from "decompress-tarbz2";
+
+// Dynamically import sherpa-onnx-node only if it exists
+let sherpa: any;
+try {
+  sherpa = await import("sherpa-onnx-node");
+} catch (error) {
+  console.error("Error importing sherpa-onnx-node:", error);
+}
 
 /**
  * SherpaOnnx TTS credentials
@@ -132,8 +142,9 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    */
   private loadModelsAndVoices(): Record<string, ModelConfig> {
     try {
-      // First try to load from the package directory
-      const packageDir = path.dirname(__filename);
+      // First try to load from the package directory using ESM compatible path
+      const currentFilePath = fileURLToPath(import.meta.url);
+      const packageDir = path.dirname(currentFilePath);
       const modelsFilePath = path.join(packageDir, "sherpaonnx", SherpaOnnxTTSClient.MODELS_FILE);
 
       if (fs.existsSync(modelsFilePath)) {
@@ -665,6 +676,18 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Get a property value
+   * @param property Property name
+   * @returns Property value
+   */
+  getProperty(property: string): any {
+    if (property === "voice") {
+      return this.voiceId;
+    }
+    return super.getProperty(property);
+  }
+
+  /**
    * Set the voice to use for synthesis
    * @param voiceId Voice ID to use
    */
@@ -778,6 +801,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    * @param text Text to synthesize.
    * @param _options Synthesis options (e.g., voice/speaker ID).
    * @returns Promise resolving to an object containing the audio stream and an empty word boundaries array.
+   * @returns Promise resolving to an object containing the audio stream and word boundaries.
    */
   async synthToBytestream(
     text: string,
@@ -793,21 +817,59 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         plainText = this.stripSSML(plainText);
       }
 
-      // Get audio bytes
-      const audioBytes = await this.synthToBytes(text);
+      // Handle case where TTS is not initialized (similar to synthToBytes)
+      if (!this.tts) {
+        console.warn(
+          "SherpaOnnx TTS is not initialized. Returning empty stream and boundaries."
+        );
+        const emptyStream = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.close();
+          },
+        });
+        return { audioStream: emptyStream, wordBoundaries: [] };
+      }
+
+      // Generate audio using the TTS engine
+      const result = this.tts.generate({
+        text: plainText,
+        sid: 0, // Default speaker ID
+        speed: this.properties.rate === "slow" ? 0.8 :
+               this.properties.rate === "medium" ? 1.0 :
+               this.properties.rate === "fast" ? 1.2 : 1.0,
+      });
+
+      // Extract samples and word boundaries
+      const samples = result.samples;
+      const rawWordBoundaries = result.wordBoundaries || [];
+
+      // Convert Float32Array samples to Uint8Array (16-bit PCM) (logic from synthToBytes)
+      const pcmData = new Int16Array(samples.length);
+      for (let i = 0; i < samples.length; i++) {
+        const sample = Math.max(-1, Math.min(1, samples[i]));
+        pcmData[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+      }
+      const buffer = new Uint8Array(pcmData.buffer);
 
       // Create a readable stream from the audio bytes
       const audioStream = new ReadableStream<Uint8Array>({
         start(controller) {
-          controller.enqueue(audioBytes);
+          controller.enqueue(buffer);
           controller.close();
         },
       });
 
-      // Return both the audio stream and word boundaries
+      // Map raw boundaries to the expected format { text, offset, duration }
+      const formattedWordBoundaries = rawWordBoundaries.map((wb: { word: string; start: number; end: number }) => ({
+          text: wb.word,
+          offset: wb.start * 1000, // Assuming start is in seconds, convert to ms
+          duration: (wb.end - wb.start) * 1000 // Calculate duration in ms
+      }));
+
+      // Return both the audio stream and the formatted word boundaries
       return {
         audioStream,
-        wordBoundaries: [],
+        wordBoundaries: formattedWordBoundaries,
       };
     } catch (error) {
       console.error("Error synthesizing speech stream:", error);

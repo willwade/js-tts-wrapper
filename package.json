@@ -37,7 +37,7 @@
     "build:browser": "tsc -p tsconfig.browser.json",
     "build:bundle": "rollup -c rollup.config.js",
     "dev": "tsc --watch",
-    "test": "jest",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:env": "node load-env.js && jest",
     "test:tts": "node run-tts-tests.js",
     "test:azure": "node run-tts-tests.js azure",
@@ -104,11 +104,13 @@
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^12.1.2",
     "@types/jest": "^29.5.14",
+    "@types/mock-fs": "^4.13.4",
     "@types/node-fetch": "^2.6.12",
     "dotenv": "^16.4.7",
     "husky": "^9.1.7",
     "jest": "^29.7.0",
     "lint-staged": "^15.5.0",
+    "mock-fs": "^5.5.0",
     "rimraf": "^6.0.1",
     "rollup": "^4.39.0",
     "sinon": "^20.0.0",
@@ -190,11 +192,11 @@
     ]
   },
   "dependencies": {
+    "@google-cloud/text-to-speech": "^6.0.1",
+    "@local/espeakng": "file:./wasm/espeakng",
     "aws-sdk": "^2.1638.0",
     "elevenlabs": "^0.6.0",
-    "openai": "^4.52.0",
-    "@google-cloud/text-to-speech": "^5.3.0",
-    "sherpa-onnx-node": "^1.10.2",
-    "@local/espeakng": "file:./wasm/espeakng"
+    "openai": "^4.97.0",
+    "sherpa-onnx-node": "^1.11.3"
   }
 }
