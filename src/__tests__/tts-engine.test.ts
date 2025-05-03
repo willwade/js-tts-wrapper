@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import * as url from 'url';
+import * as os from "os";
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 
 import type { AbstractTTSClient } from "../core/abstract-tts";
@@ -232,7 +232,7 @@ engines.forEach((engineName) => {
 
       try {
         const text = `This is a test of non-streaming synthesis with ${engineName}.`;
-        const outputPath = path.join(__dirname, `${engineName}-non-streaming-test.mp3`);
+        const outputPath = path.join(os.tmpdir(), `js-tts-${engineName}-non-streaming-test.mp3`);
 
         // Use synthToBytes (non-streaming)
         const audioBytes = await client!.synthToBytes(text, {});
@@ -273,7 +273,7 @@ engines.forEach((engineName) => {
               It supports various SSML tags.
             </speak>
           `;
-          const outputPath = path.join(__dirname, `${engineName}-ssml-test.mp3`);
+          const outputPath = path.join(os.tmpdir(), `js-tts-${engineName}-ssml-test.mp3`);
 
           // Use synthToBytes with SSML
           const audioBytes = await client!.synthToBytes(ssml, {});
@@ -307,7 +307,7 @@ engines.forEach((engineName) => {
 
       try {
         const text = `This is a test of streaming synthesis with ${engineName}.`;
-        const outputPath = path.join(__dirname, `${engineName}-streaming-test.mp3`);
+        const outputPath = path.join(os.tmpdir(), `js-tts-${engineName}-streaming-test.mp3`);
 
         // Use synthToBytestream (streaming)
         const streamResult = await client!.synthToBytestream(text, {
