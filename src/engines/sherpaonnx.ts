@@ -77,11 +77,6 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
   private tts: any = null;
 
   /**
-   * Sample rate
-   */
-  private sampleRate: number = 16000;
-
-  /**
    * Model configuration
    */
   private jsonModels: Record<string, ModelConfig> = {};
@@ -673,41 +668,6 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
   }
 
   /**
-   * Estimate word boundaries from text
-   * @param text Text to estimate word boundaries for
-   * @param audioDuration Duration of the audio in seconds
-   * @returns Array of word boundaries
-   */
-  private estimateWordBoundaries(
-    text: string,
-    audioDuration: number
-  ): Array<{ text: string; offset: number; duration: number }> {
-    // Split text into words
-    const words = text.split(/\\s+/);
-
-    // Estimate duration per word (simple approach)
-    const durationPerWord = audioDuration / words.length;
-
-    // Create word boundaries
-    const wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
-    let currentOffset = 0;
-
-    for (const word of words) {
-      if (word.trim()) {
-        wordBoundaries.push({
-          text: word,
-          offset: currentOffset * 1000, // Convert to milliseconds
-          duration: durationPerWord * 1000, // Convert to milliseconds
-        });
-
-        currentOffset += durationPerWord;
-      }
-    }
-
-    return wordBoundaries;
-  }
-
-  /**
    * Get available voices from the provider
    * @returns Promise resolving to an array of voice objects
    */
@@ -864,9 +824,6 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         // Convert Int16Array to Uint8Array
         const buffer = new Uint8Array(pcmData.buffer);
 
-        // Set the sample rate
-        this.sampleRate = 16000;
-
         return buffer;
       }
 
@@ -891,9 +848,6 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       // Convert Int16Array to Uint8Array
       const buffer = new Uint8Array(pcmData.buffer);
 
-      // Set the sample rate
-      this.sampleRate = audio.sampleRate;
-
       return buffer;
     } catch (error) {
       console.error("Error synthesizing speech:", error);
@@ -902,63 +856,41 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
   }
 
   /**
-   * Synthesize text to a byte stream with word boundaries
-   * @param text Text to synthesize
-   * @param options Synthesis options
-   * @returns Promise resolving to a readable stream of audio bytes with word boundaries
+   * Synthesize text to a byte stream using the Node.js native addon.
+   * @param text Text to synthesize.
+   * @param _options Synthesis options (e.g., voice/speaker ID).
+   * @returns Promise resolving to an object containing the audio stream and an empty word boundaries array.
    */
   async synthToBytestream(
     text: string,
-    options?: SpeakOptions
-  ): Promise<
-    | ReadableStream<Uint8Array>
-    | {
-        audioStream: ReadableStream<Uint8Array>;
-        wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
-      }
-  > {
+    _options?: SpeakOptions
+  ): Promise<{
+    audioStream: ReadableStream<Uint8Array>;
+    wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
+  }> {
     try {
-      // Check if word boundary information is requested
-      const useWordBoundary = options?.useWordBoundary !== false;
+      // Remove SSML tags if present
+      let plainText = text;
+      if (this._isSSML(plainText)) {
+        plainText = this.stripSSML(plainText);
+      }
 
       // Get audio bytes
       const audioBytes = await this.synthToBytes(text);
 
-      if (useWordBoundary) {
-        // Remove SSML tags if present
-        let plainText = text;
-        if (this._isSSML(plainText)) {
-          plainText = this.stripSSML(plainText);
-        }
+      // Create a readable stream from the audio bytes
+      const audioStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(audioBytes);
+          controller.close();
+        },
+      });
 
-        // Estimate audio duration in seconds
-        const audioDuration = audioBytes.length / (this.sampleRate * 2); // 16-bit = 2 bytes per sample
-
-        // Estimate word boundaries
-        const wordBoundaries = this.estimateWordBoundaries(plainText, audioDuration);
-
-        // Create a readable stream from the audio bytes
-        const audioStream = new ReadableStream<Uint8Array>({
-          start(controller) {
-            controller.enqueue(audioBytes);
-            controller.close();
-          },
-        });
-
-        // Return both the audio stream and word boundaries
-        return {
-          audioStream,
-          wordBoundaries,
-        };
-      } else {
-        // If word boundaries are not needed, just return the audio as a stream
-        return new ReadableStream<Uint8Array>({
-          start(controller) {
-            controller.enqueue(audioBytes);
-            controller.close();
-          },
-        });
-      }
+      // Return both the audio stream and word boundaries
+      return {
+        audioStream,
+        wordBoundaries: [],
+      };
     } catch (error) {
       console.error("Error synthesizing speech stream:", error);
       throw error;

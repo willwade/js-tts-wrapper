@@ -1,9 +1,18 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import * as SpeechMarkdown from "../markdown/converter";
-import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
+import type {
+  SpeakOptions,
+  TTSCredentials,
+  UnifiedVoice,
+} from "../types";
 
-// Import AWS SDK v3 Polly client
-// AWS SDK imports moved inside Node-only code paths for browser compatibility.
+// Import AWS SDK v3 Polly client and command
+import type {
+  SynthesizeSpeechCommandInput,
+  SynthesizeSpeechCommandOutput,
+} from "@aws-sdk/client-polly";
+// Utility to read stream (assuming one exists or we add one)
+import { streamToBuffer } from "../utils/stream-utils";
 
 /**
  * AWS Polly TTS credentials
@@ -68,7 +77,7 @@ export class PollyTTSClient extends AbstractTTSClient {
       if (!this.client) {
         const PollyClient = pollyModule.PollyClient;
         this.client = new PollyClient({
-          region: this.credentials.region,
+          region: this.credentials.region, // Reverted: Directly use credentials
           credentials: {
             accessKeyId: this.credentials.accessKeyId,
             secretAccessKey: this.credentials.secretAccessKey,
@@ -181,22 +190,12 @@ export class PollyTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to audio bytes
    */
   async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
-    if (!this.client) {
-      throw new Error(
-        "AWS Polly client is not available. Make sure you have valid AWS credentials."
-      );
-    }
-
     try {
-      // Prepare SSML
-      const ssml = this.prepareSSML(text, options);
-
-      // Determine output format
       const pollyModule = this._pollyModule || (await import("@aws-sdk/client-polly"));
       if (!this.client) {
         const PollyClient = pollyModule.PollyClient;
         this.client = new PollyClient({
-          region: this.credentials.region,
+          region: this.credentials.region, // Reverted
           credentials: {
             accessKeyId: this.credentials.accessKeyId,
             secretAccessKey: this.credentials.secretAccessKey,
@@ -204,11 +203,14 @@ export class PollyTTSClient extends AbstractTTSClient {
         });
         this._pollyModule = pollyModule;
       }
-      const { OutputFormat, VoiceId, SynthesizeSpeechCommandInput, SynthesizeSpeechCommand } = pollyModule;
+
+      const { OutputFormat, SynthesizeSpeechCommand, VoiceId } = pollyModule;
       const outputFormat = options?.format === "mp3" ? OutputFormat.MP3 : OutputFormat.PCM;
-      const voiceId = (options?.voice || this.voiceId || "Joanna") as typeof VoiceId; // Default voice
-      const input: typeof SynthesizeSpeechCommandInput = {
-        Text: ssml,
+      const VoiceIdType = VoiceId; // Get the RUNTIME VoiceId enum/object
+      const voiceIdString = options?.voice || this.voiceId || "Joanna";
+      const voiceId = voiceIdString as unknown as typeof VoiceIdType; // Cast using the runtime type
+      const input: SynthesizeSpeechCommandInput = {
+        Text: this.prepareSSML(text, options),
         TextType: "ssml",
         OutputFormat: outputFormat,
         VoiceId: voiceId,
@@ -239,132 +241,110 @@ export class PollyTTSClient extends AbstractTTSClient {
    * Synthesize text to a byte stream with word boundaries
    * @param text Text or SSML to synthesize
    * @param options Synthesis options
-   * @returns Promise resolving to a readable stream of audio bytes with word boundaries
+   * @returns Promise resolving to an object containing the audio stream and word boundaries
    */
   async synthToBytestream(
-    text: string,
-    options?: SpeakOptions
-  ): Promise<
-    | ReadableStream<Uint8Array>
-    | {
-        audioStream: ReadableStream<Uint8Array>;
-        wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
-      }
-  > {
-    if (!this.client) {
-      throw new Error(
-        "AWS Polly client is not available. Make sure you have valid AWS credentials."
-      );
-    }
-
-    try {
-      // Check if word boundary information is requested
-      const useWordBoundary = options?.useWordBoundary !== false;
-
-      if (useWordBoundary) {
-        // First, get the audio
-        const audioBytes = await this.synthToBytes(text, options);
-        
-        // Then, get the speech marks for word boundaries
-        const wordBoundaries = await this.getSpeechMarks(text, options);
-        
-        // Create a readable stream from the audio bytes
-        const audioStream = new ReadableStream<Uint8Array>({
-          start(controller) {
-            controller.enqueue(audioBytes);
-            controller.close();
-          },
-        });
-
-        // Return both the audio stream and word boundaries
-        return {
-          audioStream,
-          wordBoundaries,
-        };
-      } else {
-        // If word boundaries are not needed, just return the audio as a stream
-        const audioBytes = await this.synthToBytes(text, options);
-        
-        // Create a readable stream from the audio bytes
-        return new ReadableStream<Uint8Array>({
-          start(controller) {
-            controller.enqueue(audioBytes);
-            controller.close();
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Error synthesizing speech stream:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get speech marks (word boundaries) for text
-   * @param inputText Text or SSML to get speech marks for
-   * @param options Synthesis options
-   * @returns Promise resolving to an array of word boundaries
-   */
-  private async getSpeechMarks(
     inputText: string,
     options?: SpeakOptions
-  ): Promise<Array<{ text: string; offset: number; duration: number }>> {
-    const pollyModule = this._pollyModule || (await import("@aws-sdk/client-polly"));
-    if (!this.client) {
-      const PollyClient = pollyModule.PollyClient;
-      this.client = new PollyClient({
-        region: this.credentials.region,
-        credentials: {
-          accessKeyId: this.credentials.accessKeyId,
-          secretAccessKey: this.credentials.secretAccessKey,
-        },
-      });
-      this._pollyModule = pollyModule;
-    }
-    const { OutputFormat, VoiceId, SynthesizeSpeechCommandInput, SynthesizeSpeechCommand, SpeechMarkType } = pollyModule;
-    // Prepare SSML
-    const ssml = this.prepareSSML(inputText, options);
-    // Use voice from options or the default voice
-    const voiceId = (options?.voice || this.voiceId || "Joanna") as typeof VoiceId;
-    // Prepare the command input for speech marks
-    const input: typeof SynthesizeSpeechCommandInput = {
-      Text: ssml,
-      TextType: "ssml",
-      OutputFormat: OutputFormat.JSON,
-      VoiceId: voiceId,
-      Engine: "neural", // Use neural engine for better quality
-      SpeechMarkTypes: [SpeechMarkType.WORD],
-    };
-    // Create the command
-    const command = new SynthesizeSpeechCommand(input);
-    
-    // Execute the command
-    const response = await this.client.send(command);
-    
-    // Get speech marks data
-    if (!response.AudioStream) {
-      return [];
-    }
+  ): Promise<{
+    audioStream: ReadableStream<Uint8Array>;
+    wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
+  }> {
+    try {
+      const pollyModule = this._pollyModule || (await import("@aws-sdk/client-polly"));
+      if (!this.client) {
+        const PollyClient = pollyModule.PollyClient;
+        this.client = new PollyClient({
+          region: this.credentials.region, // Reverted
+          credentials: {
+            accessKeyId: this.credentials.accessKeyId,
+            secretAccessKey: this.credentials.secretAccessKey,
+          },
+        });
+        this._pollyModule = pollyModule;
+      }
+      const { OutputFormat, SynthesizeSpeechCommandInput, SynthesizeSpeechCommand, VoiceId, SpeechMarkType } = pollyModule;
+      const VoiceIdType = VoiceId; // Get the RUNTIME VoiceId enum/object
+      const voiceIdString = options?.voice || this.voiceId || "Joanna";
+      const voiceId = voiceIdString as unknown as typeof VoiceIdType; // Cast via unknown
+      const ssml = this.prepareSSML(inputText, options);
+      const textType = this._isSSML(ssml) ? "ssml" : "text";
+      const engine = "neural"; // Or make configurable
+      let wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
 
-    // Convert audio stream to string
-    const arrayBuffer = await response.AudioStream.transformToByteArray();
-    const buffer = new Uint8Array(arrayBuffer);
-    
-    // Convert buffer to string
-    const content = new TextDecoder().decode(buffer);
-    
-    // Parse speech marks (each line is a JSON object)
-    const speechMarks = content
-      .split("\n")
-      .filter((line) => line.trim())
-      .map((line) => JSON.parse(line));
-    
-    // Convert to our format
-    return speechMarks.map((mark) => ({
-      text: mark.value,
-      offset: mark.time,
-      duration: mark.end ? mark.end - mark.time : 0, // Some marks might not have end time
-    }));
+      // Request Speech Marks (JSON)
+      try {
+        const marksParams: typeof SynthesizeSpeechCommandInput = {
+          Text: ssml,
+          VoiceId: voiceId,
+          OutputFormat: "json",
+          SpeechMarkTypes: [SpeechMarkType.WORD],
+          TextType: textType,
+          Engine: engine,
+        };
+        const marksCommand = new SynthesizeSpeechCommand(marksParams);
+        const marksResponse: SynthesizeSpeechCommandOutput = await this.client.send(marksCommand);
+
+        if (marksResponse.AudioStream) {
+          const streamBuffer = await streamToBuffer(marksResponse.AudioStream as any);
+          const marksJsonString = new TextDecoder().decode(streamBuffer);
+          const jsonLines = marksJsonString.trim().split("\n");
+          for (const line of jsonLines) {
+            try {
+              const mark = JSON.parse(line);
+              if (mark.type === "word") {
+                wordBoundaries.push({
+                  text: mark.value,
+                  offset: mark.time, // Use Polly's time (ms) as offset
+                  duration: 0, // Polly doesn't provide duration for word marks
+                });
+              }
+            } catch (parseError) {
+              console.warn(`Skipping invalid JSON line in speech marks: ${line}`, parseError);
+            }
+          }
+        } else {
+          console.warn("No AudioStream received from Polly for speech marks");
+        }
+      } catch (error) {
+        console.error("Error getting speech marks from Polly:", error);
+        // Don't throw here, allow audio synthesis to proceed if possible
+        // Caller should check wordBoundaries array length if marks are critical
+      }
+
+      // Request Audio Stream (PCM/MP3)
+      const outputFormat = options?.format === "mp3" ? OutputFormat.MP3 : OutputFormat.PCM;
+      const audioParams: typeof SynthesizeSpeechCommandInput = {
+        Text: ssml,
+        VoiceId: voiceId, // Use the same casted voiceId
+        OutputFormat: outputFormat,
+        TextType: textType,
+        Engine: engine,
+        // Add SampleRate if needed, based on options?.sampleRateHertz
+        // SampleRate: options?.sampleRateHertz ? options.sampleRateHertz.toString() : undefined,
+      };
+
+      try {
+        const audioCommand = new SynthesizeSpeechCommand(audioParams);
+        const audioResponse: SynthesizeSpeechCommandOutput = await this.client.send(audioCommand);
+
+        if (!audioResponse.AudioStream) {
+          throw new Error("No AudioStream received from Polly for audio data");
+        }
+
+        // Return combined result
+        return {
+          audioStream: audioResponse.AudioStream as ReadableStream<Uint8Array>,
+          wordBoundaries: wordBoundaries,
+        };
+      } catch (error) {
+        console.error("Error synthesizing audio stream from Polly:", error);
+        throw error; // Re-throw the audio synthesis error
+      }
+    } catch (error) {
+      console.error("Error initializing Polly client:", error);
+      throw error;
+    }
   }
 
   /**

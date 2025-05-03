@@ -429,7 +429,6 @@ export class PlayHTTTSClient extends AbstractTTSClient {
       }
 
       const data = await response.json();
-      console.log('PlayHT API streaming response:', JSON.stringify(data, null, 2));
 
       // Poll for the result
       const jobId = data.id;
@@ -590,7 +589,7 @@ export class PlayHTTTSClient extends AbstractTTSClient {
         return Buffer.concat(chunks, totalLength);
       }
 
-      const buffer = await streamToBuffer(audioStream);
+      const buffer = await streamToBuffer(audioStream.audioStream);
       console.debug(`PlayHT synthToBytes: Buffering complete (${buffer.length} bytes).`);
       return buffer;
     } catch (error) {
@@ -603,9 +602,12 @@ export class PlayHTTTSClient extends AbstractTTSClient {
    * Synthesize text to audio byte stream
    * @param text Text to synthesize
    * @param options Synthesis options
-   * @returns Promise resolving to audio byte stream
+   * @returns Promise resolving to an object containing the audio stream and an empty word boundaries array.
    */
-  async synthToBytestream(text: string, _options: SpeakOptions = {}): Promise<ReadableStream<Uint8Array>> {
+  async synthToBytestream(text: string, _options: SpeakOptions = {}): Promise<{
+    audioStream: ReadableStream<Uint8Array>;
+    wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
+  }> {
     try {
       // Determine the correct Accept header based on the output format
       let acceptHeader = 'audio/mpeg'; // Default to mp3
@@ -647,7 +649,8 @@ export class PlayHTTTSClient extends AbstractTTSClient {
         throw new Error('PlayHT Streaming API did not return a response body stream.');
       }
 
-      return response.body;
+      // Return the stream along with an empty word boundaries array
+      return { audioStream: response.body, wordBoundaries: [] };
     } catch (error) {
       console.error("Error converting text to speech stream:", error);
       throw error;

@@ -209,20 +209,14 @@ export class GoogleTTSClient extends AbstractTTSClient {
 
   /**
    * Synthesize text to a byte stream
-   * @param text Text or SSML to synthesize
+   * @param text Text to synthesize
    * @param options Synthesis options
-   * @returns Promise resolving to a readable stream of audio bytes or stream with word boundaries
+   * @returns Promise resolving to an object containing the audio stream and word boundaries
    */
-  async synthToBytestream(
-    text: string,
-    options?: SpeakOptions
-  ): Promise<
-    | ReadableStream<Uint8Array>
-    | {
-        audioStream: ReadableStream<Uint8Array>;
-        wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
-      }
-  > {
+  async synthToBytestream(text: string, options?: SpeakOptions): Promise<{
+    audioStream: ReadableStream<Uint8Array>;
+    wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
+  }> {
     // If the client is not available, throw an error
     if (!this.client) {
       throw new Error(
@@ -243,22 +237,17 @@ export class GoogleTTSClient extends AbstractTTSClient {
         },
       });
 
-      // If word boundary information is requested and available
-      if (options?.useWordBoundary && this.timings.length > 0) {
-        // Convert our internal timing format to the expected format
-        const wordBoundaries = this.timings.map(([start, end, word]) => ({
-          text: word,
-          offset: Math.round(start * 10000), // Convert to 100-nanosecond units
-          duration: Math.round((end - start) * 10000),
-        }));
+      // Always return the structure, populate boundaries only if requested AND available
+      const finalBoundaries = options?.useWordBoundary ? this.timings.map(([start, end, word]) => ({
+        text: word,
+        offset: Math.round(start * 10000), // Convert to 100-nanosecond units
+        duration: Math.round((end - start) * 10000),
+      })) : [];
 
-        return {
-          audioStream: stream,
-          wordBoundaries,
-        };
-      }
-
-      return stream;
+      return {
+        audioStream: stream,
+        wordBoundaries: finalBoundaries
+      };
     } catch (error) {
       console.error("Error synthesizing speech stream:", error);
       throw error;

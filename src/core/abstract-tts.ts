@@ -100,21 +100,19 @@ export abstract class AbstractTTSClient {
   abstract synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array>;
 
   /**
-   * Synthesize text to a byte stream
+   * Synthesize text to a byte stream and optionally provide word boundaries.
    * @param text Text or SSML to synthesize
    * @param options Synthesis options
-   * @returns Promise resolving to a readable stream of audio bytes
+   * @returns Promise resolving to an object containing the audio stream and an array of word boundaries.
+   *          The wordBoundaries array will be empty if the engine does not support them.
    */
   abstract synthToBytestream(
     text: string,
     options?: SpeakOptions
-  ): Promise<
-    | ReadableStream<Uint8Array>
-    | {
-        audioStream: ReadableStream<Uint8Array>;
-        wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
-      }
-  >;
+  ): Promise<{
+    audioStream: ReadableStream<Uint8Array>;
+    wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
+  }>;
 
   /**
    * Get available voices from the provider with normalized language codes
@@ -220,18 +218,9 @@ export abstract class AbstractTTSClient {
       // Get streaming audio data
       const streamResult = await this.synthToBytestream(text, options);
 
-      // Handle both simple stream and stream with word boundaries
-      let audioStream: ReadableStream<Uint8Array>;
-      let wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
-
-      if ("audioStream" in streamResult) {
-        // It's the enhanced version with word boundaries
-        audioStream = streamResult.audioStream;
-        wordBoundaries = streamResult.wordBoundaries;
-      } else {
-        // It's just a simple stream
-        audioStream = streamResult;
-      }
+      // Get audio stream and word boundaries
+      const audioStream = streamResult.audioStream;
+      const wordBoundaries = streamResult.wordBoundaries;
 
       const reader = audioStream.getReader();
       const chunks: Uint8Array[] = [];

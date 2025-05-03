@@ -475,15 +475,15 @@ export class OpenAITTSClient extends AbstractTTSClient {
   }
 
   /**
-   * Synthesize text to audio byte stream
-   * @param text Text to synthesize
-   * @param options Synthesis options
-   * @returns Promise resolving to audio byte stream
+   * Synthesize text to a byte stream using OpenAI API.
+   * @param text Text to synthesize.
+   * @param _options Synthesis options (currently unused for streaming, uses defaults).
+   * @returns Promise resolving to an object containing the audio stream and an empty word boundaries array.
    */
-  async synthToBytestream(
-    text: string,
-    _options: SpeakOptions = {}
-  ): Promise<ReadableStream<Uint8Array>> {
+  async synthToBytestream(text: string, _options?: SpeakOptions): Promise<{
+    audioStream: ReadableStream<Uint8Array>;
+    wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
+  }> {
     try {
       // Create speech with streaming
       const response = await this.client.audio.speech.create({
@@ -494,8 +494,11 @@ export class OpenAITTSClient extends AbstractTTSClient {
         response_format: this.responseFormat as any,
       });
 
-      // Return the stream
-      return response.body;
+      // Get the stream
+      const stream = response.body;
+
+      // Return the stream and an empty word boundaries array
+      return { audioStream: stream, wordBoundaries: [] };
     } catch (error) {
       console.error("Error converting text to speech stream:", error);
       throw error;

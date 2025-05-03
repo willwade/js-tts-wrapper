@@ -2,6 +2,17 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "ESNext",
-    "outDir": "dist/esm"
+    "moduleResolution": "bundler", // or "node16" if you want, but "bundler" is best for this
+    "outDir": "./dist/esm",
+    "declaration": true,
+    "declarationDir": "./dist/esm",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2020",
+    "rootDir": "./src",
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true
   }
 }

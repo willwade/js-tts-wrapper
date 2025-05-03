@@ -29,10 +29,11 @@
   },
   "author": "Will Wade <willwade@gmail.com>",
   "license": "MIT",
+  "type": "module",
   "scripts": {
     "build": "npm run build:cjs && npm run build:esm && npm run build:browser",
     "build:cjs": "tsc -p tsconfig.cjs.json",
-    "build:esm": "tsc -p tsconfig.esm.json && tsc-alias -p tsconfig.esm.json",
+    "build:esm": "tsc -p tsconfig.esm.json && tsc-alias -p tsconfig.esm.json && tsc-esm-fix dist/esm",
     "build:browser": "tsc -p tsconfig.browser.json",
     "build:bundle": "rollup -c rollup.config.js",
     "dev": "tsc --watch",
@@ -112,10 +113,12 @@
     "rollup": "^4.39.0",
     "sinon": "^20.0.0",
     "speechmarkdown-js": "^2.1.0",
-    "ts-jest": "^29.3.1",
+    "ts-jest": "^29.3.2",
     "tsc-alias": "^1.8.15",
+    "tsc-esm-fix": "^3.1.2",
     "tslib": "^2.8.1",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "ws": "^8.17.1"
   },
   "peerDependencies": {
     "@aws-sdk/client-polly": "^3.799.0",
@@ -187,6 +190,11 @@
     ]
   },
   "dependencies": {
-    "espeak-ng": "^1.0.2"
+    "aws-sdk": "^2.1638.0",
+    "elevenlabs": "^0.6.0",
+    "openai": "^4.52.0",
+    "@google-cloud/text-to-speech": "^5.3.0",
+    "sherpa-onnx-node": "^1.10.2",
+    "@local/espeakng": "file:./wasm/espeakng"
   }
 }

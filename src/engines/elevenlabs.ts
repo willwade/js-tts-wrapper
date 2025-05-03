@@ -144,12 +144,12 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    * Synthesize text to a byte stream
    * @param text Text to synthesize
    * @param options Synthesis options
-   * @returns Promise resolving to a readable stream of audio bytes
+   * @returns Promise resolving to an object containing the audio stream and an empty word boundaries array
    */
-  async synthToBytestream(
-    text: string,
-    options?: SpeakOptions
-  ): Promise<ReadableStream<Uint8Array>> {
+  async synthToBytestream(text: string, options?: SpeakOptions): Promise<{
+    audioStream: ReadableStream<Uint8Array>;
+    wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
+  }> {
     try {
       // Use voice from options or the default voice
       const voiceId = options?.voice || this.voiceId || "21m00Tcm4TlvDq8ikWAM"; // Default voice (Rachel)
@@ -194,12 +194,14 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       const uint8Array = new Uint8Array(responseArrayBuffer);
 
       // Create a ReadableStream from the Uint8Array
-      return new ReadableStream({
+      const readableStream = new ReadableStream({
         start(controller) {
           controller.enqueue(uint8Array);
           controller.close();
         },
       });
+
+      return { audioStream: readableStream, wordBoundaries: [] };
     } catch (error) {
       console.error("Error synthesizing speech stream:", error);
       throw error;

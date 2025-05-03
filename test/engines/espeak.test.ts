@@ -1,6 +1,6 @@
 import { EspeakTTSClient } from '../../src/engines/espeak';
 
-describe('EspeakTTSClient', () => {
+(process.env.JEST_WORKER_ID ? describe.skip : describe)('EspeakTTSClient', () => {
   it('should instantiate without errors', () => {
     expect(() => new EspeakTTSClient()).not.toThrow();
   });

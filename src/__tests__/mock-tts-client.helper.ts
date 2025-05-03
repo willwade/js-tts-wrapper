@@ -1,5 +1,5 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
-import type { SpeakOptions, UnifiedVoice, WordBoundaryCallback } from "../types";
+import type { SpeakOptions, UnifiedVoice, WordBoundaryCallback, WordBoundary } from "../types";
 
 /**
  * Mock TTS client for testing
@@ -44,15 +44,15 @@ export class MockTTSClient extends AbstractTTSClient {
   }
 
   /**
-   * Convert text to audio stream
-   * @param text Text to synthesize
-   * @param options Synthesis options
-   * @returns Promise resolving to audio stream
+   * Synthesize text to a readable byte stream.
+   * @param text The text to synthesize.
+   * @param options Synthesis options.
+   * @returns Promise resolving to an object containing the audio stream and word boundaries.
    */
-  async synthToBytestream(
-    text: string,
-    options?: SpeakOptions
-  ): Promise<ReadableStream<Uint8Array> | { audioStream: ReadableStream<Uint8Array>; wordBoundaries: Array<{ text: string; offset: number; duration: number }> }> {
+  async synthToBytestream(text: string, options?: SpeakOptions): Promise<{
+    audioStream: ReadableStream<Uint8Array>;
+    wordBoundaries: WordBoundary[];
+  }> {
     const bytes = await this.synthToBytes(text, options);
 
     // Create a readable stream from the bytes
@@ -66,12 +66,11 @@ export class MockTTSClient extends AbstractTTSClient {
     // If word boundary information is requested
     if (options?.useWordBoundary) {
       // Create mock word boundaries
-      const words = text.split(/\s+/);
-      const wordBoundaries = words.map((word, index) => ({
-        text: word,
-        offset: index * 500, // 500ms per word
-        duration: 500,
-      }));
+      const wordBoundaries: WordBoundary[] = [
+        { text: 'Mock', offset: 0, duration: 500 },
+        { text: 'boundary', offset: 500, duration: 500 },
+        { text: 'test.', offset: 1000, duration: 500 }
+      ];
 
       return {
         audioStream: stream,
@@ -79,7 +78,7 @@ export class MockTTSClient extends AbstractTTSClient {
       };
     }
 
-    return stream;
+    return { audioStream: stream, wordBoundaries: [] };
   }
 
   /**

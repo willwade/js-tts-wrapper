@@ -764,19 +764,25 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    * Synthesize text to a byte stream
    * @param text Text to synthesize
    * @param options Options for synthesis
-   * @returns Promise resolving to a readable stream of audio bytes
+   * @returns Promise resolving to an object containing the audio stream and an empty word boundaries array
    */
-  async synthToBytestream(text: string, options?: SpeakOptions): Promise<ReadableStream<Uint8Array>> {
+  async synthToBytestream(text: string, options?: SpeakOptions): Promise<{
+    audioStream: ReadableStream<Uint8Array>;
+    wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
+  }> {
     // This is a simplified implementation that doesn't actually stream
     // In a real implementation, you would use a ReadableStream
     const audioBytes = await this.synthToBytes(text, options);
 
     // Create a ReadableStream from the audio bytes
-    return new ReadableStream({
-      start(controller) {
-        controller.enqueue(audioBytes);
-        controller.close();
-      }
-    });
+    return {
+      audioStream: new ReadableStream({
+        start(controller) {
+          controller.enqueue(audioBytes);
+          controller.close();
+        }
+      }),
+      wordBoundaries: []
+    };
   }
 }

@@ -124,4 +124,22 @@ export type SimpleCallback = () => void;
 /**
  * Property type for TTS properties
  */
-export type PropertyType = string | number | null;
+export type PropertyType = string | number | boolean;
+
+/**
+ * Word Boundary interface for speech marks
+ */
+export type WordBoundary = {
+  /**
+   * The actual word text
+   */
+  text: string;
+  /**
+   * Time offset from the beginning of the audio stream, in milliseconds.
+   */
+  offset: number;
+  /**
+   * Duration of the word being spoken, in milliseconds.
+   */
+  duration: number;
+}
