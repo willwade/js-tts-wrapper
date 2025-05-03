@@ -8,6 +8,9 @@ import * as os from "os";
 import decompress from "decompress";
 import decompressTarbz2 from "decompress-tarbz2";
 
+// Capture native fetch at module level
+const nativeFetch = globalThis.fetch;
+
 // Import the generated models config
 import { SHERPA_MODELS_CONFIG } from "./sherpaonnx/generated_models";
 
@@ -151,25 +154,33 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
   private async downloadFile(url: string, destination: string): Promise<void> {
     try {
       console.log(`Downloading file from ${url}`);
- 
-      // Diagnostic log to check the fetch implementation
-      console.log(`DEBUG: typeof fetch = ${typeof fetch}`);
-      if (typeof fetch === 'function' && fetch.toString) {
-        console.log(`DEBUG: fetch.toString() = ${fetch.toString().substring(0, 200)}...`); // Log first 200 chars
+
+      // Diagnostic log to check the NATIVE fetch implementation we captured
+      console.log(`DEBUG: typeof nativeFetch = ${typeof nativeFetch}`);
+      if (typeof nativeFetch === 'function' && nativeFetch.toString) {
+        console.log(`DEBUG: nativeFetch.toString() = ${nativeFetch.toString().substring(0, 200)}...`); // Log first 200 chars
       }
 
-      const response = await fetch(url);
- 
+      // Use the captured native fetch
+      const response = await nativeFetch(url);
+
       if (!response.ok) {
         throw new Error(`Failed to download file: ${response.statusText}`);
       }
 
+      // Add check before calling arrayBuffer
+      if (typeof response.arrayBuffer !== 'function') {
+        console.error('DEBUG: response object does NOT have arrayBuffer method. Response keys:', Object.keys(response));
+        throw new Error('response.arrayBuffer is not a function');
+      }
       const buffer = await response.arrayBuffer();
       fs.writeFileSync(destination, Buffer.from(buffer));
       console.log(`File downloaded to ${destination}`);
     } catch (error) {
       const err = error as Error;
       console.error(`Error downloading file: ${err.message}`);
+      // Log the full error object for more details
+      console.error('DEBUG: Full download error stack:', err.stack);
       throw err;
     }
   }
