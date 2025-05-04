@@ -2,6 +2,28 @@
 
 A JavaScript/TypeScript library that provides a unified API for working with multiple cloud-based Text-to-Speech (TTS) services. Inspired by [py3-TTS-Wrapper](https://github.com/willwade/tts-wrapper), it simplifies the use of services like Azure, Google Cloud, IBM Watson, and ElevenLabs.
 
+## Table of Contents
+
+- [Features](#features)
+- [Supported TTS Engines](#supported-tts-engines)
+- [Installation](#installation)
+  - [Using Dependency Groups](#using-dependency-groups)
+  - [Manual Installation](#manual-installation)
+- [Quick Start](#quick-start)
+- [Core Functionality](#core-functionality)
+  - [Voice Management](#voice-management)
+  - [Text Synthesis](#text-synthesis)
+  - [Audio Playback](#audio-playback)
+  - [File Output](#file-output)
+  - [Event Handling](#event-handling)
+- [SSML Support](#ssml-support)
+- [Speech Markdown Support](#speech-markdown-support)
+- [Engine-Specific Examples](#engine-specific-examples)
+- [Browser Support](#browser-support)
+- [API Reference](#api-reference)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Features
 
 - **Unified API**: Consistent interface across multiple TTS providers.
@@ -14,46 +36,26 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 - **File Output**: Save synthesized speech to audio files
 - **Browser Support**: Works in both Node.js (server) and browser environments (see engine support table below)
 
-## eSpeak TTS Support (WASM)
+## Supported TTS Engines
 
-js-tts-wrapper supports the open-source [eSpeak NG](https://github.com/espeak-ng/espeak-ng) TTS engine using a pure JavaScript + WebAssembly implementation powered by [`espeak-ng.js`](https://github.com/thenfour/espeak-ng.js/). This works in **both Node.js and browser environments**—no native dependencies or eSpeak CLI required!
+| Engine | Provider | Dependencies |
+|--------|----------|-------------|
+| Azure | Microsoft Azure Cognitive Services | `@azure/cognitiveservices-speechservices`, `microsoft-cognitiveservices-speech-sdk` |
+| Google Cloud | Google Cloud Text-to-Speech | `@google-cloud/text-to-speech` |
+| ElevenLabs | ElevenLabs | `node-fetch@2` (Node.js only) |
+| IBM Watson | IBM Watson | None (uses fetch API) |
+| OpenAI | OpenAI | `openai` |
+| PlayHT | PlayHT | `node-fetch@2` (Node.js only) |
+| AWS Polly | Amazon Web Services | `@aws-sdk/client-polly` |
+| SherpaOnnx | k2-fsa/sherpa-onnx | `sherpa-onnx-node`, `decompress`, `decompress-bzip2`, `decompress-tarbz2`, `decompress-targz`, `tar-stream` |
+| eSpeak NG | eSpeak NG | None (WASM included) |
+| WitAI | Wit.ai | None (uses fetch API) |
 
-*   **Platform:** Node.js and browser (cross-platform).
-*   **Dependencies:** Uses `espeak-ng.js` (WASM/JS) under the hood.
-*   **No Native Binaries:** No need for the eSpeak CLI or system libraries.
-
-### Usage Example
-
-```typescript
-import { EspeakTTSClient } from 'js-tts-wrapper';
-
-const tts = new EspeakTTSClient();
-const audioBytes = await tts.synthToBytes('Hello, world!', { voice: 'en', rate: 150, pitch: 50 });
-// audioBytes is a Uint8Array containing WAV audio data
-```
-
-*   Works in both Node.js and browser (when bundled with a tool like Webpack, Vite, etc.).
-*   Accepts options for `voice`, `rate`, `pitch`, and more.
-
-## SherpaOnnx Native (Offline TTS) Support
-
-js-tts-wrapper supports the [SherpaOnnx](https://github.com/k2-fsa/sherpa-onnx) engine for fast, local/offline synthesis in Node.js via native bindings (`sherpa-onnx-node`). **This requires extra setup and is Node.js only.**
-
-*   **Platform:** Node.js only (macOS, Linux, Windows).
-*   **Dependencies:** `sherpa-onnx-node` (requires native compilation and platform-specific binaries).
-*   **Features:** Fast local synthesis, no API keys required, supports multiple languages and voices.
-
-### Installation
-
-```bash
-npm install js-tts-wrapper
-```
-
-### Optional Dependencies
+## Installation
 
 The library uses a modular approach where TTS engine-specific dependencies are optional. You can install dependencies in two ways:
 
-#### Method 1: Using Dependency Groups (npm 8.3.0+)
+### Using Dependency Groups (npm 8.3.0+)
 
 Install the package with specific engine dependencies using the bracket notation (similar to pip extras):
 
@@ -61,54 +63,39 @@ Install the package with specific engine dependencies using the bracket notation
 # Install with specific engine dependencies
 npm install js-tts-wrapper[azure]      # Install with Azure dependencies
 npm install js-tts-wrapper[google]     # Install with Google Cloud dependencies
+npm install js-tts-wrapper[polly]      # Install with AWS Polly dependencies
 npm install js-tts-wrapper[elevenlabs] # Install with ElevenLabs dependencies
-npm install js-tts-wrapper[watson]     # Install with Watson dependencies (no extra deps needed)
 npm install js-tts-wrapper[openai]     # Install with OpenAI dependencies
 npm install js-tts-wrapper[playht]     # Install with PlayHT dependencies
-npm install js-tts-wrapper[polly]      # Install with AWS Polly dependencies
+npm install js-tts-wrapper[watson]     # Install with IBM Watson dependencies
+npm install js-tts-wrapper[witai]      # Install with Wit.ai dependencies
 npm install js-tts-wrapper[sherpaonnx] # Install with SherpaOnnx dependencies
 
 # Install with multiple engine dependencies
-npm install js-tts-wrapper[azure,google,openai]  # Install with multiple engines
+npm install js-tts-wrapper[azure,google,polly]
 
-# Install with predefined groups
-npm install js-tts-wrapper[cloud]  # Install all cloud engine dependencies
-npm install js-tts-wrapper[all]    # Install all dependencies
+# Install with all cloud-based engines
+npm install js-tts-wrapper[cloud]
+
+# Install with all engines
+npm install js-tts-wrapper[all]
 ```
 
-#### Method 2: Manual Installation
+### Manual Installation
 
-Alternatively, you can manually install the dependencies for the engines you plan to use:
+Alternatively, you can install the package and its dependencies manually:
 
 ```bash
-# Install specific cloud engines:
+# Install the base package
+npm install js-tts-wrapper
+
+# Install dependencies for specific engines
 npm install @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk  # For Azure
 npm install @google-cloud/text-to-speech  # For Google Cloud
-npm install node-fetch@2  # For ElevenLabs and PlayHT in Node.js
 npm install @aws-sdk/client-polly  # For AWS Polly
+npm install node-fetch@2  # For ElevenLabs and PlayHT
 npm install openai  # For OpenAI
-
-# For IBM Watson, no additional dependencies needed (uses fetch API)
-
-# Install local/offline engines:
-npm install sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream  # For SherpaOnnx (requires native compilation)
-# Note: eSpeak (WASM) has no extra dependencies.
 ```
-
-#### Engine-Specific Requirements
-
-| Engine | Required Dependencies |
-| ------ | --------------------- |
-| Azure | `@azure/cognitiveservices-speechservices`, `microsoft-cognitiveservices-speech-sdk` |
-| Google Cloud | `@google-cloud/text-to-speech` |
-| ElevenLabs | `node-fetch@2` (Node.js only) |
-| IBM Watson | None (uses fetch API) |
-| OpenAI | `openai` |
-| PlayHT | `node-fetch@2` (Node.js only) |
-| AWS Polly | `@aws-sdk/client-polly` |
-| SherpaOnnx | `sherpa-onnx-node`, `decompress`, `decompress-bzip2`, `decompress-tarbz2`, `decompress-targz`, `tar-stream` |
-| eSpeak NG | None (WASM included) |
-| WitAI | None (uses fetch API) |
 
 ## Quick Start
 
@@ -136,7 +123,277 @@ const ssml = '<speak>Hello <break time="500ms"/> world!</speak>';
 await tts.speak(ssml);
 ```
 
-### Browser
+## Core Functionality
+
+All TTS engines in js-tts-wrapper implement a common set of methods and features through the AbstractTTSClient class. This ensures consistent behavior across different providers.
+
+### Voice Management
+
+```typescript
+// Get all available voices
+const voices = await tts.getVoices();
+
+// Get voices for a specific language
+const englishVoices = await tts.getVoicesByLanguage('en-US');
+
+// Set the voice to use
+tts.setVoice('en-US-AriaNeural');
+```
+
+### Text Synthesis
+
+```typescript
+// Convert text to audio bytes (Uint8Array)
+const audioBytes = await tts.synthToBytes('Hello, world!');
+
+// Stream synthesis with word boundary information
+const { audioStream, wordBoundaries } = await tts.synthToBytestream('Hello, world!');
+```
+
+### Audio Playback
+
+```typescript
+// Synthesize and play audio
+await tts.speak('Hello, world!');
+
+// Playback control
+tts.pause();  // Pause playback
+tts.resume(); // Resume playback
+tts.stop();   // Stop playback
+
+// Stream synthesis and play with word boundary callbacks
+await tts.startPlaybackWithCallbacks('Hello world', (word, start, end) => {
+  console.log(`Word: ${word}, Start: ${start}s, End: ${end}s`);
+});
+```
+
+### File Output
+
+```typescript
+// Save synthesized speech to a file
+await tts.synthToFile('Hello, world!', 'output', 'mp3');
+```
+
+### Event Handling
+
+```typescript
+// Register event handlers
+tts.on('start', () => console.log('Speech started'));
+tts.on('end', () => console.log('Speech ended'));
+tts.on('boundary', (word, start, end) => {
+  console.log(`Word: ${word}, Start: ${start}s, End: ${end}s`);
+});
+
+// Alternative event connection
+tts.connect('onStart', () => console.log('Speech started'));
+tts.connect('onEnd', () => console.log('Speech ended'));
+```
+
+## SSML Support
+
+All engines support SSML (Speech Synthesis Markup Language) for advanced control over speech synthesis:
+
+```typescript
+// Use SSML directly
+const ssml = `
+<speak>
+  <prosody rate="slow" pitch="low">
+    This text will be spoken slowly with a low pitch.
+  </prosody>
+  <break time="500ms"/>
+  <emphasis level="strong">This text is emphasized.</emphasis>
+</speak>
+`;
+await tts.speak(ssml);
+
+// Or use the SSML builder
+const ssmlText = tts.ssml
+  .prosody({ rate: 'slow', pitch: 'low' }, 'This text will be spoken slowly with a low pitch.')
+  .break(500)
+  .emphasis('strong', 'This text is emphasized.')
+  .toString();
+
+await tts.speak(ssmlText);
+```
+
+## Speech Markdown Support
+
+The library supports Speech Markdown for easier speech formatting:
+
+```typescript
+// Use Speech Markdown
+const markdown = "Hello (pause:500ms) world! This is (emphasis:strong) important.";
+await tts.speak(markdown, { useSpeechMarkdown: true });
+```
+
+## Engine-Specific Examples
+
+Each TTS engine has its own specific setup. Here are examples for each supported engine:
+
+### Azure
+
+```typescript
+import { AzureTTSClient } from 'js-tts-wrapper';
+
+const tts = new AzureTTSClient({
+  subscriptionKey: 'your-subscription-key',
+  region: 'westeurope'
+});
+
+await tts.speak('Hello from Azure!');
+```
+
+### Google Cloud
+
+```typescript
+import { GoogleTTSClient } from 'js-tts-wrapper';
+
+const tts = new GoogleTTSClient({
+  keyFilename: '/path/to/service-account-key.json'
+});
+
+await tts.speak('Hello from Google Cloud!');
+```
+
+### AWS Polly
+
+```typescript
+import { PollyTTSClient } from 'js-tts-wrapper';
+
+const tts = new PollyTTSClient({
+  region: 'us-east-1',
+  accessKeyId: 'your-access-key-id',
+  secretAccessKey: 'your-secret-access-key'
+});
+
+await tts.speak('Hello from AWS Polly!');
+```
+
+### ElevenLabs
+
+```typescript
+import { ElevenLabsTTSClient } from 'js-tts-wrapper';
+
+const tts = new ElevenLabsTTSClient({
+  apiKey: 'your-api-key'
+});
+
+await tts.speak('Hello from ElevenLabs!');
+```
+
+### OpenAI
+
+```typescript
+import { OpenAITTSClient } from 'js-tts-wrapper';
+
+const tts = new OpenAITTSClient({
+  apiKey: 'your-api-key'
+});
+
+await tts.speak('Hello from OpenAI!');
+```
+
+### PlayHT
+
+```typescript
+import { PlayHTTTSClient } from 'js-tts-wrapper';
+
+const tts = new PlayHTTTSClient({
+  apiKey: 'your-api-key',
+  userId: 'your-user-id'
+});
+
+await tts.speak('Hello from PlayHT!');
+```
+
+### IBM Watson
+
+```typescript
+import { WatsonTTSClient } from 'js-tts-wrapper';
+
+const tts = new WatsonTTSClient({
+  apiKey: 'your-api-key',
+  region: 'us-south',
+  instanceId: 'your-instance-id'
+});
+
+await tts.speak('Hello from IBM Watson!');
+```
+
+### Wit.ai
+
+```typescript
+import { WitAITTSClient } from 'js-tts-wrapper';
+
+const tts = new WitAITTSClient({
+  token: 'your-wit-ai-token'
+});
+
+await tts.speak('Hello from Wit.ai!');
+```
+
+### SherpaOnnx (Offline TTS)
+
+```typescript
+import { SherpaOnnxTTSClient } from 'js-tts-wrapper';
+
+const tts = new SherpaOnnxTTSClient();
+// The client will automatically download models when needed
+
+await tts.speak('Hello from SherpaOnnx!');
+```
+
+### eSpeak NG (WASM)
+
+```typescript
+import { EspeakTTSClient } from 'js-tts-wrapper';
+
+const tts = new EspeakTTSClient();
+
+await tts.speak('Hello from eSpeak NG!');
+```
+
+## API Reference
+
+### Common Methods (All Engines)
+
+| Method | Description | Return Type |
+|--------|-------------|-------------|
+| `getVoices()` | Get all available voices | `Promise<UnifiedVoice[]>` |
+| `getVoicesByLanguage(language)` | Get voices for a specific language | `Promise<UnifiedVoice[]>` |
+| `setVoice(voiceId, lang?)` | Set the voice to use | `void` |
+| `synthToBytes(text, options?)` | Convert text to audio bytes | `Promise<Uint8Array>` |
+| `synthToBytestream(text, options?)` | Stream synthesis with word boundaries | `Promise<{audioStream, wordBoundaries}>` |
+| `speak(text, options?)` | Synthesize and play audio | `Promise<void>` |
+| `speakStreamed(text, options?)` | Stream synthesis and play | `Promise<void>` |
+| `synthToFile(text, filename, format?, options?)` | Save synthesized speech to a file | `Promise<void>` |
+| `startPlaybackWithCallbacks(text, callback, options?)` | Play with word boundary callbacks | `Promise<void>` |
+| `pause()` | Pause audio playback | `void` |
+| `resume()` | Resume audio playback | `void` |
+| `stop()` | Stop audio playback | `void` |
+| `on(event, callback)` | Register event handler | `void` |
+| `connect(event, callback)` | Connect to event | `void` |
+| `checkCredentials()` | Check if credentials are valid | `Promise<boolean>` |
+| `getProperty(propertyName)` | Get a property value | `PropertyType` |
+| `setProperty(propertyName, value)` | Set a property value | `void` |
+
+### SSML Builder Methods
+
+The `ssml` property provides a builder for creating SSML:
+
+| Method | Description |
+|--------|-------------|
+| `prosody(attrs, text)` | Add prosody element |
+| `break(time)` | Add break element |
+| `emphasis(level, text)` | Add emphasis element |
+| `sayAs(interpretAs, text)` | Add say-as element |
+| `phoneme(alphabet, ph, text)` | Add phoneme element |
+| `sub(alias, text)` | Add substitution element |
+| `toString()` | Convert to SSML string |
+
+## Browser Support
+
+The library works in both Node.js and browser environments. In browsers, use the ESM or UMD bundle:
 
 ```html
 <!-- Using ES modules (recommended) -->
@@ -161,437 +418,10 @@ await tts.speak(ssml);
 </script>
 ```
 
-```html
-<!-- Using UMD bundle -->
-<script src="js-tts-wrapper.browser.umd.min.js"></script>
-<script>
-  const ttsClient = new JSTTSWrapper.SherpaOnnxWasmTTSClient();
-
-  // Initialize the WebAssembly module
-  ttsClient.initializeWasm('./sherpaonnx-wasm/sherpaonnx.js')
-    .then(() => ttsClient.getVoices())
-    .then(voices => {
-      console.log(`Found ${voices.length} voices`);
-      return ttsClient.setVoice(voices[0].id);
-    })
-    .then(() => ttsClient.speak('Hello, world!'))
-    .catch(error => console.error('Error:', error));
-</script>
-```
-
-See the [browser example](examples/browser-example.html) for a complete example of using the library in a browser environment.
-
-## Supported Providers
-
-| Provider          | SSML | Streaming | Word Timing | File Output | Browser | Notes & Known Issues                                         | Version/Type          |
-| :---------------- | :--: | :-------: | :---------: | :---------: | :-----: | :----------------------------------------------------------- | :-------------------- |
-| Azure             |  ✅  |     ✅    |      ✅     |      ✅     |    ❔   | Requires `microsoft-cognitiveservices-speech-sdk`            | Cloud API             |
-| ElevenLabs        |  ✅  |     ✅    |      ✅     |      ✅     |    ✅   | Requires API key. Uses `fetch`.                            | Cloud API             |
-| Google Cloud      |  ✅  |     ❌    |      ✅     |      ✅     |    ❔   | Requires `@google-cloud/text-to-speech`                    | Cloud API             |
-| IBM Watson        |  ✅  |     ✅    |      ✅     |      ✅     |    ✅   | Requires API key, region, and instance ID. Uses `fetch`.   | Cloud API             |
-| OpenAI            |  ❌  |     ✅    |      ✅     |      ✅     |    ✅   | Requires `openai` package. Uses `fetch`.                   | Cloud API             |
-| PlayHT            |  ✅  |     ✅    |      ✅     |      ✅     |    ✅   | Requires API key. Uses `fetch`.                            | Cloud API             |
-| Polly (AWS)       |  ✅  |     ✅    |      ✅     |      ✅     |    ❔   | Requires `@aws-sdk/client-polly`.                          | Cloud API             |
-| eSpeak NG         |  ❌  |     ❌    |      ❌     |      ✅     |    ✅   | WASM based (`espeak-ng.js`), cross-platform.               | Local (WASM)          |
-| SherpaOnnx        |  ❌  |     ✅    |      ❌     |      ✅     |    ❌   | Node.js only. Requires `sherpa-onnx-node` & Env Var setup. | Local (Native)        |
-
-**Notes:**
-- **Browser Support:** ✅ = Generally works, ❔ = May work with polyfills/bundlers, ❌ = Not supported.
-
-## Examples
-
-### Simple Synthesis (Azure)
-
-```typescript
-import { AzureTTSClient } from 'js-tts-wrapper';
-import { writeFile } from 'fs/promises';
-
-// Initialize the client with your credentials
-const tts = new AzureTTSClient({
-  subscriptionKey: 'your-subscription-key',
-  region: 'westeurope'
-});
-
-// List available voices
-const voices = await tts.getVoices();
-console.log(voices);
-
-// Set a voice
-tts.setVoice('en-US-AriaNeural');
-
-// Speak some text
-await tts.speak('Hello, world!', { voice: 'en-US-JennyNeural' });
-```
-
-### SherpaOnnx Native Example (Node.js - requires Env Var setup)
-
-```typescript
-import { SherpaOnnxTTSClient } from 'js-tts-wrapper';
-
-// Initialize the client
-const tts = new SherpaOnnxTTSClient();
-
-// The client will automatically download models when needed
-// You can also specify a custom models directory
-const tts = new SherpaOnnxTTSClient({
-  modelsDir: '/path/to/models'
-});
-
-// List available voices
-const voices = await tts.getVoices();
-console.log(voices);
-
-// Set a voice
-await tts.setVoice('icefall-fs-ljspeech-medium');
-
-// Speak some text
-await tts.speak('Hello, world!');
-```
-
-Note: SherpaOnnx requires the `sherpa-onnx-node` package, which is a native module that requires compilation.
-
-On native platforms (macOS, Linux, Windows), you need to set environment variables. You can do this in several ways:
-
-1. Use the provided helper scripts which handle all platforms:
-
-```bash
-# Using the Node.js script
-node scripts/run-with-sherpaonnx.js your-script.js
-
-# Or using the shell script (Unix/macOS only)
-./scripts/run-with-sherpaonnx.sh your-script.js
-```
-
-2. Set it manually before running your script:
-
-```bash
-# macOS
-export DYLD_LIBRARY_PATH=/path/to/your/project/node_modules/sherpa-onnx-darwin-arm64:$DYLD_LIBRARY_PATH
-
-# Linux
-export LD_LIBRARY_PATH=/path/to/your/project/node_modules/sherpa-onnx-linux-x64:$LD_LIBRARY_PATH
-
-# Windows (Command Prompt)
-set PATH=C:\path\to\your\project\node_modules\sherpa-onnx-win32-x64;%PATH%
-```
-
-If you encounter issues installing or using sherpa-onnx-node, the wrapper will fall back to a mock implementation for testing purposes.
-
-## Core API
-
-```typescript
-// Main methods
-speak(text: string | SSML, options?: SpeakOptions): Promise<void>
-speakStreamed(text: string | SSML, options?: SpeakOptions): Promise<void>
-synthToBytes(text: string | SSML, options?: SpeakOptions): Promise<Uint8Array>
-synthToBytestream(text: string | SSML, options?: SpeakOptions): Promise<ReadableStream<Uint8Array>>
-getVoices(): Promise<UnifiedVoice[]>
-setVoice(voiceId: string): void
-
-// Playback control
-pause(): void
-resume(): void
-stop(): void
-
-// Events
-on(event: 'start' | 'end' | 'boundary', callback: Function): void
-```
-
-## SSML and Speech Markdown
-
-The library provides utilities for working with SSML and Speech Markdown:
-
-```typescript
-import { SSMLBuilder, SpeechMarkdownConverter } from 'js-tts-wrapper';
-
-// Using the SSML builder
-const builder = new SSMLBuilder();
-const ssml = builder
-  .add('Hello world')
-  .addBreak('500ms')
-  .addProsody('This is important', 'medium', 'high', '90')
-  .toString();
-
-// Using Speech Markdown
-const markdown = 'Hello [500ms] (pitch:high world)';
-const ssml = SpeechMarkdownConverter.toSSML(markdown);
-```
-
-## Advanced Usage
-
-### Offline TTS with SherpaOnnx
-
-The library includes support for SherpaOnnx, an offline TTS engine that doesn't require internet access:
-
-```typescript
-import { SherpaOnnxTTSClient } from 'js-tts-wrapper';
-
-// Initialize the client
-const tts = new SherpaOnnxTTSClient();
-
-// The client will automatically download models when needed
-// You can also specify a custom models directory
-const tts = new SherpaOnnxTTSClient({
-  modelsDir: '/path/to/models'
-});
-
-// List available voices
-const voices = await tts.getVoices();
-console.log(voices);
-
-// Set a voice
-await tts.setVoice('icefall-fs-ljspeech-medium');
-
-// Speak some text
-await tts.speak('Hello, world!');
-```
-
-Note: SherpaOnnx requires the `sherpa-onnx-node` package, which is a native module that requires compilation.
-
-On native platforms (macOS, Linux, Windows), you need to set environment variables. You can do this in several ways:
-
-1. Use the provided helper scripts which handle all platforms:
-
-```bash
-# Using the Node.js script
-node scripts/run-with-sherpaonnx.js your-script.js
-
-# Or using the shell script (Unix/macOS only)
-./scripts/run-with-sherpaonnx.sh your-script.js
-```
-
-2. Set it manually before running your script:
-
-```bash
-# macOS
-export DYLD_LIBRARY_PATH=/path/to/your/project/node_modules/sherpa-onnx-darwin-arm64:$DYLD_LIBRARY_PATH
-
-# Linux
-export LD_LIBRARY_PATH=/path/to/your/project/node_modules/sherpa-onnx-linux-x64:$LD_LIBRARY_PATH
-
-# Windows (Command Prompt)
-set PATH=C:\path\to\your\project\node_modules\sherpa-onnx-win32-x64;%PATH%
-```
-
-If you encounter issues installing or using sherpa-onnx-node, the wrapper will fall back to a mock implementation for testing purposes.
-
-### OpenAI TTS
-
-The library includes support for OpenAI's text-to-speech API:
-
-```typescript
-import { OpenAITTSClient } from 'js-tts-wrapper';
-
-// Initialize the client
-const tts = new OpenAITTSClient({
-  apiKey: 'your-openai-api-key', // Optional, defaults to OPENAI_API_KEY environment variable
-});
-
-// List available voices
-const voices = await tts.getVoices();
-console.log(voices);
-
-// Set a voice
-tts.setVoice('alloy');
-
-// Set the model (defaults to gpt-4o-mini-tts)
-tts.setModel('gpt-4o-mini-tts');
-
-// Set instructions for the TTS engine
-tts.setInstructions('Speak in a friendly and clear tone.');
-
-// Set the response format (mp3, opus, aac, flac, wav, pcm)
-tts.setResponseFormat('mp3');
-
-// Speak some text
-await tts.speak('Hello, world!');
-
-// Stream some text
-await tts.speakStreamed('This is streaming audio from OpenAI.');
-```
-
-Note: OpenAI TTS does not support SSML, and word boundaries are estimated since OpenAI doesn't provide word timing information.
-
-### PlayHT TTS
-
-The library includes support for PlayHT's text-to-speech API:
-
-```typescript
-import { PlayHTTTSClient } from 'js-tts-wrapper';
-
-// Initialize the client
-const tts = new PlayHTTTSClient({
-  apiKey: 'your-playht-api-key', // Optional, defaults to PLAYHT_API_KEY environment variable
-  userId: 'your-playht-user-id', // Optional, defaults to PLAYHT_USER_ID environment variable
-});
-
-// List available voices
-const voices = await tts.getVoices();
-console.log(voices);
-
-// Set a voice
-tts.setVoice('s3://voice-cloning-zero-shot/d9ff78ba-d016-47f6-b0ef-dd630f59414e/female-cs/manifest.json');
-
-// Set the voice engine (PlayHT1.0, PlayHT2.0, or null)
-tts.setVoiceEngine('PlayHT1.0');
-
-// Set the output format (wav, mp3)
-tts.setOutputFormat('wav');
-
-// Speak some text
-await tts.speak('Hello, world!');
-
-// Stream some text
-await tts.speakStreamed('This is streaming audio from PlayHT.');
-```
-
-Note: PlayHT TTS does not support SSML, and word boundaries are estimated since PlayHT doesn't provide word timing information.
-
-### Language Normalization
-
-The library provides a unified language normalization system that works across all TTS engines:
-
-```typescript
-import { AzureTTSClient, LanguageNormalizer } from 'js-tts-wrapper';
-
-// Normalize a language code
-const normalized = LanguageNormalizer.normalize('en-US');
-console.log(normalized);
-// { bcp47: 'en-US', iso639_3: 'eng', display: 'English (United States)' }
-
-// Get voices by language (works with both BCP-47 and ISO 639-3 codes)
-const tts = new AzureTTSClient({ /* credentials */ });
-const enVoices = await tts.getVoicesByLanguage('en-US'); // BCP-47
-const engVoices = await tts.getVoicesByLanguage('eng');  // ISO 639-3
-```
-
-For more details, see [Language Normalization](./docs/LANGUAGE_NORMALIZATION.md).
-
-### Word Boundary Callbacks
-
-```typescript
-import { AzureTTSClient } from 'js-tts-wrapper';
-
-const tts = new AzureTTSClient({
-  subscriptionKey: 'your-subscription-key',
-  region: 'westeurope'
-});
-
-// Set up callbacks
-function onWordBoundary(word, startTime, endTime) {
-  console.log(`Word: ${word}, Duration: ${endTime - startTime}ms`);
-}
-
-function onStart() {
-  console.log('Speech started');
-}
-
-function onEnd() {
-  console.log('Speech ended');
-}
-
-// Connect callbacks
-tts.connect('onStart', onStart);
-tts.connect('onEnd', onEnd);
-
-// Start playback with word boundary callbacks
-await tts.startPlaybackWithCallbacks('Hello world', onWordBoundary);
-```
-
-### Saving to File
-
-```typescript
-import { AzureTTSClient } from 'js-tts-wrapper';
-import { writeFile } from 'fs/promises';
-
-const tts = new AzureTTSClient({
-  subscriptionKey: 'your-subscription-key',
-  region: 'westeurope'
-});
-
-// Synthesize to bytes and save to file
-const audioBytes = await tts.synthToBytes('Hello world', { format: 'mp3' });
-await writeFile('output.mp3', Buffer.from(audioBytes));
-```
-
 ## Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](./docs/CONTRIBUTING.md) for guidelines.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-### Testing
+## License
 
-The library includes a comprehensive test suite. For details on running tests, see [TESTING.md](./docs/TESTING.md).
-
-```bash
-# Run all tests
-npm test
-
-# Run TTS engine tests
-npm run test:tts
-
-# Run tests for specific engines
-npm run test:azure
-npm run test:elevenlabs
-npm run test:google
-npm run test:polly
-npm run test:sherpaonnx
-```
-
-### Examples
-
-Examples are available in the `examples` directory:
-
-```bash
-# Run the unified example
-npm run example
-
-# Run examples for specific engines
-npm run example:azure
-npm run example:elevenlabs
-npm run example:google
-npm run example:polly
-npm run example:sherpaonnx
-```
-
-## Compatibility
-
-This library is designed to be compatible with modern JavaScript frameworks and environments:
-
-- **Node.js**: Compatible with Node.js 18.x and 20.x
-- **React**: Compatible with React 18 and React 19
-- **Next.js**: Compatible with Next.js 13 and 14
-- **TypeScript**: Full TypeScript support with type definitions
-
-The library uses a modular dependency approach that allows you to install only what you need, reducing bundle size and avoiding unnecessary dependencies.
-
-## SherpaOnnx WebAssembly TTS
-
-SherpaOnnx WebAssembly TTS is a browser-compatible version of SherpaOnnx TTS. It uses WebAssembly to run the TTS engine directly in the browser, without requiring native modules or environment variables.
-
-```javascript
-import { SherpaOnnxWasmTTSClient } from 'js-tts-wrapper';
-
-// Create a SherpaOnnx WebAssembly TTS client
-const tts = new SherpaOnnxWasmTTSClient({
-  wasmPath: './sherpaonnx-wasm/tts.js'
-});
-
-// Initialize the WebAssembly module
-await tts.initializeWasm('./sherpaonnx-wasm/tts.js');
-
-// Get available voices
-const voices = await tts.getVoices();
-console.log(`Found ${voices.length} voices`);
-
-// Set a voice
-await tts.setVoice('piper_en_US');
-
-// Synthesize speech
-const text = 'This is a test of SherpaOnnx WebAssembly Text to Speech synthesis.';
-const audioBytes = await tts.synthToBytes(text, { format: 'wav' });
-
-// Play the audio in a browser
-const audioBlob = new Blob([audioBytes], { type: 'audio/wav' });
-const audioUrl = URL.createObjectURL(audioBlob);
-const audio = new Audio(audioUrl);
-audio.play();
+This project is licensed under the MIT License - see the LICENSE file for details.
