@@ -303,11 +303,12 @@ await tts.speak(markdown, { useSpeechMarkdown: true });
 
 ## Engine-Specific Examples
 
-Each TTS engine has its own specific setup. Here are examples for each supported engine:
+Each TTS engine has its own specific setup. Here are examples for each supported engine in both ESM and CommonJS formats:
 
 ### Azure
 
-```typescript
+#### ESM
+```javascript
 import { AzureTTSClient } from 'js-tts-wrapper';
 
 const tts = new AzureTTSClient({
@@ -318,9 +319,23 @@ const tts = new AzureTTSClient({
 await tts.speak('Hello from Azure!');
 ```
 
+#### CommonJS
+```javascript
+const { AzureTTSClient } = require('js-tts-wrapper');
+
+const tts = new AzureTTSClient({
+  subscriptionKey: 'your-subscription-key',
+  region: 'westeurope'
+});
+
+// Inside an async function
+await tts.speak('Hello from Azure!');
+```
+
 ### Google Cloud
 
-```typescript
+#### ESM
+```javascript
 import { GoogleTTSClient } from 'js-tts-wrapper';
 
 const tts = new GoogleTTSClient({
@@ -330,9 +345,22 @@ const tts = new GoogleTTSClient({
 await tts.speak('Hello from Google Cloud!');
 ```
 
+#### CommonJS
+```javascript
+const { GoogleTTSClient } = require('js-tts-wrapper');
+
+const tts = new GoogleTTSClient({
+  keyFilename: '/path/to/service-account-key.json'
+});
+
+// Inside an async function
+await tts.speak('Hello from Google Cloud!');
+```
+
 ### AWS Polly
 
-```typescript
+#### ESM
+```javascript
 import { PollyTTSClient } from 'js-tts-wrapper';
 
 const tts = new PollyTTSClient({
@@ -344,9 +372,24 @@ const tts = new PollyTTSClient({
 await tts.speak('Hello from AWS Polly!');
 ```
 
+#### CommonJS
+```javascript
+const { PollyTTSClient } = require('js-tts-wrapper');
+
+const tts = new PollyTTSClient({
+  region: 'us-east-1',
+  accessKeyId: 'your-access-key-id',
+  secretAccessKey: 'your-secret-access-key'
+});
+
+// Inside an async function
+await tts.speak('Hello from AWS Polly!');
+```
+
 ### ElevenLabs
 
-```typescript
+#### ESM
+```javascript
 import { ElevenLabsTTSClient } from 'js-tts-wrapper';
 
 const tts = new ElevenLabsTTSClient({
@@ -356,9 +399,22 @@ const tts = new ElevenLabsTTSClient({
 await tts.speak('Hello from ElevenLabs!');
 ```
 
+#### CommonJS
+```javascript
+const { ElevenLabsTTSClient } = require('js-tts-wrapper');
+
+const tts = new ElevenLabsTTSClient({
+  apiKey: 'your-api-key'
+});
+
+// Inside an async function
+await tts.speak('Hello from ElevenLabs!');
+```
+
 ### OpenAI
 
-```typescript
+#### ESM
+```javascript
 import { OpenAITTSClient } from 'js-tts-wrapper';
 
 const tts = new OpenAITTSClient({
@@ -368,9 +424,22 @@ const tts = new OpenAITTSClient({
 await tts.speak('Hello from OpenAI!');
 ```
 
+#### CommonJS
+```javascript
+const { OpenAITTSClient } = require('js-tts-wrapper');
+
+const tts = new OpenAITTSClient({
+  apiKey: 'your-api-key'
+});
+
+// Inside an async function
+await tts.speak('Hello from OpenAI!');
+```
+
 ### PlayHT
 
-```typescript
+#### ESM
+```javascript
 import { PlayHTTTSClient } from 'js-tts-wrapper';
 
 const tts = new PlayHTTTSClient({
@@ -381,9 +450,23 @@ const tts = new PlayHTTTSClient({
 await tts.speak('Hello from PlayHT!');
 ```
 
+#### CommonJS
+```javascript
+const { PlayHTTTSClient } = require('js-tts-wrapper');
+
+const tts = new PlayHTTTSClient({
+  apiKey: 'your-api-key',
+  userId: 'your-user-id'
+});
+
+// Inside an async function
+await tts.speak('Hello from PlayHT!');
+```
+
 ### IBM Watson
 
-```typescript
+#### ESM
+```javascript
 import { WatsonTTSClient } from 'js-tts-wrapper';
 
 const tts = new WatsonTTSClient({
@@ -395,9 +478,24 @@ const tts = new WatsonTTSClient({
 await tts.speak('Hello from IBM Watson!');
 ```
 
+#### CommonJS
+```javascript
+const { WatsonTTSClient } = require('js-tts-wrapper');
+
+const tts = new WatsonTTSClient({
+  apiKey: 'your-api-key',
+  region: 'us-south',
+  instanceId: 'your-instance-id'
+});
+
+// Inside an async function
+await tts.speak('Hello from IBM Watson!');
+```
+
 ### Wit.ai
 
-```typescript
+#### ESM
+```javascript
 import { WitAITTSClient } from 'js-tts-wrapper';
 
 const tts = new WitAITTSClient({
@@ -407,9 +505,22 @@ const tts = new WitAITTSClient({
 await tts.speak('Hello from Wit.ai!');
 ```
 
+#### CommonJS
+```javascript
+const { WitAITTSClient } = require('js-tts-wrapper');
+
+const tts = new WitAITTSClient({
+  token: 'your-wit-ai-token'
+});
+
+// Inside an async function
+await tts.speak('Hello from Wit.ai!');
+```
+
 ### SherpaOnnx (Offline TTS)
 
-```typescript
+#### ESM
+```javascript
 import { SherpaOnnxTTSClient } from 'js-tts-wrapper';
 
 const tts = new SherpaOnnxTTSClient();
@@ -418,13 +529,35 @@ const tts = new SherpaOnnxTTSClient();
 await tts.speak('Hello from SherpaOnnx!');
 ```
 
+#### CommonJS
+```javascript
+const { SherpaOnnxTTSClient } = require('js-tts-wrapper');
+
+const tts = new SherpaOnnxTTSClient();
+// The client will automatically download models when needed
+
+// Inside an async function
+await tts.speak('Hello from SherpaOnnx!');
+```
+
 ### eSpeak NG (WASM)
 
-```typescript
+#### ESM
+```javascript
 import { EspeakTTSClient } from 'js-tts-wrapper';
 
 const tts = new EspeakTTSClient();
 
+await tts.speak('Hello from eSpeak NG!');
+```
+
+#### CommonJS
+```javascript
+const { EspeakTTSClient } = require('js-tts-wrapper');
+
+const tts = new EspeakTTSClient();
+
+// Inside an async function
 await tts.speak('Hello from eSpeak NG!');
 ```
 
