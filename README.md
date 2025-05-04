@@ -51,25 +51,36 @@ npm install js-tts-wrapper
 
 ### Optional Dependencies
 
-The library uses a modular approach where TTS engine-specific dependencies are optional. Install only what you need using the provided scripts:
+The library uses a modular approach where TTS engine-specific dependencies are optional. Install only what you need for the engines you plan to use:
 
 ```bash
 # Install specific cloud engines:
-npm run install:azure       # Installs @azure/cognitiveservices-speechservices, microsoft-cognitiveservices-speech-sdk
-npm run install:google      # Installs @google-cloud/text-to-speech
-npm run install:elevenlabs  # Installs node-fetch (for Node.js)
-npm run install:polly       # Installs @aws-sdk/client-polly
-npm run install:openai      # Installs openai
-npm run install:playht      # Installs node-fetch (for Node.js)
+npm install @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk  # For Azure
+npm install @google-cloud/text-to-speech  # For Google Cloud
+npm install node-fetch@2  # For ElevenLabs and PlayHT in Node.js
+npm install @aws-sdk/client-polly  # For AWS Polly
+npm install openai  # For OpenAI
+
+# For IBM Watson, no additional dependencies needed (uses fetch API)
 
 # Install local/offline engines:
-npm run install:sherpaonnx  # Installs sherpa-onnx-node and helpers (Requires native compilation & env var setup - see above)
+npm install sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream  # For SherpaOnnx (requires native compilation)
 # Note: eSpeak (WASM) has no extra dependencies.
-
-# Install combinations:
-npm run install:cloud       # Installs Azure, Google, OpenAI, Polly
-npm run install:all         # Installs all optional dependencies
 ```
+
+#### Engine-Specific Requirements
+
+| Engine | Required Dependencies |
+| ------ | --------------------- |
+| Azure | `@azure/cognitiveservices-speechservices`, `microsoft-cognitiveservices-speech-sdk` |
+| Google Cloud | `@google-cloud/text-to-speech` |
+| ElevenLabs | `node-fetch@2` (Node.js only) |
+| IBM Watson | None (uses fetch API) |
+| OpenAI | `openai` |
+| PlayHT | `node-fetch@2` (Node.js only) |
+| AWS Polly | `@aws-sdk/client-polly` |
+| SherpaOnnx | `sherpa-onnx-node`, `decompress`, `decompress-bzip2`, `decompress-tarbz2`, `decompress-targz`, `tar-stream` |
+| eSpeak NG | None (WASM included) |
 
 ## Quick Start
 
@@ -149,6 +160,7 @@ See the [browser example](examples/browser-example.html) for a complete example 
 | Azure             |  ✅  |     ✅    |      ✅     |      ✅     |    ❔   | Requires `microsoft-cognitiveservices-speech-sdk`            | Cloud API             |
 | ElevenLabs        |  ✅  |     ✅    |      ✅     |      ✅     |    ✅   | Requires API key. Uses `fetch`.                            | Cloud API             |
 | Google Cloud      |  ✅  |     ❌    |      ✅     |      ✅     |    ❔   | Requires `@google-cloud/text-to-speech`                    | Cloud API             |
+| IBM Watson        |  ✅  |     ✅    |      ✅     |      ✅     |    ✅   | Requires API key, region, and instance ID. Uses `fetch`.   | Cloud API             |
 | OpenAI            |  ❌  |     ✅    |      ✅     |      ✅     |    ✅   | Requires `openai` package. Uses `fetch`.                   | Cloud API             |
 | PlayHT            |  ✅  |     ✅    |      ✅     |      ✅     |    ✅   | Requires API key. Uses `fetch`.                            | Cloud API             |
 | Polly (AWS)       |  ✅  |     ✅    |      ✅     |      ✅     |    ❔   | Requires `@aws-sdk/client-polly`.                          | Cloud API             |
