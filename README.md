@@ -51,7 +51,34 @@ npm install js-tts-wrapper
 
 ### Optional Dependencies
 
-The library uses a modular approach where TTS engine-specific dependencies are optional. Install only what you need for the engines you plan to use:
+The library uses a modular approach where TTS engine-specific dependencies are optional. You can install dependencies in two ways:
+
+#### Method 1: Using Dependency Groups (npm 8.3.0+)
+
+Install the package with specific engine dependencies using the bracket notation (similar to pip extras):
+
+```bash
+# Install with specific engine dependencies
+npm install js-tts-wrapper[azure]      # Install with Azure dependencies
+npm install js-tts-wrapper[google]     # Install with Google Cloud dependencies
+npm install js-tts-wrapper[elevenlabs] # Install with ElevenLabs dependencies
+npm install js-tts-wrapper[watson]     # Install with Watson dependencies (no extra deps needed)
+npm install js-tts-wrapper[openai]     # Install with OpenAI dependencies
+npm install js-tts-wrapper[playht]     # Install with PlayHT dependencies
+npm install js-tts-wrapper[polly]      # Install with AWS Polly dependencies
+npm install js-tts-wrapper[sherpaonnx] # Install with SherpaOnnx dependencies
+
+# Install with multiple engine dependencies
+npm install js-tts-wrapper[azure,google,openai]  # Install with multiple engines
+
+# Install with predefined groups
+npm install js-tts-wrapper[cloud]  # Install all cloud engine dependencies
+npm install js-tts-wrapper[all]    # Install all dependencies
+```
+
+#### Method 2: Manual Installation
+
+Alternatively, you can manually install the dependencies for the engines you plan to use:
 
 ```bash
 # Install specific cloud engines:

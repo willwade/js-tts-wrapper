@@ -10,11 +10,12 @@ const {
   PlayHTTTSClient,
   PollyTTSClient,
   SherpaOnnxTTSClient,
+  WatsonTTSClient,
 } = require("../dist");
 
 // Get engine name from command line arguments
 const engineName = process.argv[2]?.toLowerCase() || "all";
-const validEngines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "sherpaonnx", "all"];
+const validEngines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "sherpaonnx", "watson", "all"];
 
 if (!validEngines.includes(engineName)) {
   console.error(`Error: Invalid engine name. Valid options are: ${validEngines.join(", ")}`);
@@ -110,6 +111,20 @@ async function createTTSClient(engine) {
       case "sherpaonnx":
         // SherpaOnnx doesn't require credentials, but it will download models automatically
         client = new SherpaOnnxTTSClient({});
+        break;
+        
+      case "watson":
+        if (!process.env.WATSON_API_KEY || !process.env.WATSON_REGION || !process.env.WATSON_INSTANCE_ID) {
+          console.error(
+            "Error: WATSON_API_KEY, WATSON_REGION, and WATSON_INSTANCE_ID environment variables are required for IBM Watson TTS"
+          );
+          return null;
+        }
+        client = new WatsonTTSClient({
+          apiKey: process.env.WATSON_API_KEY,
+          region: process.env.WATSON_REGION,
+          instanceId: process.env.WATSON_INSTANCE_ID,
+        });
         break;
 
       default:
@@ -385,7 +400,7 @@ async function runEngineExample(engine) {
 async function runExamples() {
   if (engineName === "all") {
     // Run examples for all engines
-    for (const engine of ["azure", "elevenlabs", "google", "polly", "sherpaonnx"]) {
+    for (const engine of ["azure", "elevenlabs", "google", "polly", "sherpaonnx", "watson"]) {
       await runEngineExample(engine);
     }
   } else {
