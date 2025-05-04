@@ -173,20 +173,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
     return this.ssml.wrapWithSpeak(ssmlContent);
   }
 
-  /**
-   * Check if the Watson credentials are valid
-   * @returns Promise resolving to true if credentials are valid, false otherwise
-   */
-  async checkCredentials(): Promise<boolean> {
-    try {
-      // Try to get voices to check if credentials are valid
-      const voices = await this._getVoices();
-      return voices.length > 0;
-    } catch (error) {
-      console.error("Error checking Watson credentials:", error);
-      return false;
-    }
-  }
+  // Using the checkCredentials method from AbstractTTSClient
 
   /**
    * Synthesize text to audio bytes
