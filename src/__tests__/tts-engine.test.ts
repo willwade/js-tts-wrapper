@@ -11,6 +11,7 @@ import { PollyTTSClient } from "../engines/polly";
 import { SherpaOnnxTTSClient } from "../engines/sherpaonnx";
 import { OpenAITTSClient } from "../engines/openai";
 import { PlayHTTTSClient } from "../engines/playht";
+import { WatsonTTSClient } from "../engines/watson";
 import { MockTTSClient } from "./mock-tts-client.helper";
 
 // Use mocks for tests to avoid API calls
@@ -99,6 +100,18 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
         });
         break;
 
+      case "watson":
+        if (!process.env.WATSON_API_KEY || !process.env.WATSON_REGION || !process.env.WATSON_INSTANCE_ID) {
+          console.log("Watson credentials not available");
+          return null;
+        }
+        client = new WatsonTTSClient({
+          apiKey: process.env.WATSON_API_KEY,
+          region: process.env.WATSON_REGION,
+          instanceId: process.env.WATSON_INSTANCE_ID,
+        });
+        break;
+
       default:
         console.log(`Unknown engine: ${engine}`);
         return null;
@@ -121,7 +134,7 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
 }
 
 // Define the engines to test
-const engines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "sherpaonnx"];
+const engines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "sherpaonnx", "watson"];
 
 // Run tests for each engine
 engines.forEach((engineName) => {
