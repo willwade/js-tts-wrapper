@@ -26,14 +26,8 @@ jobs:
     # Install peer dependencies for build
     - name: Install peer dependencies
       run: |
-        # Install AWS Polly first to ensure TypeScript can find it during build
-        npm run install:polly
-        # Install other peer dependencies
-        npm run install:azure
-        npm run install:google
-        npm run install:openai
-        npm run install:elevenlabs
-        npm run install:playht
+        # Install all cloud dependencies for build and testing
+        npm install js-tts-wrapper@file:$GITHUB_WORKSPACE[cloud]
         # Install SherpaOnnx dependencies except the platform-specific binary
         npm install decompress@^4.2.1 decompress-bzip2@^4.0.0 decompress-tarbz2@^4.1.1 decompress-targz@^4.1.1 tar-stream@^3.1.7
     - run: npm run build
@@ -100,14 +94,8 @@ jobs:
     # Install peer dependencies for build
     - name: Install peer dependencies
       run: |
-        # Install AWS Polly first to ensure TypeScript can find it during build
-        npm run install:polly
-        # Install other peer dependencies
-        npm run install:azure
-        npm run install:google
-        npm run install:openai
-        npm run install:elevenlabs
-        npm run install:playht
+        # Install all cloud dependencies for build and testing
+        npm install js-tts-wrapper@file:$GITHUB_WORKSPACE[cloud]
         # Install SherpaOnnx dependencies except the platform-specific binary
         npm install decompress@^4.2.1 decompress-bzip2@^4.0.0 decompress-tarbz2@^4.1.1 decompress-targz@^4.1.1 tar-stream@^3.1.7
     - run: npm run prepublishOnly

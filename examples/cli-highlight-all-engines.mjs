@@ -16,6 +16,7 @@ const ENGINES = [
   { name: 'polly', loader: async () => (await import('../dist/esm/engines/polly.js')).PollyTTSClient },
   { name: 'sherpaonnx', loader: async () => (await import('../dist/esm/engines/sherpaonnx.js')).SherpaOnnxTTSClient },
   { name: 'espeak', loader: async () => (await import('../dist/esm/engines/espeak.js')).EspeakTTSClient },
+  { name: 'witai', loader: async () => (await import('../dist/esm/engines/witai.js')).WitAITTSClient },
 ];
 
 const engineMap = {
@@ -27,6 +28,7 @@ const engineMap = {
   polly: { client: ENGINES[5].loader, options: {} },
   sherpaonnx: { client: ENGINES[6].loader, options: {} },
   espeak: { client: ENGINES[7].loader, options: {} },
+  witai: { client: ENGINES[8].loader, options: {} },
 };
 
 async function prompt(question) {
