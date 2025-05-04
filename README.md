@@ -99,7 +99,11 @@ npm install openai  # For OpenAI
 
 ## Quick Start
 
-```typescript
+### Direct Instantiation
+
+#### ESM (ECMAScript Modules)
+
+```javascript
 import { AzureTTSClient } from 'js-tts-wrapper';
 
 // Initialize the client with your credentials
@@ -122,6 +126,77 @@ await tts.speak('Hello, world!');
 const ssml = '<speak>Hello <break time="500ms"/> world!</speak>';
 await tts.speak(ssml);
 ```
+
+#### CommonJS
+
+```javascript
+const { AzureTTSClient } = require('js-tts-wrapper');
+
+// Initialize the client with your credentials
+const tts = new AzureTTSClient({
+  subscriptionKey: 'your-subscription-key',
+  region: 'westeurope'
+});
+
+// Use async/await within an async function
+async function runExample() {
+  // List available voices
+  const voices = await tts.getVoices();
+  console.log(voices);
+
+  // Set a voice
+  tts.setVoice('en-US-AriaNeural');
+
+  // Speak some text
+  await tts.speak('Hello, world!');
+
+  // Use SSML for more control
+  const ssml = '<speak>Hello <break time="500ms"/> world!</speak>';
+  await tts.speak(ssml);
+}
+
+runExample().catch(console.error);
+```
+
+### Using the Factory Pattern
+
+The library provides a factory function to create TTS clients dynamically based on the engine name:
+
+#### ESM (ECMAScript Modules)
+
+```javascript
+import { createTTSClient } from 'js-tts-wrapper';
+
+// Create a TTS client using the factory function
+const tts = createTTSClient('azure', {
+  subscriptionKey: 'your-subscription-key',
+  region: 'westeurope'
+});
+
+// Use the client as normal
+await tts.speak('Hello from the factory pattern!');
+```
+
+#### CommonJS
+
+```javascript
+const { createTTSClient } = require('js-tts-wrapper');
+
+// Create a TTS client using the factory function
+const tts = createTTSClient('azure', {
+  subscriptionKey: 'your-subscription-key',
+  region: 'westeurope'
+});
+
+async function runExample() {
+  // Use the client as normal
+  await tts.speak('Hello from the factory pattern!');
+}
+
+runExample().catch(console.error);
+```
+
+The factory supports all engines: `'azure'`, `'google'`, `'polly'`, `'elevenlabs'`, `'openai'`, `'playht'`, `'watson'`, `'witai'`, etc.
 
 ## Core Functionality
 
@@ -354,6 +429,12 @@ await tts.speak('Hello from eSpeak NG!');
 ```
 
 ## API Reference
+
+### Factory Function
+
+| Function | Description | Return Type |
+|--------|-------------|-------------|
+| `createTTSClient(engine, credentials)` | Create a TTS client for the specified engine | `AbstractTTSClient` |
 
 ### Common Methods (All Engines)
 
