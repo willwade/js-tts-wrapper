@@ -6,9 +6,10 @@ import { OpenAITTSClient } from "./engines/openai.js";
 import { PlayHTTTSClient } from "./engines/playht.js";
 import { PollyTTSClient } from "./engines/polly.js";
 import { WatsonTTSClient } from "./engines/watson.js";
+import { WitAITTSClient } from "./engines/witai.js";
 import type { TTSCredentials } from "./types";
 
-export type SupportedTTS = "azure" | "google" | "polly" | "elevenlabs" | "openai" | "playht" | "watson";
+export type SupportedTTS = "azure" | "google" | "polly" | "elevenlabs" | "openai" | "playht" | "watson" | "witai";
 
 export function createTTSClient(engine: SupportedTTS, credentials: TTSCredentials) {
   switch (engine) {
@@ -26,6 +27,8 @@ export function createTTSClient(engine: SupportedTTS, credentials: TTSCredential
       return new PlayHTTTSClient(credentials as import("./engines/playht").PlayHTTTSCredentials);
     case "watson":
       return new WatsonTTSClient(credentials as import("./engines/watson").WatsonTTSCredentials);
+    case "witai":
+      return new WitAITTSClient(credentials as import("./engines/witai").WitAITTSCredentials);
     default:
       throw new Error(`Engine '${engine}' is not supported in the factory.`);
   }

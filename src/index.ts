@@ -24,6 +24,7 @@ export { SherpaOnnxTTSClient } from "./engines/sherpaonnx";
 export { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm";
 export { EspeakTTSClient } from "./engines/espeak";
 export { WatsonTTSClient } from "./engines/watson";
+export { WitAITTSClient } from "./engines/witai";
 
 // Type exports
 export type {

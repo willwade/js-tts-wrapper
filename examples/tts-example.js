@@ -11,11 +11,12 @@ const {
   PollyTTSClient,
   SherpaOnnxTTSClient,
   WatsonTTSClient,
+  WitAITTSClient,
 } = require("../dist");
 
 // Get engine name from command line arguments
 const engineName = process.argv[2]?.toLowerCase() || "all";
-const validEngines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "sherpaonnx", "watson", "all"];
+const validEngines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "sherpaonnx", "watson", "witai", "all"];
 
 if (!validEngines.includes(engineName)) {
   console.error(`Error: Invalid engine name. Valid options are: ${validEngines.join(", ")}`);
@@ -124,6 +125,18 @@ async function createTTSClient(engine) {
           apiKey: process.env.WATSON_API_KEY,
           region: process.env.WATSON_REGION,
           instanceId: process.env.WATSON_INSTANCE_ID,
+        });
+        break;
+        
+      case "witai":
+        if (!process.env.WITAI_TOKEN) {
+          console.error(
+            "Error: WITAI_TOKEN environment variable is required for WitAI TTS"
+          );
+          return null;
+        }
+        client = new WitAITTSClient({
+          token: process.env.WITAI_TOKEN,
         });
         break;
 
@@ -400,7 +413,7 @@ async function runEngineExample(engine) {
 async function runExamples() {
   if (engineName === "all") {
     // Run examples for all engines
-    for (const engine of ["azure", "elevenlabs", "google", "polly", "sherpaonnx", "watson"]) {
+    for (const engine of ["azure", "elevenlabs", "google", "polly", "sherpaonnx", "watson", "witai"]) {
       await runEngineExample(engine);
     }
   } else {

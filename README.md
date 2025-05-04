@@ -108,6 +108,7 @@ npm install sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decom
 | AWS Polly | `@aws-sdk/client-polly` |
 | SherpaOnnx | `sherpa-onnx-node`, `decompress`, `decompress-bzip2`, `decompress-tarbz2`, `decompress-targz`, `tar-stream` |
 | eSpeak NG | None (WASM included) |
+| WitAI | None (uses fetch API) |
 
 ## Quick Start
 

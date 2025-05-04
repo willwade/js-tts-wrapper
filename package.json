@@ -184,6 +184,9 @@
     "openai": {
       "openai": "^4.93.0"
     },
+    "witai": {
+      
+    },
     "sherpaonnx": {
       "sherpa-onnx-node": "^1.11.3",
       "decompress": "^4.2.1",

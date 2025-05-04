@@ -12,6 +12,7 @@ import { SherpaOnnxTTSClient } from "../engines/sherpaonnx";
 import { OpenAITTSClient } from "../engines/openai";
 import { PlayHTTTSClient } from "../engines/playht";
 import { WatsonTTSClient } from "../engines/watson";
+import { WitAITTSClient } from "../engines/witai";
 import { MockTTSClient } from "./mock-tts-client.helper";
 
 // Use mocks for tests to avoid API calls
@@ -112,6 +113,16 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
         });
         break;
 
+      case "witai":
+        if (!process.env.WITAI_TOKEN) {
+          console.log("WitAI credentials not available");
+          return null;
+        }
+        client = new WitAITTSClient({
+          token: process.env.WITAI_TOKEN,
+        });
+        break;
+
       default:
         console.log(`Unknown engine: ${engine}`);
         return null;
@@ -134,7 +145,7 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
 }
 
 // Define the engines to test
-const engines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "sherpaonnx", "watson"];
+const engines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "sherpaonnx", "watson", "witai"];
 
 // Run tests for each engine
 engines.forEach((engineName) => {
