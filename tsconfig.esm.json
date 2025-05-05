@@ -2,7 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "ESNext",
-    "moduleResolution": "bundler", // or "node16" if you want, but "bundler" is best for this
+    "moduleResolution": "node", // Changed from "bundler" to "node" for better compatibility
     "outDir": "./dist/esm",
     "declaration": true,
     "declarationDir": "./dist/esm",

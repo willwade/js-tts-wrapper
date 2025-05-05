@@ -27,19 +27,80 @@ const distPackageJson = {
   name: packageJson.name,
   version: packageJson.version,
   description: packageJson.description,
-  main: 'index.js',
+  main: 'cjs/index.js',
+  module: 'esm/index.js',
   types: 'index.d.ts',
   author: packageJson.author,
   license: packageJson.license,
   repository: packageJson.repository,
   keywords: packageJson.keywords || ['tts', 'text-to-speech', 'azure', 'google', 'elevenlabs'],
+  type: "module",
+  exports: {
+    ".": {
+      "types": "./index.d.ts",
+      "require": "./cjs/index.js",
+      "import": "./esm/index.js",
+      "default": "./esm/index.js"
+    },
+    "./browser": {
+      "types": "./browser.d.ts",
+      "require": "./browser.js",
+      "import": "./browser.js",
+      "default": "./browser.js"
+    }
+  },
   dependencies: {
     // Include only runtime dependencies
     ...(packageJson.dependencies || {})
   },
   peerDependencies: {
     // Optional dependencies that users can install if they need specific engines
-    '@google-cloud/text-to-speech': '^4.0.0'
+    '@google-cloud/text-to-speech': '^6.0.1',
+    '@azure/cognitiveservices-speechservices': '^1.0.0',
+    'microsoft-cognitiveservices-speech-sdk': '^1.43.1',
+    '@aws-sdk/client-polly': '^3.799.0',
+    'openai': '^4.97.0',
+    'sherpa-onnx-node': '^1.11.3',
+    'decompress': '^4.2.1',
+    'decompress-bzip2': '^4.0.0',
+    'decompress-tarbz2': '^4.1.1',
+    'decompress-targz': '^4.1.1',
+    'tar-stream': '^3.1.7'
+  },
+  peerDependenciesMeta: {
+    '@aws-sdk/client-polly': {
+      optional: true
+    },
+    '@azure/cognitiveservices-speechservices': {
+      optional: true
+    },
+    '@google-cloud/text-to-speech': {
+      optional: true
+    },
+    'decompress': {
+      optional: true
+    },
+    'decompress-bzip2': {
+      optional: true
+    },
+    'decompress-tarbz2': {
+      optional: true
+    },
+    'decompress-targz': {
+      optional: true
+    },
+    'microsoft-cognitiveservices-speech-sdk': {
+      optional: true
+    },
+    'openai': {
+      optional: true
+    },
+    'sherpa-onnx-node': {
+      optional: true
+    },
+    'tar-stream': {
+      optional: true
+    }
   },
   engines: {
     node: '>=14.0.0'
