@@ -138,3 +138,21 @@ export type WordBoundary = {
    */
   duration: number;
 }
+
+/**
+ * Detailed credentials check result
+ */
+export type CredentialsCheckResult = {
+  /**
+   * Whether the credentials are valid
+   */
+  success: boolean;
+  /**
+   * Error message if credentials are invalid
+   */
+  error?: string;
+  /**
+   * Number of voices available if credentials are valid
+   */
+  voiceCount?: number;
+}

@@ -28,6 +28,7 @@ export { WitAITTSClient } from "./engines/witai";
 
 // Type exports
 export type {
+  CredentialsCheckResult,
   SpeakOptions,
   UnifiedVoice,
   TTSCredentials,

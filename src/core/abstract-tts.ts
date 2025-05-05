@@ -1,5 +1,6 @@
 import { SSMLBuilder } from "../ssml/builder";
 import type {
+  CredentialsCheckResult,
   PropertyType,
   SimpleCallback,
   SpeakOptions,
@@ -326,7 +327,7 @@ export abstract class AbstractTTSClient {
       requestAnimationFrame(() => {
         if (document?.body?.contains(a)) {
           document.body.removeChild(a);
-        } 
+        }
         URL.revokeObjectURL(url);
       });
     } else if (isNode) {
@@ -559,6 +560,26 @@ export abstract class AbstractTTSClient {
     } catch (error) {
       console.error("Error checking credentials:", error);
       return false;
+    }
+  }
+
+  /**
+   * Check if credentials are valid with detailed response
+   * @returns Promise resolving to an object with success flag and optional error message
+   */
+  async checkCredentialsDetailed(): Promise<CredentialsCheckResult> {
+    try {
+      const voices = await this._getVoices();
+      return {
+        success: voices.length > 0,
+        voiceCount: voices.length
+      };
+    } catch (error) {
+      console.error("Error checking credentials:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
     }
   }
 
