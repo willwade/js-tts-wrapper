@@ -10,7 +10,6 @@ const path = require('node:path');
 const dotenv = require('dotenv');
 
 // Load environment variables from .envrc at the project root
-const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..'); // Assumes script is in examples/
 dotenv.config({ path: path.join(projectRoot, '.envrc') });
 
@@ -144,15 +143,15 @@ async function testFormatAndInput(engineName, client, voiceId) {
 
     // Check if we should play audio
     const shouldPlayAudio = process.env.PLAY_AUDIO === 'true';
-    
+
     if (shouldPlayAudio) {
       // Test plain text playback
       console.log(`Playing plain text for ${engineName}...`);
       await client.speak(TEST_TEXT, { voice: voiceId });
-      
+
       // Wait a bit before the next playback
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Test SSML playback
       console.log(`Playing SSML for ${engineName}...`);
       await client.speak(TEST_SSML, { voice: voiceId });
@@ -167,9 +166,6 @@ async function testFormatAndInput(engineName, client, voiceId) {
 }
 
 async function runTests() {
-  // Create a mock TTS client for testing
-  const MockTTSClient = require('../dist/cjs/__tests__/mock-tts-client.helper.js').MockTTSClient;
-
   // Define engines and their initialization options
   const engineConfigs = [
     // Add the Mock TTS client first for testing
@@ -248,5 +244,85 @@ async function runTests() {
   }
 }
 
+/**
+ * Parse command line arguments
+ * @returns {string|null} Engine name to test, or null to test all engines
+ */
+function parseArgs() {
+  // Get command line arguments (skip the first two: node and script name)
+  const args = process.argv.slice(2);
+
+  // If --help or -h is provided, show help and exit
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log('Usage: node test-engines.cjs [engine]');
+    console.log('');
+    console.log('Options:');
+    console.log('  --help, -h     Show this help message');
+    console.log('');
+    console.log('Available engines:');
+    console.log('  mock           Mock TTS engine (for testing)');
+    console.log('  azure          Microsoft Azure TTS');
+    console.log('  elevenlabs     ElevenLabs TTS');
+    console.log('  google         Google Cloud TTS');
+    console.log('  openai         OpenAI TTS');
+    console.log('  playht         PlayHT TTS');
+    console.log('  polly          AWS Polly TTS');
+    console.log('  sherpaonnx     SherpaOnnx TTS');
+    console.log('  espeak         eSpeak TTS');
+    console.log('');
+    console.log('If no engine is specified, all engines will be tested.');
+    process.exit(0);
+  }
+
+  // If an engine name is provided, return it
+  if (args.length > 0) {
+    return args[0].toLowerCase();
+  }
+
+  // Otherwise, return null to test all engines
+  return null;
+}
+
+// Create a mock TTS client for testing
+const MockTTSClient = require('../dist/cjs/__tests__/mock-tts-client.helper.js').MockTTSClient;
+
+// Get the engine to test (if specified)
+const engineToTest = parseArgs();
+
 // Run the tests
-runTests().catch(console.error);
+if (engineToTest) {
+  console.log(`Testing only the ${engineToTest} engine...\n`);
+
+  // Define all engine configs
+  const engineConfigs = [
+    { name: "mock", factory: () => new MockTTSClient() },
+    { name: "azure", factory: () => new AzureTTSClient({ subscriptionKey: process.env.MICROSOFT_TOKEN || '', region: process.env.MICROSOFT_REGION || '' }) },
+    { name: "elevenlabs", factory: () => new ElevenLabsTTSClient({ apiKey: process.env.ELEVENLABS_API_KEY || '' }) },
+    { name: "google", factory: () => new GoogleTTSClient({ keyFilename: process.env.GOOGLE_SA_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS || '' }) },
+    { name: "openai", factory: () => new OpenAITTSClient({ apiKey: process.env.OPENAI_API_KEY || '' }) },
+    { name: "playht", factory: () => new PlayHTTTSClient({ apiKey: process.env.PLAYHT_API_KEY || '', userId: process.env.PLAYHT_USER_ID || '' }) },
+    { name: "polly", factory: () => new PollyTTSClient({ region: process.env.POLLY_REGION || '', accessKeyId: process.env.POLLY_AWS_KEY_ID || '', secretAccessKey: process.env.POLLY_AWS_ACCESS_KEY || '' }) },
+    { name: "sherpaonnx", factory: () => new SherpaOnnxTTSClient({ noDefaultDownload: true, modelPath: process.env.SHERPAONNX_MODEL_PATH || null }) },
+    { name: "espeak", factory: () => new EspeakTTSClient() }
+  ];
+
+  // Find the specified engine
+  const engineConfig = engineConfigs.find(config => config.name === engineToTest);
+
+  if (engineConfig) {
+    try {
+      console.log(`Initializing ${engineConfig.name}...`);
+      const client = engineConfig.factory();
+      testEngine(engineConfig.name, client).catch(console.error);
+    } catch (error) {
+      console.error(`Error initializing ${engineConfig.name}:`, error.message);
+    }
+  } else {
+    console.error(`Unknown engine: ${engineToTest}`);
+    console.log('Run with --help to see available engines.');
+    process.exit(1);
+  }
+} else {
+  // Test all engines
+  runTests().catch(console.error);
+}
