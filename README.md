@@ -228,7 +228,7 @@ const { audioStream, wordBoundaries } = await tts.synthToBytestream('Hello, worl
 ### Audio Playback
 
 ```typescript
-// Synthesize and play audio
+// Synthesize and play audio (browser environment only)
 await tts.speak('Hello, world!');
 
 // Playback control
@@ -241,6 +241,8 @@ await tts.startPlaybackWithCallbacks('Hello world', (word, start, end) => {
   console.log(`Word: ${word}, Start: ${start}s, End: ${end}s`);
 });
 ```
+
+> **Note**: Audio playback with `speak()` and `speakStreamed()` methods is only supported in browser environments. In Node.js environments, use `synthToFile()` to save audio to a file and play it with an external player.
 
 ### File Output
 
@@ -607,7 +609,7 @@ The `ssml` property provides a builder for creating SSML:
 
 ## Browser Support
 
-The library works in both Node.js and browser environments. In browsers, use the ESM or UMD bundle:
+The library works in both Node.js and browser environments, but audio playback is only supported in browser environments. In browsers, use the ESM or UMD bundle:
 
 ```html
 <!-- Using ES modules (recommended) -->

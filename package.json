@@ -110,6 +110,7 @@
     "rimraf": "^6.0.1",
     "rollup": "^4.39.0",
     "sinon": "^20.0.0",
+    "sound-play": "^1.1.0",
     "speechmarkdown-js": "^2.1.0",
     "ts-jest": "^29.3.2",
     "tsc-alias": "^1.8.15",
@@ -166,8 +167,6 @@
       "optional": true
     }
   },
-  "optionalDependencies": {
-  },
   "dependencyGroups": {
     "azure": {
       "microsoft-cognitiveservices-speech-sdk": "^1.43.1",
@@ -188,9 +187,7 @@
     "openai": {
       "openai": "^4.93.0"
     },
-    "witai": {
-
-    },
+    "witai": {},
     "sherpaonnx": {
       "sherpa-onnx-node": "^1.11.3",
       "decompress": "^4.2.1",

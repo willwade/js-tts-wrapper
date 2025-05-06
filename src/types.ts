@@ -36,6 +36,11 @@ export interface SpeakOptions {
    * Voice ID to use for synthesis
    */
   voice?: string;
+
+  /**
+   * Audio format to use for synthesis
+   */
+  format?: "mp3" | "wav" | "ogg" | "opus" | "aac" | "flac" | "pcm";
 }
 
 /**

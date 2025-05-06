@@ -172,37 +172,71 @@ export abstract class AbstractTTSClient {
     // Trigger onStart callback
     this.emit("start");
 
-    // Convert text to audio bytes
-    const audioBytes = await this.synthToBytes(text, options);
+    try {
+      // Convert text to audio bytes
+      const audioBytes = await this.synthToBytes(text, options);
 
-    // Check if we're in a browser environment
-    if (isBrowser) {
-      // Create audio blob and URL
-      const blob = new Blob([audioBytes], { type: "audio/wav" }); // default to WAV
-      const url = URL.createObjectURL(blob);
+      // Check if we're in a browser environment
+      if (isBrowser) {
+        // Determine the correct MIME type based on the options or engine default
+        let mimeType = "audio/wav"; // default to WAV
 
-      // Create and play audio element
-      const audio = new Audio(url);
-      this.audio.audioElement = audio;
-      this.audio.isPlaying = true;
-      this.audio.isPaused = false;
+        if (options?.format === "mp3") {
+          mimeType = "audio/mpeg";
+        } else if (options?.format === "ogg") {
+          mimeType = "audio/ogg";
+        }
 
-      // Set up event handlers
-      audio.onended = () => {
+        // Create audio blob and URL with the correct MIME type
+        const blob = new Blob([audioBytes], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+
+        // Create and play audio element
+        const audio = new Audio();
+
+        // Set up event handlers before setting the source
+        audio.oncanplay = async () => {
+          try {
+            this.audio.audioElement = audio;
+            this.audio.isPlaying = true;
+            this.audio.isPaused = false;
+
+            // Create estimated word timings if needed
+            this._createEstimatedWordTimings(text);
+
+            // Play the audio
+            await audio.play();
+          } catch (playError) {
+            console.error("Error playing audio:", playError);
+            this.emit("end");
+          }
+        };
+
+        audio.onerror = (e) => {
+          console.error("Audio playback error:", e);
+          this.emit("end");
+          URL.revokeObjectURL(url);
+        };
+
+        audio.onended = () => {
+          this.emit("end");
+          this.audio.isPlaying = false;
+          URL.revokeObjectURL(url); // Clean up the URL
+        };
+
+        // Set the source after setting up event handlers
+        audio.src = url;
+      } else {
+        // In Node.js environment, we can't play audio directly
+        // Just emit the end event and log a message
+        console.log("Audio playback in Node.js requires external audio players.");
+        console.log("Use synthToFile() to save audio to a file and play it with an external player.");
         this.emit("end");
-        this.audio.isPlaying = false;
-        URL.revokeObjectURL(url); // Clean up the URL
-      };
-
-      // Create estimated word timings if needed
-      this._createEstimatedWordTimings(text);
-
-      // Play the audio
-      await audio.play();
-    } else {
-      // In Node.js environment, we can't play audio
-      // Just emit the end event immediately
-      this.emit("end");
+      }
+    } catch (error) {
+      console.error("Error in speak method:", error);
+      this.emit("end"); // Ensure end event is triggered even on error
+      throw error;
     }
   }
 
@@ -258,28 +292,61 @@ export abstract class AbstractTTSClient {
 
       // Check if we're in a browser environment
       if (isBrowser) {
-        // Create audio blob and URL
-        const blob = new Blob([audioBytes], { type: "audio/wav" });
+        // Determine the correct MIME type based on the options or engine default
+        let mimeType = "audio/wav"; // default to WAV
+
+        if (options?.format === "mp3") {
+          mimeType = "audio/mpeg";
+        } else if (options?.format === "ogg") {
+          mimeType = "audio/ogg";
+        }
+
+        // Create audio blob and URL with the correct MIME type
+        const blob = new Blob([audioBytes], { type: mimeType });
         const url = URL.createObjectURL(blob);
 
         // Create and play audio element
-        const audio = new Audio(url);
-        this.audio.audioElement = audio;
-        this.audio.isPlaying = true;
-        this.audio.isPaused = false;
+        const audio = new Audio();
 
-        // Set up event handlers
+        // Set up event handlers before setting the source
+        audio.oncanplay = async () => {
+          try {
+            this.audio.audioElement = audio;
+            this.audio.isPlaying = true;
+            this.audio.isPaused = false;
+
+            // Play the audio
+            await audio.play();
+          } catch (playError) {
+            console.error("Error playing audio:", playError);
+            this.emit("end");
+          }
+        };
+
+        audio.onerror = (e) => {
+          console.error("Audio playback error:", e);
+          this.emit("end");
+          URL.revokeObjectURL(url);
+        };
+
         audio.onended = () => {
           this.emit("end");
           this.audio.isPlaying = false;
           URL.revokeObjectURL(url);
         };
 
-        // Play the audio
-        await audio.play();
+        // Set the source after setting up event handlers
+        audio.src = url;
       } else {
-        // In Node.js environment, just emit events
-        // Fire word boundary events immediately
+        // In Node.js environment, we can't play audio directly
+        // Just emit events and log a message
+        console.log("Audio playback in Node.js requires external audio players.");
+        console.log("Use synthToFile() to save audio to a file and play it with an external player.");
+
+        // Create estimated word timings if needed
+        this._createEstimatedWordTimings(text);
+
+        // Fire word boundary callbacks immediately
         setTimeout(() => {
           this._fireWordBoundaryCallbacks();
           this.emit("end");
@@ -425,6 +492,27 @@ export abstract class AbstractTTSClient {
       for (const callback of callbacks) {
         callback(word, start, end);
       }
+    }
+  }
+
+  /**
+   * Schedule word boundary callbacks based on timing information
+   * This is used when we have audio playback but need to schedule callbacks
+   */
+  protected _scheduleWordBoundaryCallbacks(): void {
+    if (!this.timings.length) return;
+
+    // Get all boundary callbacks
+    const callbacks = this.callbacks["boundary"] || [];
+    if (!callbacks.length) return;
+
+    // Schedule callbacks for each word
+    for (const [start, end, word] of this.timings) {
+      setTimeout(() => {
+        for (const callback of callbacks) {
+          callback(word, start, end);
+        }
+      }, start * 1000);
     }
   }
 

@@ -1,4 +1,5 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
+import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
 import { getFetch } from "../utils/fetch-utils";
 
@@ -95,6 +96,29 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Prepare text for synthesis by stripping SSML tags
+   * @param text Text to prepare
+   * @param options Synthesis options
+   * @returns Prepared text
+   */
+  private prepareText(text: string, options?: SpeakOptions): string {
+    // Convert from Speech Markdown if requested
+    if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
+      // Convert to SSML first, then strip SSML tags
+      const ssml = SpeechMarkdown.toSSML(text);
+      text = this._stripSSML(ssml);
+    }
+
+    // If text is SSML, strip the tags as ElevenLabs doesn't support SSML
+    // and has its own emotion analysis
+    if (this._isSSML(text)) {
+      text = this._stripSSML(text);
+    }
+
+    return text;
+  }
+
+  /**
    * Convert text to audio bytes
    * @param text Text to synthesize
    * @param options Synthesis options
@@ -108,6 +132,9 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       // Use voice from options or the default voice
       const voiceId = options?.voice || this.voiceId || "21m00Tcm4TlvDq8ikWAM"; // Default voice (Rachel)
 
+      // Prepare text for synthesis (strip SSML tags)
+      const preparedText = this.prepareText(text, options);
+
       // Prepare request options
       const requestOptions = {
         method: "POST",
@@ -116,7 +143,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
           "xi-api-key": this.apiKey,
         },
         body: JSON.stringify({
-          text,
+          text: preparedText,
           model_id: "eleven_monolingual_v1",
           output_format: options?.format === "mp3" ? "mp3_44100_128" : "pcm_44100",
           voice_settings: {
@@ -166,6 +193,9 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       // Use voice from options or the default voice
       const voiceId = options?.voice || this.voiceId || "21m00Tcm4TlvDq8ikWAM"; // Default voice (Rachel)
 
+      // Prepare text for synthesis (strip SSML tags)
+      const preparedText = this.prepareText(text, options);
+
       // Prepare request options
       const requestOptions = {
         method: "POST",
@@ -174,7 +204,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
           "xi-api-key": this.apiKey,
         },
         body: JSON.stringify({
-          text,
+          text: preparedText,
           model_id: "eleven_monolingual_v1",
           output_format: options?.format === "mp3" ? "mp3_44100_128" : "pcm_44100",
           voice_settings: {
