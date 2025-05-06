@@ -1,11 +1,15 @@
-// Test script to generate audio files for each TTS engine and test audio playback
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from 'node:url';
-import dotenv from 'dotenv';
+#!/usr/bin/env node
+
+/**
+ * Test script to generate audio files for each TTS engine and test audio playback (CommonJS version)
+ */
+
+// CommonJS imports
+const fs = require('node:fs');
+const path = require('node:path');
+const dotenv = require('dotenv');
 
 // Load environment variables from .envrc at the project root
-const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..'); // Assumes script is in examples/
 dotenv.config({ path: path.join(projectRoot, '.envrc') });
@@ -15,7 +19,8 @@ if (!fs.existsSync(path.join(projectRoot, '.envrc')) && fs.existsSync(path.join(
   dotenv.config({ path: path.join(projectRoot, '.env') });
 }
 
-import {
+// Import from CJS build
+const {
   AzureTTSClient,
   ElevenLabsTTSClient,
   GoogleTTSClient,
@@ -23,11 +28,8 @@ import {
   PlayHTTTSClient,
   PollyTTSClient,
   SherpaOnnxTTSClient,
-  EspeakTTSClient // Import Espeak normally from ESM
-} from "../dist/esm/index.js"; // Import from ESM index
-
-// Import the MockTTSClient directly from the test helpers
-import { MockTTSClient } from "../dist/esm/__tests__/mock-tts-client.helper.js";
+  EspeakTTSClient
+} = require('../dist/cjs/index.js');
 
 // Test texts
 const TEST_TEXT = "This is a test of the text to speech engine. Testing one two three.";
@@ -142,15 +144,15 @@ async function testFormatAndInput(engineName, client, voiceId) {
 
     // Check if we should play audio
     const shouldPlayAudio = process.env.PLAY_AUDIO === 'true';
-
+    
     if (shouldPlayAudio) {
       // Test plain text playback
       console.log(`Playing plain text for ${engineName}...`);
       await client.speak(TEST_TEXT, { voice: voiceId });
-
+      
       // Wait a bit before the next playback
       await new Promise(resolve => setTimeout(resolve, 1000));
-
+      
       // Test SSML playback
       console.log(`Playing SSML for ${engineName}...`);
       await client.speak(TEST_SSML, { voice: voiceId });
@@ -165,6 +167,9 @@ async function testFormatAndInput(engineName, client, voiceId) {
 }
 
 async function runTests() {
+  // Create a mock TTS client for testing
+  const MockTTSClient = require('../dist/cjs/__tests__/mock-tts-client.helper.js').MockTTSClient;
+
   // Define engines and their initialization options
   const engineConfigs = [
     // Add the Mock TTS client first for testing

@@ -12,6 +12,7 @@ import type {
 import { LanguageNormalizer } from "./language-utils";
 import * as SSMLUtils from "./ssml-utils";
 import { isBrowser, isNode } from "../utils/environment";
+import { isNodeAudioAvailable, playAudioInNode } from "../utils/node-audio";
 import * as fs from 'node:fs';
 
 /**
@@ -226,10 +227,34 @@ export abstract class AbstractTTSClient {
 
         // Set the source after setting up event handlers
         audio.src = url;
+      } else if (isNode) {
+        // In Node.js environment, try to use sound-play
+        try {
+          // Check if Node.js audio playback is available
+          const audioAvailable = await isNodeAudioAvailable();
+
+          if (audioAvailable) {
+            // Emit start event
+            this.emit("start");
+
+            // Play audio using our node-audio utility
+            await playAudioInNode(audioBytes);
+
+            // Emit end event
+            this.emit("end");
+          } else {
+            console.log("Audio playback in Node.js requires the sound-play package.");
+            console.log("Install it with: npm install js-tts-wrapper[node-audio]");
+            console.log("Or use synthToFile() to save audio to a file and play it with an external player.");
+            this.emit("end");
+          }
+        } catch (nodeAudioError) {
+          console.error("Error playing audio in Node.js:", nodeAudioError);
+          this.emit("end");
+        }
       } else {
-        // In Node.js environment, we can't play audio directly
-        // Just emit the end event and log a message
-        console.log("Audio playback in Node.js requires external audio players.");
+        // Unknown environment
+        console.log("Audio playback is not supported in this environment.");
         console.log("Use synthToFile() to save audio to a file and play it with an external player.");
         this.emit("end");
       }
@@ -337,10 +362,41 @@ export abstract class AbstractTTSClient {
 
         // Set the source after setting up event handlers
         audio.src = url;
+      } else if (isNode) {
+        // In Node.js environment, try to use sound-play
+        try {
+          // Check if Node.js audio playback is available
+          const audioAvailable = await isNodeAudioAvailable();
+
+          // Create estimated word timings if needed
+          this._createEstimatedWordTimings(text);
+
+          if (audioAvailable) {
+            // Schedule word boundary callbacks
+            this._scheduleWordBoundaryCallbacks();
+
+            // Play audio using our node-audio utility
+            await playAudioInNode(audioBytes);
+
+            // Emit end event
+            this.emit("end");
+          } else {
+            console.log("Audio playback in Node.js requires the sound-play package.");
+            console.log("Install it with: npm install js-tts-wrapper[node-audio]");
+            console.log("Or use synthToFile() to save audio to a file and play it with an external player.");
+
+            // Fire word boundary callbacks immediately
+            this._fireWordBoundaryCallbacks();
+            this.emit("end");
+          }
+        } catch (nodeAudioError) {
+          console.error("Error playing audio in Node.js:", nodeAudioError);
+          this._fireWordBoundaryCallbacks();
+          this.emit("end");
+        }
       } else {
-        // In Node.js environment, we can't play audio directly
-        // Just emit events and log a message
-        console.log("Audio playback in Node.js requires external audio players.");
+        // Unknown environment
+        console.log("Audio playback is not supported in this environment.");
         console.log("Use synthToFile() to save audio to a file and play it with an external player.");
 
         // Create estimated word timings if needed

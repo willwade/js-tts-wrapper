@@ -4,44 +4,51 @@
 
 import { isNode } from "./environment";
 
-// Define module types
-type FS = {
-  writeFileSync: (path: string, data: Buffer) => void;
-  unlinkSync: (path: string) => void;
-  existsSync: (path: string) => boolean;
-};
+// Dynamic import for CommonJS modules
+async function dynamicRequire(moduleName: string): Promise<any> {
+  // In Node.js, we can use a dynamic import
+  if (isNode) {
+    try {
+      // For Node.js built-in modules
+      if (moduleName.startsWith("node:")) {
+        return await import(moduleName);
+      }
 
-type OS = {
-  tmpdir: () => string;
-  platform: () => string;
-};
+      // For third-party modules
+      return await import(moduleName);
+    } catch (_importError) {
+      // Fallback to global require if available
+      try {
+        // @ts-ignore
+        return require(moduleName);
+      } catch (_requireError) {
+        // Ignore errors
+      }
+    }
+  }
 
-type Path = {
-  join: (...paths: string[]) => string;
-};
+  throw new Error(`Failed to load module: ${moduleName}`);
+}
 
-type ChildProcess = {
-  spawn: (command: string, args: string[]) => any;
-};
+/**
+ * Check if Node.js audio playback is available
+ * @returns True if Node.js audio playback is available
+ */
+export async function isNodeAudioAvailable(): Promise<boolean> {
+  if (!isNode) return false;
 
-// Cache the modules
-let fs: FS | null = null;
-let os: OS | null = null;
-let path: Path | null = null;
-let childProcess: ChildProcess | null = null;
-
-// Try to load the modules
-try {
-  // @ts-ignore
-  fs = require("node:fs");
-  // @ts-ignore
-  os = require("node:os");
-  // @ts-ignore
-  path = require("node:path");
-  // @ts-ignore
-  childProcess = require("node:child_process");
-} catch (_e) {
-  // Modules not available
+  try {
+    const soundPlay = await dynamicRequire("sound-play");
+    // Check if it's a valid module with a play function
+    // It could be either soundPlay.play or soundPlay.default.play
+    return !!(
+      soundPlay &&
+      (typeof soundPlay.play === "function" ||
+        (soundPlay.default && typeof soundPlay.default.play === "function"))
+    );
+  } catch (_e) {
+    return false;
+  }
 }
 
 /**
@@ -54,9 +61,20 @@ export async function playAudioInNode(audioBytes: Uint8Array): Promise<void> {
     throw new Error("This function can only be used in Node.js");
   }
 
-  // Check if required modules are available
-  if (!fs || !os || !path || !childProcess) {
-    throw new Error("Failed to load required Node.js modules");
+  // Try to require the necessary modules
+  let fs: any;
+  let os: any;
+  let path: any;
+  let soundPlay: any;
+  try {
+    fs = await dynamicRequire("node:fs");
+    os = await dynamicRequire("node:os");
+    path = await dynamicRequire("node:path");
+    soundPlay = await dynamicRequire("sound-play");
+  } catch (error) {
+    throw new Error(
+      `Failed to load required Node.js modules: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 
   // Create a temporary file to play
@@ -143,61 +161,24 @@ export async function playAudioInNode(audioBytes: Uint8Array): Promise<void> {
       fs.writeFileSync(tempFile, Buffer.from(wavFile));
     }
 
-    // Detect platform and play audio using appropriate command
-    const platform = os.platform();
-
-    return new Promise<void>((resolve, reject) => {
-      let command: string;
-      let args: string[];
-
-      if (platform === "darwin") {
-        // macOS
-        command = "afplay";
-        args = [tempFile];
-      } else if (platform === "win32") {
-        // Windows
-        command = "powershell";
-        args = ["-c", `(New-Object System.Media.SoundPlayer "${tempFile}").PlaySync()`];
-      } else if (platform === "linux") {
-        // Linux - try aplay
-        command = "aplay";
-        args = [tempFile];
+    try {
+      // Play the audio using sound-play
+      // Handle both CommonJS and ES module formats
+      if (typeof soundPlay.play === "function") {
+        await soundPlay.play(tempFile);
+      } else if (soundPlay.default && typeof soundPlay.default.play === "function") {
+        await soundPlay.default.play(tempFile);
       } else {
-        // Unsupported platform
-        fs.unlinkSync(tempFile);
-        reject(new Error(`Unsupported platform: ${platform}`));
-        return;
+        throw new Error("sound-play module does not have a play function");
       }
-
-      // Play the audio
-      const process = childProcess.spawn(command, args);
-
-      process.on("error", (error: Error) => {
-        // Clean up temp file
-        try {
-          fs.unlinkSync(tempFile);
-        } catch (_cleanupError) {
-          // Ignore cleanup errors
-        }
-
-        reject(error);
-      });
-
-      process.on("close", (code: number) => {
-        // Clean up temp file
-        try {
-          fs.unlinkSync(tempFile);
-        } catch (_cleanupError) {
-          // Ignore cleanup errors
-        }
-
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`Audio playback process exited with code ${code}`));
-        }
-      });
-    });
+    } finally {
+      // Clean up temp file
+      try {
+        fs.unlinkSync(tempFile);
+      } catch (_cleanupError) {
+        // Ignore cleanup errors
+      }
+    }
   } catch (error) {
     // Clean up temp file if it exists
     try {

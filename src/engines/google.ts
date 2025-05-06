@@ -61,41 +61,52 @@ export class GoogleTTSClient extends AbstractTTSClient {
     this.googleCredentials = credentials;
     this.client = null;
 
-    if (typeof window === "undefined" && typeof require !== "undefined") {
-      try {
-        // Try to load the Google Cloud Text-to-Speech client (Node.js only)
-        this.client = new TextToSpeechClient({
-          projectId: credentials.projectId,
-          credentials: credentials.credentials,
-          keyFilename: credentials.keyFilename,
-        });
-        // Try to load the beta client for word timings
-        try {
-          const { v1beta1 } = require("@google-cloud/text-to-speech");
-          if (v1beta1) {
-            this.useBetaApi = true;
-          }
-        } catch (error) {
-          console.warn(
-            "Google Cloud Text-to-Speech beta API not available. Word timing will be estimated."
-          );
-        }
-      } catch (error) {
-        // In test mode, we'll just log a warning instead of an error
-        if (process.env.NODE_ENV === "test") {
-          console.warn(
-            "Google TTS client not initialized in test mode. Some tests may be skipped."
-          );
-        } else {
-          console.error("Error initializing Google TTS client:", error);
-          console.warn(
-            "Google TTS will not be available. Install @google-cloud/text-to-speech to use this engine."
-          );
-        }
-        this.client = null;
-      }
+    // Initialize the client if we're in a Node.js environment
+    if (typeof window === "undefined") {
+      this.initializeClient(credentials);
     } else {
       // In browser: use REST API (to be implemented as needed)
+      this.client = null;
+    }
+  }
+
+  /**
+   * Initialize the Google TTS client
+   * @param credentials Google TTS credentials
+   */
+  private async initializeClient(credentials: GoogleTTSCredentials): Promise<void> {
+    try {
+      // Try to load the Google Cloud Text-to-Speech client (Node.js only)
+      this.client = new TextToSpeechClient({
+        projectId: credentials.projectId,
+        credentials: credentials.credentials,
+        keyFilename: credentials.keyFilename,
+      });
+
+      // Try to load the beta client for word timings
+      try {
+        // Use dynamic import for ESM compatibility
+        const ttsModule = await import("@google-cloud/text-to-speech");
+        if (ttsModule.v1beta1) {
+          this.useBetaApi = true;
+        }
+      } catch (error) {
+        console.warn(
+          "Google Cloud Text-to-Speech beta API not available. Word timing will be estimated."
+        );
+      }
+    } catch (error) {
+      // In test mode, we'll just log a warning instead of an error
+      if (process.env.NODE_ENV === "test") {
+        console.warn(
+          "Google TTS client not initialized in test mode. Some tests may be skipped."
+        );
+      } else {
+        console.error("Error initializing Google TTS client:", error);
+        console.warn(
+          "Google TTS will not be available. Install @google-cloud/text-to-speech to use this engine."
+        );
+      }
       this.client = null;
     }
   }
@@ -186,27 +197,36 @@ export class GoogleTTSClient extends AbstractTTSClient {
       let response;
       if (useWordTimings) {
         // Use beta API for word timings
-        const { v1beta1 } = require("@google-cloud/text-to-speech");
-        const betaClient = new v1beta1.TextToSpeechClient({
-          projectId: this.googleCredentials.projectId,
-          credentials: this.googleCredentials.credentials,
-          keyFilename: this.googleCredentials.keyFilename,
-        });
-        [response] = await betaClient.synthesizeSpeech(request);
+        try {
+          // Use dynamic import for ESM compatibility
+          const ttsModule = await import("@google-cloud/text-to-speech");
+          const betaClient = new ttsModule.v1beta1.TextToSpeechClient({
+            projectId: this.googleCredentials.projectId,
+            credentials: this.googleCredentials.credentials,
+            keyFilename: this.googleCredentials.keyFilename,
+          });
+          [response] = await betaClient.synthesizeSpeech(request);
+        } catch (error) {
+          console.warn("Error using beta API for word timings, falling back to standard API:", error);
+          [response] = await this.client.synthesizeSpeech(request);
+        }
       } else {
         // Use standard API
         [response] = await this.client.synthesizeSpeech(request);
       }
 
       // Process word timings if available
-      if (useWordTimings && response.timepoints) {
-        this.processTimepoints(response.timepoints, text);
+      if (useWordTimings && response && 'timepoints' in response && Array.isArray(response.timepoints)) {
+        this.processTimepoints(response.timepoints as Array<{markName: string; timeSeconds: number}>, text);
       } else {
         // Create estimated word timings
         this._createEstimatedWordTimings(text);
       }
 
-      return response.audioContent;
+      // Return audio content, ensuring it's a Uint8Array
+      return response && response.audioContent ?
+        new Uint8Array(response.audioContent as Uint8Array) :
+        new Uint8Array(0);
     } catch (error) {
       console.error("Error synthesizing speech:", error);
       throw error;
@@ -402,7 +422,7 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @param timepoints Timepoints from Google TTS response
    * @param text Original text
    */
-  private processTimepoints(timepoints: any[], text: string): void {
+  private processTimepoints(timepoints: Array<{markName: string; timeSeconds: number}>, text: string): void {
     // Extract plain text from SSML if needed
     const plainText = SSMLUtils.isSSML(text) ? SSMLUtils.stripSSML(text) : text;
 
@@ -442,27 +462,33 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to true if credentials are valid
    */
   async checkCredentials(): Promise<boolean> {
-    // If we're in test mode and the Google Cloud Text-to-Speech package is not installed,
-    // we'll check if the credentials file exists
-    if (process.env.NODE_ENV === "test" && !this.client) {
+    // If the client is not available, check if the credentials file exists
+    if (!this.client) {
       try {
-        const fs = require("fs");
-        const credentials = this.credentials as GoogleTTSCredentials;
+        // Only import fs in Node.js environment
+        if (typeof window === "undefined") {
+          const fs = await import("node:fs");
+          const credentials = this.credentials as GoogleTTSCredentials;
 
-        // Check if the keyFilename exists
-        if (credentials.keyFilename && fs.existsSync(credentials.keyFilename)) {
-          return true;
-        }
+          // Check if the keyFilename exists
+          if (credentials.keyFilename && fs.existsSync(credentials.keyFilename)) {
+            return true;
+          }
 
-        // Check if the GOOGLE_APPLICATION_CREDENTIALS environment variable is set
-        if (process.env.GOOGLE_APPLICATION_CREDENTIALS &&
-            fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
-          return true;
-        }
+          // Check if the GOOGLE_APPLICATION_CREDENTIALS environment variable is set
+          if (process.env.GOOGLE_APPLICATION_CREDENTIALS &&
+              fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+            return true;
+          }
 
-        // Check if the GOOGLE_SA_PATH environment variable is set
-        if (process.env.GOOGLE_SA_PATH && fs.existsSync(process.env.GOOGLE_SA_PATH)) {
-          return true;
+          // Check if the GOOGLE_SA_PATH environment variable is set
+          if (process.env.GOOGLE_SA_PATH && fs.existsSync(process.env.GOOGLE_SA_PATH)) {
+            return true;
+          }
+        } else {
+          // In browser environment, we can't check file existence
+          console.warn("Cannot check Google credentials file existence in browser environment");
+          return false;
         }
       } catch (error) {
         console.error("Error checking Google credentials:", error);
@@ -470,7 +496,60 @@ export class GoogleTTSClient extends AbstractTTSClient {
       return false;
     }
 
-    // Use the default implementation for non-test mode
+    // Use the default implementation if client is available
     return super.checkCredentials();
+  }
+
+  /**
+   * Check if credentials are valid with detailed response
+   * @returns Promise resolving to an object with success flag and optional error message
+   */
+  async checkCredentialsDetailed(): Promise<{ success: boolean; error?: string; voiceCount?: number }> {
+    // If the client is not available, check if the credentials file exists
+    if (!this.client) {
+      try {
+        // Only import fs in Node.js environment
+        if (typeof window === "undefined") {
+          const fs = await import("node:fs");
+          const credentials = this.credentials as GoogleTTSCredentials;
+
+          // Check if the keyFilename exists
+          if (credentials.keyFilename && fs.existsSync(credentials.keyFilename)) {
+            return { success: true, error: "Credentials file exists but client not initialized" };
+          }
+
+          // Check if the GOOGLE_APPLICATION_CREDENTIALS environment variable is set
+          if (process.env.GOOGLE_APPLICATION_CREDENTIALS &&
+              fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+            return { success: true, error: "GOOGLE_APPLICATION_CREDENTIALS file exists but client not initialized" };
+          }
+
+          // Check if the GOOGLE_SA_PATH environment variable is set
+          if (process.env.GOOGLE_SA_PATH && fs.existsSync(process.env.GOOGLE_SA_PATH)) {
+            return { success: true, error: "GOOGLE_SA_PATH file exists but client not initialized" };
+          }
+
+          return {
+            success: false,
+            error: "No valid credentials file found"
+          };
+        } else {
+          // In browser environment, we can't check file existence
+          return {
+            success: false,
+            error: "Cannot check Google credentials file existence in browser environment"
+          };
+        }
+      } catch (error) {
+        console.error("Error checking Google credentials:", error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error)
+        };
+      }
+    }
+
+    // Use the default implementation if client is available
+    return super.checkCredentialsDetailed();
   }
 }

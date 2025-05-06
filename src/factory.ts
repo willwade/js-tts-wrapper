@@ -7,11 +7,39 @@ import { PlayHTTTSClient } from "./engines/playht.js";
 import { PollyTTSClient } from "./engines/polly.js";
 import { WatsonTTSClient } from "./engines/watson.js";
 import { WitAITTSClient } from "./engines/witai.js";
+import { SherpaOnnxTTSClient } from "./engines/sherpaonnx.js";
+import { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm.js";
+import { EspeakTTSClient } from "./engines/espeak.js";
 import type { TTSCredentials } from "./types";
 
-export type SupportedTTS = "azure" | "google" | "polly" | "elevenlabs" | "openai" | "playht" | "watson" | "witai";
+// Import MockTTSClient for testing
+let MockTTSClient: any;
+try {
+  // Dynamic import to avoid circular dependencies
+  import("./__tests__/mock-tts-client.helper.js").then((module) => {
+    MockTTSClient = module.MockTTSClient;
+  }).catch(() => {
+    // Ignore errors
+  });
+} catch (_e) {
+  // Ignore errors
+}
 
-export function createTTSClient(engine: SupportedTTS, credentials: TTSCredentials) {
+export type SupportedTTS =
+  | "azure"
+  | "google"
+  | "polly"
+  | "elevenlabs"
+  | "openai"
+  | "playht"
+  | "watson"
+  | "witai"
+  | "sherpaonnx"
+  | "sherpaonnx-wasm"
+  | "espeak"
+  | "mock";
+
+export function createTTSClient(engine: SupportedTTS, credentials?: TTSCredentials) {
   switch (engine) {
     case "azure":
       return new AzureTTSClient(credentials as { subscriptionKey: string; region: string });
@@ -29,6 +57,18 @@ export function createTTSClient(engine: SupportedTTS, credentials: TTSCredential
       return new WatsonTTSClient(credentials as import("./engines/watson").WatsonTTSCredentials);
     case "witai":
       return new WitAITTSClient(credentials as import("./engines/witai").WitAITTSCredentials);
+    case "sherpaonnx":
+      return new SherpaOnnxTTSClient(credentials as any);
+    case "sherpaonnx-wasm":
+      return new SherpaOnnxWasmTTSClient(credentials as any);
+    case "espeak":
+      return new EspeakTTSClient(credentials as any);
+    case "mock":
+      if (MockTTSClient) {
+        return new MockTTSClient();
+      } else {
+        throw new Error("MockTTSClient is not available. This is only available in development/testing environments.");
+      }
     default:
       throw new Error(`Engine '${engine}' is not supported in the factory.`);
   }

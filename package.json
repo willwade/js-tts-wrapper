@@ -74,7 +74,8 @@
     "prepare": "husky",
     "pre-push": "npm run check",
     "install:deps": "echo 'Use npm install js-tts-wrapper[engine] instead. For example: npm install js-tts-wrapper[azure]'",
-    "install:all-dev": "npm install openai @google-cloud/text-to-speech @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream"
+    "install:node-audio": "npm install sound-play",
+    "install:all-dev": "npm install openai @google-cloud/text-to-speech @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream sound-play"
   },
   "keywords": [
     "tts",
@@ -130,6 +131,7 @@
     "microsoft-cognitiveservices-speech-sdk": "^1.43.1",
     "openai": "^4.97.0",
     "sherpa-onnx-node": "^1.11.3",
+    "sound-play": "^1.1.0",
     "tar-stream": "^3.1.7"
   },
   "peerDependenciesMeta": {
@@ -163,6 +165,9 @@
     "sherpa-onnx-node": {
       "optional": true
     },
+    "sound-play": {
+      "optional": true
+    },
     "tar-stream": {
       "optional": true
     }
@@ -188,6 +193,9 @@
       "openai": "^4.93.0"
     },
     "witai": {},
+    "node-audio": {
+      "sound-play": "^1.1.0"
+    },
     "sherpaonnx": {
       "sherpa-onnx-node": "^1.11.3",
       "decompress": "^4.2.1",
@@ -215,7 +223,8 @@
       "decompress-bzip2": "^4.0.0",
       "decompress-tarbz2": "^4.1.1",
       "decompress-targz": "^4.1.1",
-      "tar-stream": "^3.1.7"
+      "tar-stream": "^3.1.7",
+      "sound-play": "^1.1.0"
     }
   },
   "lint-staged": {

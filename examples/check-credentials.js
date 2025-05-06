@@ -157,7 +157,11 @@ function checkRequiredEnvVars(engineName) {
       requiredVars = ["ELEVENLABS_API_KEY"];
       break;
     case "google":
-      requiredVars = ["GOOGLE_APPLICATION_CREDENTIALS"];
+      // Check for either GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_SA_PATH
+      if (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.GOOGLE_SA_PATH) {
+        return { success: true, set: process.env.GOOGLE_SA_PATH ? ["GOOGLE_SA_PATH"] : ["GOOGLE_APPLICATION_CREDENTIALS"], missing: [] };
+      }
+      return { success: false, set: [], missing: ["GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_SA_PATH"] };
       break;
     case "openai":
       requiredVars = ["OPENAI_API_KEY"];

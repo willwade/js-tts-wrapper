@@ -228,7 +228,7 @@ const { audioStream, wordBoundaries } = await tts.synthToBytestream('Hello, worl
 ### Audio Playback
 
 ```typescript
-// Synthesize and play audio (browser environment only)
+// Synthesize and play audio
 await tts.speak('Hello, world!');
 
 // Playback control
@@ -242,7 +242,7 @@ await tts.startPlaybackWithCallbacks('Hello world', (word, start, end) => {
 });
 ```
 
-> **Note**: Audio playback with `speak()` and `speakStreamed()` methods is only supported in browser environments. In Node.js environments, use `synthToFile()` to save audio to a file and play it with an external player.
+> **Note**: Audio playback with `speak()` and `speakStreamed()` methods is supported in both browser environments and Node.js environments with the optional `sound-play` package installed. To enable Node.js audio playback, install the package with `npm install js-tts-wrapper[node-audio]`.
 
 ### File Output
 
@@ -609,7 +609,7 @@ The `ssml` property provides a builder for creating SSML:
 
 ## Browser Support
 
-The library works in both Node.js and browser environments, but audio playback is only supported in browser environments. In browsers, use the ESM or UMD bundle:
+The library works in both Node.js and browser environments. In browsers, use the ESM or UMD bundle:
 
 ```html
 <!-- Using ES modules (recommended) -->
@@ -637,6 +637,54 @@ The library works in both Node.js and browser environments, but audio playback i
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Optional Dependencies
+
+The library uses a peer dependencies approach to minimize the installation footprint. You can install only the dependencies you need for the engines you plan to use.
+
+```bash
+# Install the base package
+npm install js-tts-wrapper
+
+# Install dependencies for specific engines
+npm install js-tts-wrapper[azure]     # For Azure TTS
+npm install js-tts-wrapper[google]    # For Google TTS
+npm install js-tts-wrapper[polly]     # For AWS Polly
+npm install js-tts-wrapper[openai]    # For OpenAI TTS
+npm install js-tts-wrapper[sherpaonnx] # For SherpaOnnx TTS
+
+# Install dependencies for Node.js audio playback
+npm install js-tts-wrapper[node-audio] # For audio playback in Node.js
+
+# Install dependencies for cloud engines
+npm install js-tts-wrapper[cloud]     # For Azure, Google, Polly, and OpenAI
+
+# Install all dependencies
+npm install js-tts-wrapper[all]       # For all engines and features
+```
+
+## Node.js Audio Playback
+
+The library supports audio playback in Node.js environments with the optional `sound-play` package. This allows you to use the `speak()` and `speakStreamed()` methods in Node.js applications, just like in browser environments.
+
+To enable Node.js audio playback:
+
+1. Install the required dependency:
+   ```bash
+   npm install js-tts-wrapper[node-audio]
+   ```
+
+2. Use the TTS client as usual:
+   ```typescript
+   import { TTSFactory } from 'js-tts-wrapper';
+
+   const tts = TTSFactory.createTTSClient('mock');
+
+   // Play audio in Node.js
+   await tts.speak('Hello, world!');
+   ```
+
+If the `sound-play` package is not installed, the library will fall back to providing informative messages and suggest installing the package.
 
 ## License
 

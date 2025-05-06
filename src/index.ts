@@ -4,6 +4,9 @@ export * as SSMLUtils from "./core/ssml-utils";
 export * as VoiceUtils from "./core/voice-utils";
 export { AudioPlayback } from "./core/playback";
 
+// Factory export
+export * from "./factory";
+
 // SSML exports
 export { SSMLBuilder } from "./ssml/builder";
 

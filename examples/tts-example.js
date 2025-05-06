@@ -1,8 +1,9 @@
 // Unified example for all TTS engines
-require("dotenv").config();
-const fs = require("node:fs");
-const path = require("node:path");
-const {
+import dotenv from 'dotenv';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
   AzureTTSClient,
   ElevenLabsTTSClient,
   GoogleTTSClient,
@@ -12,7 +13,14 @@ const {
   SherpaOnnxTTSClient,
   WatsonTTSClient,
   WitAITTSClient,
-} = require("../dist");
+} from "../dist/esm/index.js";
+
+// Load environment variables
+dotenv.config();
+
+// Get __dirname equivalent in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Get engine name from command line arguments
 const engineName = process.argv[2]?.toLowerCase() || "all";
@@ -113,7 +121,7 @@ async function createTTSClient(engine) {
         // SherpaOnnx doesn't require credentials, but it will download models automatically
         client = new SherpaOnnxTTSClient({});
         break;
-        
+
       case "watson":
         if (!process.env.WATSON_API_KEY || !process.env.WATSON_REGION || !process.env.WATSON_INSTANCE_ID) {
           console.error(
@@ -127,7 +135,7 @@ async function createTTSClient(engine) {
           instanceId: process.env.WATSON_INSTANCE_ID,
         });
         break;
-        
+
       case "witai":
         if (!process.env.WITAI_TOKEN) {
           console.error(
