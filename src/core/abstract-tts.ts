@@ -428,8 +428,8 @@ export abstract class AbstractTTSClient {
     format: "mp3" | "wav" = "wav",
     options?: SpeakOptions
   ): Promise<void> {
-    // Convert text to audio bytes
-    const audioBytes = await this.synthToBytes(text, options);
+    // Convert text to audio bytes with the specified format
+    const audioBytes = await this.synthToBytes(text, { ...options, format });
 
     if (isBrowser) {
       // Create blob with appropriate MIME type

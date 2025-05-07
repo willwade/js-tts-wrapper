@@ -12,7 +12,7 @@ import { streamToBuffer } from "../utils/stream-utils";
  * Extended options for Polly TTS
  */
 export interface PollyTTSOptions extends SpeakOptions {
-  format?: 'mp3' | 'wav'; // Define formats supported by this client logic (maps to pcm)
+  format?: 'mp3' | 'wav' | 'ogg'; // Define formats supported by this client logic
 }
 
 /**
@@ -113,7 +113,7 @@ export class PollyTTSClient extends AbstractTTSClient {
 
       // Get language code
       const langCode = voice.LanguageCode || "en-US";
-      
+
       // Create language code object
       const languageCode = {
         bcp47: langCode,
@@ -132,16 +132,57 @@ export class PollyTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Check if a voice is a neural voice
+   * @param voiceId Voice ID to check
+   * @returns True if the voice is a neural voice
+   */
+  private async isNeuralVoice(voiceId?: string): Promise<boolean> {
+    // If no voice ID is provided, use the current voice
+    const voice = voiceId || this.voiceId || "";
+
+    // If the voice name includes "Neural", it's definitely a neural voice
+    if (voice.includes("Neural")) {
+      return true;
+    }
+
+    try {
+      // Get the raw voices from Polly to check the SupportedEngines property
+      const rawVoices = await this._getVoices();
+      const voiceDetails = rawVoices.find(v => v.Id === voice);
+
+      // Check if the voice supports the neural engine and we're using the neural engine
+      return voiceDetails?.SupportedEngines?.includes("neural") || false;
+    } catch (error) {
+      console.warn(`Error checking if voice ${voice} is neural:`, error);
+      // Default to false if we can't determine
+      return false;
+    }
+  }
+
+  /**
    * Prepare SSML for AWS Polly
    * @param text Text or SSML to prepare
    * @param options Synthesis options
-   * @returns Prepared SSML
+   * @returns Promise resolving to prepared SSML or plain text
    */
-  private prepareSSML(text: string, options?: SpeakOptions): string {
+  private async prepareSSML(text: string, options?: SpeakOptions): Promise<string> {
+    // Get the voice ID from options or the current voice
+    const voiceId = options?.voice || this.voiceId || "";
+
     // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
       const ssmlText = SpeechMarkdown.toSSML(text, "amazon-polly");
       text = ssmlText;
+    }
+
+    // Check if the voice is neural
+    const isNeural = await this.isNeuralVoice(voiceId);
+
+    // If using a neural voice and the text is SSML, strip SSML tags
+    // Neural voices don't support SSML
+    if (isNeural && this._isSSML(text)) {
+      console.warn(`Voice ${voiceId} is a neural voice and doesn't support SSML. Stripping SSML tags.`);
+      return this._stripSSML(text);
     }
 
     // If text is not SSML, wrap it in speak tags
@@ -150,34 +191,35 @@ export class PollyTTSClient extends AbstractTTSClient {
       return text;
     }
 
-    // Fix common SSML issues for Polly
-    
-    // 1. Make sure the speak tag has the correct xmlns attribute
-    // Polly requires the xmlns attribute to be present
-    if (!text.includes('xmlns="http://www.w3.org/2001/10/synthesis"')) {
-      text = text.replace(/<speak>/i, '<speak xmlns="http://www.w3.org/2001/10/synthesis">');
-    }
-    
-    // 2. Fix any self-closing tags that Polly doesn't support
-    text = text.replace(/<break\s+([^>]+)\/>/gi, '<break $1></break>');
-    
-    // 3. Apply prosody settings if needed
-    if (
-      this.properties.rate !== "medium" ||
-      this.properties.pitch !== "medium" ||
-      this.properties.volume !== 100
-    ) {
-      // Extract the content inside the speak tags
-      const speakTagMatch = /<speak[^>]*>(.*?)<\/speak>/s.exec(text);
-      if (speakTagMatch && speakTagMatch[1]) {
-        const content = speakTagMatch[1];
-        
-        // Wrap with prosody tag
-        const prosodyContent = this.constructProsodyTag(content);
-        
-        // Put back inside speak tags with the original attributes
-        const openingTag = text.substring(0, text.indexOf('>') + 1);
-        text = `${openingTag}${prosodyContent}</speak>`;
+    // Fix common SSML issues for Polly (only for non-neural voices)
+    if (!isNeural) {
+      // 1. Make sure the speak tag has the correct xmlns attribute
+      // Polly requires the xmlns attribute to be present
+      if (!text.includes('xmlns="http://www.w3.org/2001/10/synthesis"')) {
+        text = text.replace(/<speak>/i, '<speak xmlns="http://www.w3.org/2001/10/synthesis">');
+      }
+
+      // 2. Fix any self-closing tags that Polly doesn't support
+      text = text.replace(/<break\s+([^>]+)\/>/gi, '<break $1></break>');
+
+      // 3. Apply prosody settings if needed
+      if (
+        this.properties.rate !== "medium" ||
+        this.properties.pitch !== "medium" ||
+        this.properties.volume !== 100
+      ) {
+        // Extract the content inside the speak tags
+        const speakTagMatch = /<speak[^>]*>(.*?)<\/speak>/s.exec(text);
+        if (speakTagMatch && speakTagMatch[1]) {
+          const content = speakTagMatch[1];
+
+          // Wrap with prosody tag
+          const prosodyContent = this.constructProsodyTag(content);
+
+          // Put back inside speak tags with the original attributes
+          const openingTag = text.substring(0, text.indexOf('>') + 1);
+          text = `${openingTag}${prosodyContent}</speak>`;
+        }
       }
     }
 
@@ -209,24 +251,60 @@ export class PollyTTSClient extends AbstractTTSClient {
       }
 
       const { OutputFormat, SynthesizeSpeechCommand, VoiceId } = pollyModule;
-      const outputFormat = options?.format === "mp3" ? OutputFormat.MP3 : OutputFormat.PCM;
+
+      // Determine the output format
+      // For Polly, we always request PCM for WAV (so we can add the header)
+      // and MP3/OGG directly for those formats
+      const requestedFormat = options?.format || "wav";
+      let outputFormat;
+
+      if (requestedFormat === "mp3") {
+        // Request MP3 directly from Polly
+        outputFormat = OutputFormat.MP3;
+      } else if (requestedFormat === "ogg") {
+        // Request OGG directly from Polly
+        outputFormat = OutputFormat.OGG_VORBIS;
+      } else {
+        // For WAV, request PCM and we'll add the WAV header
+        outputFormat = OutputFormat.PCM;
+      }
+
+      // Get the voice ID
       const VoiceIdType = VoiceId; // Get the RUNTIME VoiceId enum/object
       const voiceIdString = options?.voice || this.voiceId || "Joanna";
       const voiceId = voiceIdString as unknown as typeof VoiceIdType; // Cast using the runtime type
+
+      // Prepare text or SSML
+      const preparedText = await this.prepareSSML(text, options);
+
+      // Determine if the prepared text is SSML
+      const isSSML = this._isSSML(preparedText);
+
+      // Determine the engine to use based on the voice
+      // Standard voices: Geraint, Raveena, Aditi, etc.
+      // Neural voices: Joanna, Matthew, Lupe, etc.
+      const standardVoices = ['Geraint', 'Raveena', 'Aditi', 'Carmen', 'Maxim', 'Tatyana', 'Conchita', 'Enrique', 'Russell', 'Nicole', 'Amy', 'Brian', 'Emma', 'Gwyneth', 'Raveena', 'Ivy', 'Joanna', 'Kendra', 'Kimberly', 'Salli', 'Joey', 'Justin', 'Matthew'];
+      const engine = standardVoices.includes(voiceIdString) ? "standard" : "neural";
+
+      // Create input parameters
       const input: SynthesizeSpeechCommandInput = {
-        Text: this.prepareSSML(text, options),
-        TextType: "ssml",
+        Text: preparedText,
+        TextType: isSSML ? "ssml" : "text",
         OutputFormat: outputFormat,
         VoiceId: voiceId,
-        Engine: "neural", // Use neural engine for better quality
+        Engine: engine, // Use standard engine for standard voices, neural for neural voices
+        // Set sample rate based on format
+        // For PCM, always use 16000 Hz to match the Python implementation
+        // For MP3 and OGG, use 24000 Hz for better quality
+        SampleRate: outputFormat === OutputFormat.PCM ? "16000" : "24000",
       };
 
       // Create the command
       const command = new SynthesizeSpeechCommand(input);
-      
+
       // Execute the command
       const response = await this.client.send(command);
-      
+
       // Get audio data
       if (!response.AudioStream) {
         throw new Error("No audio data returned from AWS Polly");
@@ -234,7 +312,14 @@ export class PollyTTSClient extends AbstractTTSClient {
 
       // Convert audio stream to Uint8Array
       const arrayBuffer = await response.AudioStream.transformToByteArray();
-      return new Uint8Array(arrayBuffer);
+      const audioData = new Uint8Array(arrayBuffer);
+
+      // If we requested WAV format but got PCM data, add a WAV header
+      if (options?.format === "wav" && outputFormat === OutputFormat.PCM) {
+        return this.addWavHeader(audioData, parseInt(input.SampleRate || "16000", 10));
+      }
+
+      return audioData;
     } catch (error) {
       console.error("Error synthesizing speech:", error);
       throw error;
@@ -271,15 +356,25 @@ export class PollyTTSClient extends AbstractTTSClient {
       const VoiceIdType = VoiceId; // Get the RUNTIME VoiceId enum/object
       const voiceIdString = options?.voice || this.voiceId || "Joanna";
       const voiceId = voiceIdString as unknown as typeof VoiceIdType; // Cast via unknown
-      const ssml = this.prepareSSML(text, options);
-      const textType = this._isSSML(ssml) ? "ssml" : "text";
-      const engine = "neural"; // Or make configurable
+
+      // Prepare text or SSML
+      const preparedText = await this.prepareSSML(text, options);
+
+      // Determine if the prepared text is SSML
+      const textType = this._isSSML(preparedText) ? "ssml" : "text";
+
+      // Determine the engine to use based on the voice
+      // Standard voices: Geraint, Raveena, Aditi, etc.
+      // Neural voices: Joanna, Matthew, Lupe, etc.
+      const standardVoices = ['Geraint', 'Raveena', 'Aditi', 'Carmen', 'Maxim', 'Tatyana', 'Conchita', 'Enrique', 'Russell', 'Nicole', 'Amy', 'Brian', 'Emma', 'Gwyneth', 'Raveena', 'Ivy', 'Joanna', 'Kendra', 'Kimberly', 'Salli', 'Joey', 'Justin', 'Matthew'];
+      const engine = standardVoices.includes(voiceId) ? "standard" : "neural";
+
       let wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
 
       // Request Speech Marks (JSON)
       try {
         const marksParams: typeof SynthesizeSpeechCommandInput = {
-          Text: ssml,
+          Text: preparedText,
           VoiceId: voiceId,
           OutputFormat: "json",
           SpeechMarkTypes: [SpeechMarkType.WORD],
@@ -289,7 +384,7 @@ export class PollyTTSClient extends AbstractTTSClient {
         const marksCommand = new SynthesizeSpeechCommand(marksParams);
         const marksResponse: SynthesizeSpeechCommandOutput = await this.client.send(marksCommand);
 
-        if (marksResponse.AudioStream) { 
+        if (marksResponse.AudioStream) {
           const streamData = await streamToBuffer(marksResponse.AudioStream as any); // Use correct util
           const marksJsonString = new TextDecoder().decode(streamData); // Decode Buffer/Uint8Array
           const jsonLines = marksJsonString.trim().split("\n");
@@ -316,16 +411,32 @@ export class PollyTTSClient extends AbstractTTSClient {
         // Caller should check wordBoundaries array length if marks are critical
       }
 
-      // Request Audio Stream (PCM/MP3)
-      const outputFormat = options?.format === "mp3" ? OutputFormat.MP3 : OutputFormat.PCM;
+      // Request Audio Stream (PCM/MP3/OGG)
+      // For Polly, we always request PCM for WAV (so we can add the header)
+      // and MP3/OGG directly for those formats
+      const requestedFormat = options?.format || "wav";
+      let outputFormat;
+
+      if (requestedFormat === "mp3") {
+        // Request MP3 directly from Polly
+        outputFormat = OutputFormat.MP3;
+      } else if (requestedFormat === "ogg") {
+        // Request OGG directly from Polly
+        outputFormat = OutputFormat.OGG_VORBIS;
+      } else {
+        // For WAV, request PCM and we'll add the WAV header
+        outputFormat = OutputFormat.PCM;
+      }
       const audioParams: typeof SynthesizeSpeechCommandInput = {
-        Text: ssml,
+        Text: preparedText,
         VoiceId: voiceId, // Use the same casted voiceId
         OutputFormat: outputFormat,
         TextType: textType,
         Engine: engine,
-        // Add SampleRate if needed, based on options?.sampleRateHertz
-        // SampleRate: options?.sampleRateHertz ? options.sampleRateHertz.toString() : undefined,
+        // Set sample rate based on format
+        // For PCM, always use 16000 Hz to match the Python implementation
+        // For MP3 and OGG, use 24000 Hz for better quality
+        SampleRate: outputFormat === OutputFormat.PCM ? "16000" : "24000",
       };
 
       try {
@@ -336,9 +447,39 @@ export class PollyTTSClient extends AbstractTTSClient {
           throw new Error("No AudioStream received from Polly for audio data");
         }
 
+        // Get the audio stream
+        let audioStream = audioResponse.AudioStream as ReadableStream<Uint8Array>;
+
+        // If we requested WAV format but got PCM data, add a WAV header
+        if (requestedFormat === "wav" && outputFormat === OutputFormat.PCM) {
+          // For streaming, we'll need to convert the entire stream to a buffer first,
+          // add the WAV header, and then create a new stream
+          try {
+            // Always use 16000 Hz for PCM data to match the Python implementation
+            const sampleRate = 16000;
+
+            // Convert the stream to a buffer
+            const streamData = await streamToBuffer(audioResponse.AudioStream as any);
+
+            // Add WAV header to the PCM data
+            const wavData = this.addWavHeader(new Uint8Array(streamData), sampleRate);
+
+            // Create a new ReadableStream from the WAV data
+            audioStream = new ReadableStream({
+              start(controller) {
+                controller.enqueue(wavData);
+                controller.close();
+              }
+            });
+          } catch (error) {
+            console.error("Error adding WAV header to PCM stream:", error);
+            // Fall back to the original stream if there's an error
+          }
+        }
+
         // Return combined result
         return {
-          audioStream: audioResponse.AudioStream as ReadableStream<Uint8Array>,
+          audioStream: audioStream,
           wordBoundaries: wordBoundaries,
         };
       } catch (error) {
@@ -352,14 +493,132 @@ export class PollyTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Strip SSML tags from text
+   * @param text Text with SSML tags
+   * @returns Plain text without SSML tags
+   */
+  protected _stripSSML(text: string): string {
+    // If text is not SSML, return as is
+    if (!this._isSSML(text)) {
+      return text;
+    }
+
+    // Remove all XML tags
+    let plainText = text.replace(/<[^>]+>/g, "");
+
+    // Decode XML entities
+    plainText = plainText.replace(/&lt;/g, "<");
+    plainText = plainText.replace(/&gt;/g, ">");
+    plainText = plainText.replace(/&amp;/g, "&");
+    plainText = plainText.replace(/&quot;/g, '"');
+    plainText = plainText.replace(/&apos;/g, "'");
+
+    // Remove extra whitespace
+    plainText = plainText.replace(/\s+/g, " ").trim();
+
+    return plainText;
+  }
+
+  /**
+   * Add a WAV header to PCM audio data
+   * This matches the Python implementation using wave.setparams((1, 2, 16000, 0, "NONE", "NONE"))
+   * @param pcmData PCM audio data from AWS Polly (signed 16-bit, 1 channel, little-endian)
+   * @param sampleRate Sample rate in Hz (default: 16000)
+   * @returns PCM audio data with WAV header
+   */
+  private addWavHeader(pcmData: Uint8Array, sampleRate: number = 16000): Uint8Array {
+    // Ensure we're using the correct sample rate
+    // AWS Polly PCM data is always 16000 Hz for standard voices
+    sampleRate = 16000;
+
+    // WAV header is 44 bytes
+    const headerSize = 44;
+    const wavData = new Uint8Array(headerSize + pcmData.length);
+
+    // Set up WAV header
+    // "RIFF" chunk descriptor
+    wavData[0] = 0x52; // 'R'
+    wavData[1] = 0x49; // 'I'
+    wavData[2] = 0x46; // 'F'
+    wavData[3] = 0x46; // 'F'
+
+    // Chunk size (file size - 8)
+    const fileSize = pcmData.length + headerSize - 8;
+    wavData[4] = fileSize & 0xFF;
+    wavData[5] = (fileSize >> 8) & 0xFF;
+    wavData[6] = (fileSize >> 16) & 0xFF;
+    wavData[7] = (fileSize >> 24) & 0xFF;
+
+    // "WAVE" format
+    wavData[8] = 0x57; // 'W'
+    wavData[9] = 0x41; // 'A'
+    wavData[10] = 0x56; // 'V'
+    wavData[11] = 0x45; // 'E'
+
+    // "fmt " sub-chunk
+    wavData[12] = 0x66; // 'f'
+    wavData[13] = 0x6D; // 'm'
+    wavData[14] = 0x74; // 't'
+    wavData[15] = 0x20; // ' '
+
+    // Sub-chunk size (16 for PCM)
+    wavData[16] = 16;
+    wavData[17] = 0;
+    wavData[18] = 0;
+    wavData[19] = 0;
+
+    // Audio format (1 for PCM)
+    wavData[20] = 1;
+    wavData[21] = 0;
+
+    // Number of channels (1 for mono)
+    wavData[22] = 1;
+    wavData[23] = 0;
+
+    // Sample rate (always 16000 Hz for Polly PCM)
+    wavData[24] = sampleRate & 0xFF;
+    wavData[25] = (sampleRate >> 8) & 0xFF;
+    wavData[26] = (sampleRate >> 16) & 0xFF;
+    wavData[27] = (sampleRate >> 24) & 0xFF;
+
+    // Byte rate (SampleRate * NumChannels * BitsPerSample/8)
+    const byteRate = sampleRate * 1 * 16 / 8;
+    wavData[28] = byteRate & 0xFF;
+    wavData[29] = (byteRate >> 8) & 0xFF;
+    wavData[30] = (byteRate >> 16) & 0xFF;
+    wavData[31] = (byteRate >> 24) & 0xFF;
+
+    // Block align (NumChannels * BitsPerSample/8)
+    wavData[32] = 2; // 1 * 16 / 8
+    wavData[33] = 0;
+
+    // Bits per sample
+    wavData[34] = 16;
+    wavData[35] = 0;
+
+    // "data" sub-chunk
+    wavData[36] = 0x64; // 'd'
+    wavData[37] = 0x61; // 'a'
+    wavData[38] = 0x74; // 't'
+    wavData[39] = 0x61; // 'a'
+
+    // Sub-chunk size (data size)
+    wavData[40] = pcmData.length & 0xFF;
+    wavData[41] = (pcmData.length >> 8) & 0xFF;
+    wavData[42] = (pcmData.length >> 16) & 0xFF;
+    wavData[43] = (pcmData.length >> 24) & 0xFF;
+
+    // Copy PCM data after header
+    wavData.set(pcmData, headerSize);
+
+    return wavData;
+  }
+
+  /**
    * Check if credentials are valid
    * @returns Promise resolving to true if credentials are valid
    */
   async checkCredentials(): Promise<boolean> {
-    if (!this.client) {
-      return false;
-    }
-
     try {
       const pollyModule = this._pollyModule || (await import("@aws-sdk/client-polly"));
       if (!this.client) {

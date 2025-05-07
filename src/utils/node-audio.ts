@@ -96,9 +96,10 @@ export async function playAudioInNode(audioBytes: Uint8Array): Promise<void> {
     } else {
       // Create a valid WAV file with the audio bytes as PCM data
       // This is a minimal WAV file header for the audio data
-      const sampleRate = 44100;
+      // Use 16000 Hz sample rate and 16-bit samples to match Polly's PCM format
+      const sampleRate = 16000;
       const numChannels = 1;
-      const bitsPerSample = 8;
+      const bitsPerSample = 16;
 
       // Calculate sizes
       const dataSize = audioBytes.length;

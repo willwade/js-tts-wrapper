@@ -81,8 +81,29 @@ async function testEngine(engineName, client) {
       return;
     }
 
-    // Use the first available voice
-    const voice = voices[0];
+    // For Polly, use a standard voice that supports SSML
+    let voice;
+    if (engineName === 'polly') {
+      // Find a standard voice that supports SSML
+      // Only standard voices support SSML, neural voices don't
+      // Standard voices include: Geraint, Raveena, Aditi, etc.
+      const standardVoices = ['Geraint', 'Raveena', 'Aditi', 'Ivy', 'Joanna', 'Kendra'];
+      for (const standardVoice of standardVoices) {
+        const foundVoice = voices.find(v => v.id === standardVoice);
+        if (foundVoice) {
+          voice = foundVoice;
+          break;
+        }
+      }
+      // Fall back to the first voice if no standard voice is found
+      if (!voice) {
+        voice = voices[0];
+      }
+    } else {
+      // Use the first voice for other engines
+      voice = voices[0];
+    }
+
     console.log(`Using voice: ${voice.name} (${voice.id})`);
 
     // Test different formats and input types
