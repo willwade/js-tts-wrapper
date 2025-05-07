@@ -237,9 +237,10 @@ async function runTests() {
     },
     {
       name: "sherpaonnx",
-      // Initialize with specific options to avoid download issues
+      // Initialize with model download enabled and specific model ID
       factory: () => new SherpaOnnxTTSClient({
-        noDefaultDownload: true, // Don't try to download models
+        noDefaultDownload: false, // Enable model download
+        modelId: "mms_eng", // Use English model
         modelPath: process.env.SHERPAONNX_MODEL_PATH || null
       })
     },
@@ -323,7 +324,7 @@ if (engineToTest) {
     { name: "openai", factory: () => new OpenAITTSClient({ apiKey: process.env.OPENAI_API_KEY || '' }) },
     { name: "playht", factory: () => new PlayHTTTSClient({ apiKey: process.env.PLAYHT_API_KEY || '', userId: process.env.PLAYHT_USER_ID || '' }) },
     { name: "polly", factory: () => new PollyTTSClient({ region: process.env.POLLY_REGION || '', accessKeyId: process.env.POLLY_AWS_KEY_ID || '', secretAccessKey: process.env.POLLY_AWS_ACCESS_KEY || '' }) },
-    { name: "sherpaonnx", factory: () => new SherpaOnnxTTSClient({ noDefaultDownload: true, modelPath: process.env.SHERPAONNX_MODEL_PATH || null }) },
+    { name: "sherpaonnx", factory: () => new SherpaOnnxTTSClient({ noDefaultDownload: false, modelId: "mms_eng", modelPath: process.env.SHERPAONNX_MODEL_PATH || null }) },
     { name: "espeak", factory: () => new EspeakTTSClient() }
   ];
 

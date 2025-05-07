@@ -130,7 +130,6 @@
     "decompress-targz": "^4.1.1",
     "microsoft-cognitiveservices-speech-sdk": "^1.43.1",
     "openai": "^4.97.0",
-    "sherpa-onnx-node": "^1.11.3",
     "sound-play": "^1.1.0",
     "tar-stream": "^3.1.7"
   },
@@ -244,6 +243,7 @@
   "dependencies": {
     "@local/espeakng": "file:./wasm/espeakng",
     "aws-sdk": "^2.1638.0",
-    "elevenlabs": "^0.6.0"
+    "elevenlabs": "^0.6.0",
+    "sherpa-onnx-node": "^1.11.3"
   }
 }
