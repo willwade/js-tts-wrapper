@@ -66,9 +66,11 @@ export abstract class AbstractTTSClient {
   protected timings: Array<[number, number, string]> = [];
 
   /**
-   * Audio sample rate
+   * Audio sample rate in Hz
+   * This is used for playback and word timing estimation
+   * Default is 24000 Hz, but engines can override this
    */
-  protected audioRate = 24000;
+  protected sampleRate = 24000;
 
   /**
    * Creates a new TTS client
@@ -238,7 +240,8 @@ export abstract class AbstractTTSClient {
             this.emit("start");
 
             // Play audio using our node-audio utility
-            await playAudioInNode(audioBytes);
+            // Pass the engine name to handle Polly audio differently
+            await playAudioInNode(audioBytes, this.sampleRate, this.constructor.name.replace('TTSClient', '').toLowerCase());
 
             // Emit end event
             this.emit("end");
@@ -375,8 +378,9 @@ export abstract class AbstractTTSClient {
             // Schedule word boundary callbacks
             this._scheduleWordBoundaryCallbacks();
 
-            // Play audio using our node-audio utility
-            await playAudioInNode(audioBytes);
+            // Play audio using our node-audio utility with the engine's sample rate
+            // Pass the engine name to handle Polly audio differently
+            await playAudioInNode(audioBytes, this.sampleRate, this.constructor.name.replace('TTSClient', '').toLowerCase());
 
             // Emit end event
             this.emit("end");

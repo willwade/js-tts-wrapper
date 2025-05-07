@@ -18,7 +18,7 @@ export class WitAITTSClient extends AbstractTTSClient {
   private baseUrl: string = "https://api.wit.ai";
   private apiVersion: string = "20240601";
   private headers: Record<string, string>;
-  protected audioRate: number = 22050; // Default sample rate for WitAI
+  protected sampleRate = 24000; // Default sample rate for WitAI
 
   /**
    * Create a new WitAI TTS client
@@ -26,13 +26,13 @@ export class WitAITTSClient extends AbstractTTSClient {
    */
   constructor(credentials: WitAITTSCredentials) {
     super(credentials);
-    
+
     if (!credentials.token) {
       throw new Error("An API token for Wit.ai must be provided");
     }
-    
+
     this.token = credentials.token as string;
-    this.headers = { 
+    this.headers = {
       "Authorization": `Bearer ${this.token}`,
       "Content-Type": "application/json"
     };
@@ -57,20 +57,24 @@ export class WitAITTSClient extends AbstractTTSClient {
       }
 
       const voices = await response.json();
+      console.log("WitAI Raw Voices Response:", JSON.stringify(voices, null, 2));
+
       const standardizedVoices = [];
 
       for (const localeKey in voices) {
         // Get the original locale (e.g., "en_US")
         const locale = localeKey.replace("_", "-");
-        
+
         for (const voice of voices[localeKey]) {
-          standardizedVoices.push({
+          const standardizedVoice = {
             id: voice.name,
             languageCodes: [locale],
-            name: voice.name.split("$")[1],
+            name: voice.name.split("$")[1] || voice.name,
             gender: voice.gender,
             styles: voice.styles || [],
-          });
+          };
+          standardizedVoices.push(standardizedVoice);
+          console.log("WitAI Standardized Voice:", standardizedVoice);
         }
       }
 
@@ -117,12 +121,12 @@ export class WitAITTSClient extends AbstractTTSClient {
       const ssml = SpeechMarkdown.toSSML(text);
       text = SSMLUtils.stripSSML(ssml);
     }
-    
+
     // If the input is SSML, convert it to plain text
     if (SSMLUtils.isSSML(text)) {
       text = SSMLUtils.stripSSML(text);
     }
-    
+
     return text;
   }
 
@@ -137,7 +141,7 @@ export class WitAITTSClient extends AbstractTTSClient {
       "mp3": "audio/mpeg",
       "wav": "audio/wav",
     };
-    
+
     return formats[format || ""] || "audio/raw"; // Default to PCM if unspecified
   }
 
@@ -151,32 +155,41 @@ export class WitAITTSClient extends AbstractTTSClient {
     try {
       // Prepare text for synthesis (strip SSML/Markdown if present)
       const preparedText = this.prepareText(text, options);
-      
+
       // Use provided voice or the one set with setVoice
-      const voice = options?.voice || this.voiceId;
-      
+      let voice = options?.voice || this.voiceId;
+
       if (!voice) {
         // Use a default voice if none is set
         const voices = await this._getVoices();
         if (voices.length === 0) {
           throw new Error("No voice ID provided and no default voice available");
         }
-        this.voiceId = voices[0].id;
+        voice = voices[0].id;
+        this.voiceId = voice;
+        console.log(`Using default voice: ${voice}`);
       }
 
       // Get format from options if available
       const format = (options as WitAITTSOptions)?.format;
 
       // Set headers for audio format
-      const headers = { 
+      const headers = {
         ...this.headers,
         "Accept": this.getAcceptHeader(format)
       };
 
       const data = {
         q: preparedText,
-        voice: this.voiceId
+        voice: voice,
+        style: "default" // Add a default style
       };
+
+      console.log("WitAI TTS Request:", {
+        url: `${this.baseUrl}/synthesize?v=${this.apiVersion}`,
+        headers: headers,
+        data: data
+      });
 
       const response = await fetch(
         `${this.baseUrl}/synthesize?v=${this.apiVersion}`,
@@ -188,7 +201,16 @@ export class WitAITTSClient extends AbstractTTSClient {
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to synthesize speech: ${response.statusText}`);
+        // Try to get more detailed error information
+        let errorMessage = `Failed to synthesize speech: ${response.statusText}`;
+        try {
+          const errorData = await response.text();
+          console.error("WitAI TTS Error Response:", errorData);
+          errorMessage += ` - ${errorData}`;
+        } catch (e) {
+          // Ignore error parsing error
+        }
+        throw new Error(errorMessage);
       }
 
       const arrayBuffer = await response.arrayBuffer();
@@ -215,32 +237,41 @@ export class WitAITTSClient extends AbstractTTSClient {
     try {
       // Prepare text for synthesis
       const preparedText = this.prepareText(text, options);
-      
+
       // Use provided voice or the one set with setVoice
-      const voice = options?.voice || this.voiceId;
-      
+      let voice = options?.voice || this.voiceId;
+
       if (!voice) {
         // Use a default voice if none is set
         const voices = await this._getVoices();
         if (voices.length === 0) {
           throw new Error("No voice ID provided and no default voice available");
         }
-        this.voiceId = voices[0].id;
+        voice = voices[0].id;
+        this.voiceId = voice;
+        console.log(`Using default voice for bytestream: ${voice}`);
       }
 
       // Get format from options if available
       const format = (options as WitAITTSOptions)?.format;
 
       // Set headers for audio format
-      const headers = { 
+      const headers = {
         ...this.headers,
         "Accept": this.getAcceptHeader(format)
       };
 
       const data = {
         q: preparedText,
-        voice: this.voiceId
+        voice: voice,
+        style: "default" // Add a default style
       };
+
+      console.log("WitAI TTS Bytestream Request:", {
+        url: `${this.baseUrl}/synthesize?v=${this.apiVersion}`,
+        headers: headers,
+        data: data
+      });
 
       const response = await fetch(
         `${this.baseUrl}/synthesize?v=${this.apiVersion}`,
@@ -252,14 +283,23 @@ export class WitAITTSClient extends AbstractTTSClient {
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to synthesize speech: ${response.statusText}`);
+        // Try to get more detailed error information
+        let errorMessage = `Failed to synthesize speech: ${response.statusText}`;
+        try {
+          const errorData = await response.text();
+          console.error("WitAI TTS Bytestream Error Response:", errorData);
+          errorMessage += ` - ${errorData}`;
+        } catch (e) {
+          // Ignore error parsing error
+        }
+        throw new Error(errorMessage);
       }
 
       // Create estimated word boundaries based on text length
       const words = preparedText.split(/\s+/);
       const estimatedDuration = 0.3; // Estimated duration per word in seconds
       const wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
-      
+
       let currentTime = 0;
       for (const word of words) {
         if (word.trim()) {
@@ -288,6 +328,7 @@ export class WitAITTSClient extends AbstractTTSClient {
    * @param lang Language code (not used in WitAI)
    */
   setVoice(voiceId: string, lang?: string): void {
+    console.log(`Setting WitAI voice to: ${voiceId}`);
     this.voiceId = voiceId;
     if (lang) {
       this.lang = lang;

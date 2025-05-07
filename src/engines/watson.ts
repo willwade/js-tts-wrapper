@@ -35,7 +35,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
     this.region = credentials.region as string;
     this.instanceId = credentials.instanceId as string;
     // SSL verification can be disabled but we don't use it directly in the browser
-    this.audioRate = 22050; // Default sample rate for Watson TTS
+    this.sampleRate = 22050; // Default sample rate for Watson TTS
   }
 
   /**
@@ -118,7 +118,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
 
       const data = await response.json();
       this.iamToken = data.access_token;
-      
+
       // Construct the WebSocket URL for streaming
       this.wsUrl = `wss://api.${this.region}.text-to-speech.watson.cloud.ibm.com/instances/${this.instanceId}/v1/synthesize`;
     } catch (error) {
@@ -136,39 +136,39 @@ export class WatsonTTSClient extends AbstractTTSClient {
   private prepareSSML(text: string, options?: SpeakOptions): string {
     // Use the provided voice or the one set with setVoice
     const voice = options?.voice || this.voiceId;
-    
+
     // Check if the input is already SSML
     const isSSML = SSMLUtils.isSSML(text);
-    
+
     // If the input is SpeechMarkdown and useSpeechMarkdown is enabled, convert it to SSML
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
       text = SpeechMarkdown.toSSML(text);
     }
-    
+
     // If the input is already SSML, use it directly
     if (isSSML) {
       return text;
     }
-    
+
     // Otherwise, create SSML from plain text
     this.ssml.clearSSML();
-    
+
     // Create SSML with voice and prosody
     let ssmlContent = text;
-    
+
     // Apply prosody settings if specified
     if (options?.rate || options?.pitch || options?.volume) {
       const prosodyAttrs = [];
-      if (options.rate) prosodyAttrs.push(`rate="${options.rate}"`); 
-      if (options.pitch) prosodyAttrs.push(`pitch="${options.pitch}"`); 
-      if (options.volume !== undefined) prosodyAttrs.push(`volume="${options.volume}%"`); 
-      
+      if (options.rate) prosodyAttrs.push(`rate="${options.rate}"`);
+      if (options.pitch) prosodyAttrs.push(`pitch="${options.pitch}"`);
+      if (options.volume !== undefined) prosodyAttrs.push(`volume="${options.volume}%"`);
+
       ssmlContent = `<prosody ${prosodyAttrs.join(' ')}>${ssmlContent}</prosody>`;
     }
-    
+
     // Add voice tag
     ssmlContent = `<voice name="${voice || 'en-US_AllisonV3Voice'}">${ssmlContent}</voice>`;
-    
+
     // Wrap with speak tags
     return this.ssml.wrapWithSpeak(ssmlContent);
   }
@@ -185,13 +185,13 @@ export class WatsonTTSClient extends AbstractTTSClient {
     try {
       // Ensure we have a valid IAM token
       await this._refreshIAMToken();
-      
+
       // Prepare SSML for synthesis
       const ssml = this.prepareSSML(text, options);
-      
+
       // Use provided voice_id or the one set with setVoice
       const voice = options?.voice || this.voiceId || "en-US_AllisonV3Voice";
-      
+
       const response = await fetch(
         `https://api.${this.region}.text-to-speech.watson.cloud.ibm.com/v1/synthesize`,
         {
@@ -236,16 +236,16 @@ export class WatsonTTSClient extends AbstractTTSClient {
   }> {
     // Ensure we have a valid IAM token
     await this._refreshIAMToken();
-    
+
     // Prepare SSML for synthesis
     const ssml = this.prepareSSML(text, options);
-    
+
     // Use provided voice_id or the one set with setVoice
     const voice = options?.voice || this.voiceId || "en-US_AllisonV3Voice";
-    
+
     // Reset word boundaries
     this.wordBoundaries = [];
-    
+
     // Check if we're in a browser environment
     if (typeof window !== 'undefined' && 'WebSocket' in window) {
       return this._synthToBytestreamWithBrowserWebSocket(ssml, voice);
@@ -321,7 +321,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
       ws.onclose = () => {
         // Store word boundaries for later use
         this.wordBoundaries = wordTimings;
-        
+
         // Create a ReadableStream from the collected chunks
         const audioStream = new ReadableStream<Uint8Array>({
           start(controller) {
@@ -331,7 +331,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
             controller.close();
           }
         });
-        
+
         resolve({
           audioStream,
           wordBoundaries: wordTimings,
@@ -356,7 +356,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
     try {
       // Use provided voice_id or the one set with setVoice
       const voice = options?.voice || this.voiceId || "en-US_AllisonV3Voice";
-      
+
       const response = await fetch(
         `https://api.${this.region}.text-to-speech.watson.cloud.ibm.com/v1/synthesize`,
         {
@@ -382,7 +382,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
       const words = ssml.replace(/<[^>]*>/g, '').split(/\s+/);
       const estimatedDuration = 0.3; // Estimated duration per word in seconds
       const wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
-      
+
       let currentTime = 0;
       for (const word of words) {
         if (word.trim()) {
@@ -394,10 +394,10 @@ export class WatsonTTSClient extends AbstractTTSClient {
           currentTime += estimatedDuration;
         }
       }
-      
+
       // Store word boundaries for later use
       this.wordBoundaries = wordBoundaries;
-      
+
       return {
         audioStream: response.body as ReadableStream<Uint8Array>,
         wordBoundaries,

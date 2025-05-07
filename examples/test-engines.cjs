@@ -27,7 +27,8 @@ const {
   PlayHTTTSClient,
   PollyTTSClient,
   SherpaOnnxTTSClient,
-  EspeakTTSClient
+  EspeakTTSClient,
+  WitAITTSClient
 } = require('../dist/cjs/index.js');
 
 // Test texts
@@ -247,6 +248,12 @@ async function runTests() {
     {
       name: "espeak",
       factory: () => new EspeakTTSClient() // Initialize espeak directly
+    },
+    {
+      name: "witai",
+      factory: () => new WitAITTSClient({
+        token: process.env.WITAI_TOKEN || '',
+      })
     }
   ];
 
@@ -291,6 +298,7 @@ function parseArgs() {
     console.log('  polly          AWS Polly TTS');
     console.log('  sherpaonnx     SherpaOnnx TTS');
     console.log('  espeak         eSpeak TTS');
+    console.log('  witai          Wit.ai TTS');
     console.log('');
     console.log('If no engine is specified, all engines will be tested.');
     process.exit(0);
@@ -325,7 +333,8 @@ if (engineToTest) {
     { name: "playht", factory: () => new PlayHTTTSClient({ apiKey: process.env.PLAYHT_API_KEY || '', userId: process.env.PLAYHT_USER_ID || '' }) },
     { name: "polly", factory: () => new PollyTTSClient({ region: process.env.POLLY_REGION || '', accessKeyId: process.env.POLLY_AWS_KEY_ID || '', secretAccessKey: process.env.POLLY_AWS_ACCESS_KEY || '' }) },
     { name: "sherpaonnx", factory: () => new SherpaOnnxTTSClient({ noDefaultDownload: false, modelId: "mms_eng", modelPath: process.env.SHERPAONNX_MODEL_PATH || null }) },
-    { name: "espeak", factory: () => new EspeakTTSClient() }
+    { name: "espeak", factory: () => new EspeakTTSClient() },
+    { name: "witai", factory: () => new WitAITTSClient({ token: process.env.WITAI_TOKEN || '' }) }
   ];
 
   // Find the specified engine

@@ -23,7 +23,8 @@ import {
   PlayHTTTSClient,
   PollyTTSClient,
   SherpaOnnxTTSClient,
-  EspeakTTSClient // Import Espeak normally from ESM
+  EspeakTTSClient, // Import Espeak normally from ESM
+  WitAITTSClient
 } from "../dist/esm/index.js"; // Import from ESM index
 
 // Import the MockTTSClient directly from the test helpers
@@ -119,24 +120,32 @@ async function testEngine(engineName, client) {
 async function testFormatAndInput(engineName, client, voiceId) {
   // Test plain text with WAV format
   try {
-    const wavOutputFile = path.join(OUTPUT_DIR, `${engineName}-plain-wav.wav`);
-    console.log(`Synthesizing plain text to WAV: ${wavOutputFile}...`);
-    await client.synthToFile(TEST_TEXT, wavOutputFile, "wav", { voice: voiceId });
+    // Use WAV format for all engines
+    const format = 'wav';
+    const extension = 'wav';
+
+    const wavOutputFile = path.join(OUTPUT_DIR, `${engineName}-plain-wav.${extension}`);
+    console.log(`Synthesizing plain text to ${format.toUpperCase()}: ${wavOutputFile}...`);
+    await client.synthToFile(TEST_TEXT, wavOutputFile, format, { voice: voiceId });
     const wavStats = fs.statSync(wavOutputFile);
-    console.log(`Generated WAV file: ${wavStats.size} bytes`);
+    console.log(`Generated ${format.toUpperCase()} file: ${wavStats.size} bytes`);
   } catch (wavError) {
-    console.error(`Error generating WAV for ${engineName}:`, wavError.message);
+    console.error(`Error generating WAV/MP3 for ${engineName}:`, wavError.message);
   }
 
   // Test SSML with WAV format
   try {
-    const ssmlWavOutputFile = path.join(OUTPUT_DIR, `${engineName}-ssml-wav.wav`);
-    console.log(`Synthesizing SSML to WAV: ${ssmlWavOutputFile}...`);
-    await client.synthToFile(TEST_SSML, ssmlWavOutputFile, "wav", { voice: voiceId });
+    // Use WAV format for all engines
+    const format = 'wav';
+    const extension = 'wav';
+
+    const ssmlWavOutputFile = path.join(OUTPUT_DIR, `${engineName}-ssml-wav.${extension}`);
+    console.log(`Synthesizing SSML to ${format.toUpperCase()}: ${ssmlWavOutputFile}...`);
+    await client.synthToFile(TEST_SSML, ssmlWavOutputFile, format, { voice: voiceId });
     const ssmlWavStats = fs.statSync(ssmlWavOutputFile);
-    console.log(`Generated SSML WAV file: ${ssmlWavStats.size} bytes`);
+    console.log(`Generated SSML ${format.toUpperCase()} file: ${ssmlWavStats.size} bytes`);
   } catch (ssmlWavError) {
-    console.error(`Error generating SSML WAV for ${engineName}:`, ssmlWavError.message);
+    console.error(`Error generating SSML WAV/MP3 for ${engineName}:`, ssmlWavError.message);
   }
 
   // Test MP3 format if supported by the engine
@@ -245,6 +254,12 @@ async function runTests() {
     {
       name: "espeak",
       factory: () => new EspeakTTSClient() // Initialize espeak directly
+    },
+    {
+      name: "witai",
+      factory: () => new WitAITTSClient({
+        token: process.env.WITAI_TOKEN || '',
+      })
     }
   ];
 
@@ -289,6 +304,7 @@ function parseArgs() {
     console.log('  polly          AWS Polly TTS');
     console.log('  sherpaonnx     SherpaOnnx TTS');
     console.log('  espeak         eSpeak TTS');
+    console.log('  witai          Wit.ai TTS');
     console.log('');
     console.log('If no engine is specified, all engines will be tested.');
     process.exit(0);
@@ -320,7 +336,8 @@ if (engineToTest) {
     { name: "playht", factory: () => new PlayHTTTSClient({ apiKey: process.env.PLAYHT_API_KEY || '', userId: process.env.PLAYHT_USER_ID || '' }) },
     { name: "polly", factory: () => new PollyTTSClient({ region: process.env.POLLY_REGION || '', accessKeyId: process.env.POLLY_AWS_KEY_ID || '', secretAccessKey: process.env.POLLY_AWS_ACCESS_KEY || '' }) },
     { name: "sherpaonnx", factory: () => new SherpaOnnxTTSClient({ noDefaultDownload: true, modelPath: process.env.SHERPAONNX_MODEL_PATH || null }) },
-    { name: "espeak", factory: () => new EspeakTTSClient() }
+    { name: "espeak", factory: () => new EspeakTTSClient() },
+    { name: "witai", factory: () => new WitAITTSClient({ token: process.env.WITAI_TOKEN || '' }) }
   ];
 
   // Find the specified engine

@@ -68,7 +68,7 @@ export interface SherpaOnnxWasmTTSOptions extends SpeakOptions {
 export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
   private wasmModule: SherpaOnnxWasmModule | null = null;
   private tts: any = null;
-  private sampleRate = 22050; // Default sample rate for the Piper model
+  // Use the inherited sampleRate property from AbstractTTSClient
   // This property is used in the full implementation
   // @ts-ignore
   private baseDir = "";
@@ -83,6 +83,9 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    */
   constructor(credentials: TTSCredentials = {}) {
     super(credentials);
+
+    // Set default sample rate for the Piper model
+    this.sampleRate = 22050;
 
     // Set default base directory for models
     this.baseDir = (credentials.baseDir as string) || this._getDefaultModelsDir();

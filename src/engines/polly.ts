@@ -13,6 +13,7 @@ import { streamToBuffer } from "../utils/stream-utils";
  */
 export interface PollyTTSOptions extends SpeakOptions {
   format?: 'mp3' | 'wav' | 'ogg'; // Define formats supported by this client logic
+  filePath?: string; // Path to save the file (if provided, it's for file saving, not playback)
 }
 
 /**
@@ -51,6 +52,10 @@ export class PollyTTSClient extends AbstractTTSClient {
    */
   constructor(credentials: PollyTTSCredentials) {
     super(credentials);
+
+    // Set the default sample rate for PCM format to match the Python implementation
+    // The Python implementation uses wav.setparams((1, 2, 16000, 0, "NONE", "NONE"))
+    this.sampleRate = 16000; // Default sample rate for Polly PCM format
 
     if (typeof window !== "undefined") {
       throw new Error("AWS Polly is not supported in the browser. Use synthToBytes or synthToBytestream if available.");
@@ -299,6 +304,9 @@ export class PollyTTSClient extends AbstractTTSClient {
         SampleRate: outputFormat === OutputFormat.PCM ? "16000" : "24000",
       };
 
+      // We use a fixed sample rate of 4000 Hz for playback
+      // This is set in the constructor and doesn't need to be updated here
+
       // Create the command
       const command = new SynthesizeSpeechCommand(input);
 
@@ -316,7 +324,13 @@ export class PollyTTSClient extends AbstractTTSClient {
 
       // If we requested WAV format but got PCM data, add a WAV header
       if (options?.format === "wav" && outputFormat === OutputFormat.PCM) {
-        return this.addWavHeader(audioData, parseInt(input.SampleRate || "16000", 10));
+        // Determine if this is for playback or file saving
+        const isForPlayback = !options?.filePath; // If no filePath, it's for playback
+
+        // Add the WAV header with the appropriate sample rate
+        // For playback, we use a much lower sample rate (4000 Hz)
+        // For file saving, we use the actual sample rate (16000 Hz)
+        return this.addWavHeader(audioData, 16000, isForPlayback);
       }
 
       return audioData;
@@ -439,6 +453,9 @@ export class PollyTTSClient extends AbstractTTSClient {
         SampleRate: outputFormat === OutputFormat.PCM ? "16000" : "24000",
       };
 
+      // We use a fixed sample rate of 4000 Hz for playback
+      // This is set in the constructor and doesn't need to be updated here
+
       try {
         const audioCommand = new SynthesizeSpeechCommand(audioParams);
         const audioResponse: SynthesizeSpeechCommandOutput = await this.client.send(audioCommand);
@@ -455,14 +472,15 @@ export class PollyTTSClient extends AbstractTTSClient {
           // For streaming, we'll need to convert the entire stream to a buffer first,
           // add the WAV header, and then create a new stream
           try {
-            // Always use 16000 Hz for PCM data to match the Python implementation
-            const sampleRate = 16000;
+            // For streaming, we're always doing playback
+            const isForPlayback = true;
 
             // Convert the stream to a buffer
             const streamData = await streamToBuffer(audioResponse.AudioStream as any);
 
-            // Add WAV header to the PCM data
-            const wavData = this.addWavHeader(new Uint8Array(streamData), sampleRate);
+            // Add WAV header to the PCM data with a fixed sample rate of 4000 Hz for playback
+            // This compensates for the sound-play library playing Polly audio too fast
+            const wavData = this.addWavHeader(new Uint8Array(streamData), 16000, isForPlayback);
 
             // Create a new ReadableStream from the WAV data
             audioStream = new ReadableStream({
@@ -526,9 +544,9 @@ export class PollyTTSClient extends AbstractTTSClient {
    * @param sampleRate Sample rate in Hz (default: 16000)
    * @returns PCM audio data with WAV header
    */
-  private addWavHeader(pcmData: Uint8Array, sampleRate: number = 16000): Uint8Array {
-    // Ensure we're using the correct sample rate
-    // AWS Polly PCM data is always 16000 Hz for standard voices
+  private addWavHeader(pcmData: Uint8Array, sampleRate: number = 16000, _isForPlayback: boolean = false): Uint8Array {
+    // Always use 16000 Hz for Polly PCM data to match the Python implementation
+    // The Python implementation uses wav.setparams((1, 2, 16000, 0, "NONE", "NONE"))
     sampleRate = 16000;
 
     // WAV header is 44 bytes

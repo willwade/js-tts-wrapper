@@ -56,7 +56,11 @@ export async function isNodeAudioAvailable(): Promise<boolean> {
  * @param audioBytes Audio data as Uint8Array
  * @returns Promise that resolves when audio playback is complete
  */
-export async function playAudioInNode(audioBytes: Uint8Array): Promise<void> {
+export async function playAudioInNode(
+  audioBytes: Uint8Array,
+  sampleRate?: number,
+  engineName?: string
+): Promise<void> {
   if (!isNode) {
     throw new Error("This function can only be used in Node.js");
   }
@@ -91,20 +95,89 @@ export async function playAudioInNode(audioBytes: Uint8Array): Promise<void> {
       audioBytes[3] === 0x46; // 'F'
 
     if (hasRiffHeader) {
-      // Write audio bytes to temp file as is
-      fs.writeFileSync(tempFile, Buffer.from(audioBytes));
+      // If we have a WAV file with a RIFF header, we need to check if the sample rate
+      // in the header matches the provided sample rate. If not, we need to update the header.
+      if (audioBytes.length >= 44) {
+        // Create a copy of the audio bytes
+        const updatedAudioBytes = new Uint8Array(audioBytes);
+
+        // Special handling for Polly audio
+        if (engineName === "polly") {
+          // For Polly, use the exact same sample rate as in the Python implementation (16000 Hz)
+          // This should match the Python implementation's wav.setparams((1, 2, 16000, 0, "NONE", "NONE"))
+          const pollyPlaybackRate = 16000;
+
+          // Update the sample rate in the WAV header (bytes 24-27)
+          updatedAudioBytes[24] = pollyPlaybackRate & 0xff;
+          updatedAudioBytes[25] = (pollyPlaybackRate >> 8) & 0xff;
+          updatedAudioBytes[26] = (pollyPlaybackRate >> 16) & 0xff;
+          updatedAudioBytes[27] = (pollyPlaybackRate >> 24) & 0xff;
+
+          // Update the byte rate in the WAV header (bytes 28-31)
+          // Byte rate = Sample rate * Num channels * Bits per sample / 8
+          const numChannels = updatedAudioBytes[22] | (updatedAudioBytes[23] << 8);
+          const bitsPerSample = updatedAudioBytes[34] | (updatedAudioBytes[35] << 8);
+          const byteRate = (pollyPlaybackRate * numChannels * bitsPerSample) / 8;
+
+          updatedAudioBytes[28] = byteRate & 0xff;
+          updatedAudioBytes[29] = (byteRate >> 8) & 0xff;
+          updatedAudioBytes[30] = (byteRate >> 16) & 0xff;
+          updatedAudioBytes[31] = (byteRate >> 24) & 0xff;
+
+          // Write the updated audio bytes to the temp file
+          fs.writeFileSync(tempFile, Buffer.from(updatedAudioBytes));
+        } else if (sampleRate) {
+          // For other engines, use the provided sample rate
+          // Update the sample rate in the WAV header (bytes 24-27)
+          updatedAudioBytes[24] = sampleRate & 0xff;
+          updatedAudioBytes[25] = (sampleRate >> 8) & 0xff;
+          updatedAudioBytes[26] = (sampleRate >> 16) & 0xff;
+          updatedAudioBytes[27] = (sampleRate >> 24) & 0xff;
+
+          // Update the byte rate in the WAV header (bytes 28-31)
+          // Byte rate = Sample rate * Num channels * Bits per sample / 8
+          const numChannels = updatedAudioBytes[22] | (updatedAudioBytes[23] << 8);
+          const bitsPerSample = updatedAudioBytes[34] | (updatedAudioBytes[35] << 8);
+          const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
+
+          updatedAudioBytes[28] = byteRate & 0xff;
+          updatedAudioBytes[29] = (byteRate >> 8) & 0xff;
+          updatedAudioBytes[30] = (byteRate >> 16) & 0xff;
+          updatedAudioBytes[31] = (byteRate >> 24) & 0xff;
+
+          // Write the updated audio bytes to the temp file
+          fs.writeFileSync(tempFile, Buffer.from(updatedAudioBytes));
+        } else {
+          // Write audio bytes to temp file as is
+          fs.writeFileSync(tempFile, Buffer.from(audioBytes));
+        }
+      } else {
+        // Write audio bytes to temp file as is
+        fs.writeFileSync(tempFile, Buffer.from(audioBytes));
+      }
     } else {
       // Create a valid WAV file with the audio bytes as PCM data
       // This is a minimal WAV file header for the audio data
-      // Use 16000 Hz sample rate and 16-bit samples to match Polly's PCM format
-      const sampleRate = 16000;
+      // Use the provided sample rate or 24000 Hz as a default
+      // Different engines use different sample rates:
+      // - WitAI and many others: 24000 Hz
+      // - Polly PCM: 16000 Hz
+      // - Watson: 22050 Hz
+      let actualSampleRate = sampleRate || 24000;
+
+      // Special handling for Polly audio
+      if (engineName === "polly") {
+        // For Polly, use the exact same sample rate as in the Python implementation (16000 Hz)
+        // This should match the Python implementation's wav.setparams((1, 2, 16000, 0, "NONE", "NONE"))
+        actualSampleRate = 16000;
+      }
       const numChannels = 1;
       const bitsPerSample = 16;
 
       // Calculate sizes
       const dataSize = audioBytes.length;
       const blockAlign = numChannels * (bitsPerSample / 8);
-      const byteRate = sampleRate * blockAlign;
+      const byteRate = actualSampleRate * blockAlign;
 
       // Create WAV header
       const headerSize = 44; // Standard WAV header size
@@ -131,10 +204,10 @@ export async function playAudioInNode(audioBytes: Uint8Array): Promise<void> {
       wavFile[22] = numChannels; // Number of channels
       wavFile[23] = 0;
       // Sample rate
-      wavFile[24] = sampleRate & 0xff;
-      wavFile[25] = (sampleRate >> 8) & 0xff;
-      wavFile[26] = (sampleRate >> 16) & 0xff;
-      wavFile[27] = (sampleRate >> 24) & 0xff;
+      wavFile[24] = actualSampleRate & 0xff;
+      wavFile[25] = (actualSampleRate >> 8) & 0xff;
+      wavFile[26] = (actualSampleRate >> 16) & 0xff;
+      wavFile[27] = (actualSampleRate >> 24) & 0xff;
       // Byte rate
       wavFile[28] = byteRate & 0xff;
       wavFile[29] = (byteRate >> 8) & 0xff;
