@@ -51,7 +51,9 @@
     "test:openai": "node run-tts-tests.cjs openai",
     "test:playht": "node run-tts-tests.cjs playht",
     "test:sherpaonnx": "node run-tts-tests.cjs sherpaonnx",
-    "test:sherpaonnx:mac": "node scripts/run-with-sherpaonnx.js run-tts-tests.js sherpaonnx",
+    "test:sherpaonnx:mac": "node scripts/run-with-sherpaonnx.cjs run-tts-tests.cjs sherpaonnx",
+    "test:sherpaonnx:auto": "node --require ./scripts/sherpaonnx-preload.cjs run-tts-tests.cjs sherpaonnx",
+    "sherpaonnx:find-path": "node scripts/find-sherpaonnx-path.js",
     "test:sherpaonnx-wasm": "node run-tts-tests.cjs sherpaonnx-wasm",
     "example": "node examples/tts-example.js",
     "example:azure": "node examples/tts-example.js azure",
@@ -59,7 +61,8 @@
     "example:google": "node examples/tts-example.js google",
     "example:polly": "node examples/tts-example.js polly",
     "example:sherpaonnx": "node examples/tts-example.js sherpaonnx",
-    "example:sherpaonnx:mac": "node scripts/run-with-sherpaonnx.js examples/tts-example.js sherpaonnx",
+    "example:sherpaonnx:mac": "node scripts/run-with-sherpaonnx.cjs examples/tts-example.js sherpaonnx",
+    "example:sherpaonnx:auto": "node --require ./scripts/sherpaonnx-preload.cjs examples/tts-example.js sherpaonnx",
     "example:sherpaonnx-wasm": "node examples/tts-example.js sherpaonnx-wasm",
     "example:openai": "node examples/tts-example.js openai",
     "example:playht": "node examples/tts-example.js playht",
@@ -75,6 +78,7 @@
     "pre-push": "npm run check",
     "install:deps": "echo 'Use npm install js-tts-wrapper[engine] instead. For example: npm install js-tts-wrapper[azure]'",
     "install:node-audio": "npm install sound-play",
+    "install:sherpaonnx": "npm install sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream",
     "install:all-dev": "npm install openai @google-cloud/text-to-speech @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream sound-play"
   },
   "keywords": [

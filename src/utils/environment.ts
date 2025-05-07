@@ -5,14 +5,16 @@
 /**
  * Check if code is running in a browser environment
  */
-export const isBrowser = typeof window !== 'undefined';
+export const isBrowser = typeof window !== "undefined";
 
 /**
  * Check if code is running in a Node.js environment
  */
-export const isNode = !isBrowser && typeof process !== 'undefined' &&
-  typeof process.versions !== 'undefined' &&
-  typeof process.versions.node !== 'undefined';
+export const isNode =
+  !isBrowser &&
+  typeof process !== "undefined" &&
+  typeof process.versions !== "undefined" &&
+  typeof process.versions.node !== "undefined";
 
 /**
  * File system utilities that work in both environments
@@ -26,8 +28,8 @@ export const fileSystem = {
   readFile: async (path: string): Promise<string> => {
     if (isNode) {
       // Node.js implementation
-      const fs = await import('node:fs/promises');
-      return fs.readFile(path, 'utf-8');
+      const fs = await import("node:fs/promises");
+      return fs.readFile(path, "utf-8");
     }
     // Browser implementation - fetch from URL
     const response = await fetch(path);
@@ -46,10 +48,10 @@ export const fileSystem = {
     if (isNode) {
       // Node.js implementation
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const fs = require('node:fs');
-      return fs.readFileSync(path, 'utf-8');
+      const fs = require("node:fs");
+      return fs.readFileSync(path, "utf-8");
     }
-    throw new Error('Synchronous file reading is not supported in browsers');
+    throw new Error("Synchronous file reading is not supported in browsers");
   },
 
   /**
@@ -61,15 +63,15 @@ export const fileSystem = {
   writeFile: async (path: string, data: string | Uint8Array): Promise<void> => {
     if (isNode) {
       // Node.js implementation
-      const fs = await import('node:fs/promises');
+      const fs = await import("node:fs/promises");
       return fs.writeFile(path, data);
     }
     // Browser implementation - download file
-    const blob = new Blob([data], { type: 'application/octet-stream' });
+    const blob = new Blob([data], { type: "application/octet-stream" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = path.split('/').pop() || 'download';
+    a.download = path.split("/").pop() || "download";
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {
@@ -89,10 +91,10 @@ export const fileSystem = {
     if (isNode) {
       // Node.js implementation
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const fs = require('node:fs');
+      const fs = require("node:fs");
       fs.writeFileSync(path, data);
     } else {
-      throw new Error('Synchronous file writing is not supported in browsers');
+      throw new Error("Synchronous file writing is not supported in browsers");
     }
   },
 
@@ -104,7 +106,7 @@ export const fileSystem = {
   exists: async (path: string): Promise<boolean> => {
     if (isNode) {
       // Node.js implementation
-      const fs = await import('node:fs/promises');
+      const fs = await import("node:fs/promises");
       try {
         await fs.access(path);
         return true;
@@ -114,7 +116,7 @@ export const fileSystem = {
     } else {
       // Browser implementation - try to fetch
       try {
-        const response = await fetch(path, { method: 'HEAD' });
+        const response = await fetch(path, { method: "HEAD" });
         return response.ok;
       } catch {
         return false;
@@ -131,11 +133,11 @@ export const fileSystem = {
     if (isNode) {
       // Node.js implementation
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const fs = require('node:fs');
+      const fs = require("node:fs");
       return fs.existsSync(path);
     }
-    throw new Error('Synchronous file existence check is not supported in browsers');
-  }
+    throw new Error("Synchronous file existence check is not supported in browsers");
+  },
 };
 
 /**
@@ -151,11 +153,11 @@ export const pathUtils = {
     if (isNode) {
       // Node.js implementation
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const path = require('node:path');
+      const path = require("node:path");
       return path.join(...paths);
     }
     // Browser implementation
-    return paths.join('/').replace(/\/+/g, '/');
+    return paths.join("/").replace(/\/+/g, "/");
   },
 
   /**
@@ -167,11 +169,11 @@ export const pathUtils = {
     if (isNode) {
       // Node.js implementation
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const nodePath = require('node:path');
+      const nodePath = require("node:path");
       return nodePath.dirname(path);
     }
     // Browser implementation
-    return path.split('/').slice(0, -1).join('/') || '.';
+    return path.split("/").slice(0, -1).join("/") || ".";
   },
 
   /**
@@ -183,11 +185,11 @@ export const pathUtils = {
     if (isNode) {
       // Node.js implementation
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const nodePath = require('node:path');
+      const nodePath = require("node:path");
       return nodePath.basename(path);
     }
     // Browser implementation
-    return path.split('/').pop() || '';
+    return path.split("/").pop() || "";
   },
 
   /**
@@ -199,12 +201,12 @@ export const pathUtils = {
     if (isNode) {
       // Node.js implementation
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const nodePath = require('node:path');
+      const nodePath = require("node:path");
       return nodePath.extname(path);
     }
     // Browser implementation
-    const basename = path.split('/').pop() || '';
-    const dotIndex = basename.lastIndexOf('.');
-    return dotIndex === -1 ? '' : basename.slice(dotIndex);
-  }
+    const basename = path.split("/").pop() || "";
+    const dotIndex = basename.lastIndexOf(".");
+    return dotIndex === -1 ? "" : basename.slice(dotIndex);
+  },
 };

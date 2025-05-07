@@ -23,6 +23,8 @@
       "./src/engines/playht.ts",
       "./src/engines/polly.ts",
       "./src/engines/sherpaonnx.ts",
+      "./src/utils/sherpaonnx-loader.ts",
+      "./src/utils/sherpaonnx-loader.js",
       "./src/__tests__/**/*"
     ]
   },

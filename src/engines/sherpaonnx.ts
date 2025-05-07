@@ -14,8 +14,19 @@ const nativeFetch = globalThis.fetch;
 // Import the generated models config
 import { SHERPA_MODELS_CONFIG } from "./sherpaonnx/generated_models";
 
-// Module scope variable to hold the imported module
+// Import the sherpaonnx-loader
+import * as sherpaOnnxLoaderModule from "../utils/sherpaonnx-loader";
+
+// Module scope variables to hold the imported modules
 let sherpa: any;
+let sherpaOnnxLoader: typeof sherpaOnnxLoaderModule | null = null;
+
+// Try to initialize the loader
+try {
+  sherpaOnnxLoader = sherpaOnnxLoaderModule;
+} catch (error) {
+  console.warn("Could not load sherpaonnx-loader:", error);
+}
 
 /**
  * SherpaOnnx TTS credentials
@@ -118,6 +129,9 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       this.baseDir = modelsDir;
       console.log("Using default models directory:", modelsDir);
     }
+
+    // Set the library path environment variable
+    this.setLibraryPath();
 
     // Load model configuration
     this.jsonModels = this.loadModelsAndVoices();
@@ -464,27 +478,172 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Set the platform-specific library path environment variable for SherpaOnnx
+   * @returns True if the environment variable was set successfully
+   */
+  private setLibraryPath(): boolean {
+    try {
+      // Only needed in Node.js environment
+      if (typeof process === 'undefined' || typeof process.env === 'undefined') {
+        return false;
+      }
+
+      // Determine platform-specific library paths and environment variables
+      let libPathEnvVar = '';
+      let possiblePaths: string[] = [];
+      let pathSeparator = process.platform === 'win32' ? ';' : ':';
+
+      if (process.platform === 'darwin') {
+        // macOS uses DYLD_LIBRARY_PATH
+        libPathEnvVar = 'DYLD_LIBRARY_PATH';
+        possiblePaths = [
+          path.join(process.cwd(), 'node_modules', 'sherpa-onnx-darwin-arm64'),
+          path.join(process.cwd(), 'node_modules', 'sherpa-onnx-darwin-x64')
+        ];
+      } else if (process.platform === 'linux') {
+        // Linux uses LD_LIBRARY_PATH
+        libPathEnvVar = 'LD_LIBRARY_PATH';
+        possiblePaths = [
+          path.join(process.cwd(), 'node_modules', 'sherpa-onnx-linux-arm64'),
+          path.join(process.cwd(), 'node_modules', 'sherpa-onnx-linux-x64')
+        ];
+      } else if (process.platform === 'win32') {
+        // Windows uses PATH
+        libPathEnvVar = 'PATH';
+        possiblePaths = [
+          path.join(process.cwd(), 'node_modules', 'sherpa-onnx-win-x64')
+        ];
+      } else {
+        console.warn(`Unsupported platform: ${process.platform}`);
+        return false;
+      }
+
+      // Find the sherpa-onnx library directory
+      if (libPathEnvVar) {
+        let sherpaOnnxPath = '';
+        for (const libPath of possiblePaths) {
+          if (fs.existsSync(libPath)) {
+            console.log(`Found sherpa-onnx library at ${libPath}`);
+            sherpaOnnxPath = libPath;
+            break;
+          }
+        }
+
+        if (sherpaOnnxPath) {
+          // Set the environment variable
+          const currentPath = process.env[libPathEnvVar] || '';
+          if (!currentPath.includes(sherpaOnnxPath)) {
+            process.env[libPathEnvVar] = sherpaOnnxPath + (currentPath ? pathSeparator + currentPath : '');
+            console.log(`Set ${libPathEnvVar} to ${process.env[libPathEnvVar]}`);
+            return true;
+          }
+          // Already set correctly
+          return true;
+        } else {
+          console.warn(`Could not find sherpa-onnx library directory for ${process.platform}. SherpaOnnx TTS may not work correctly.`);
+          return false;
+        }
+      }
+
+      return false;
+    } catch (error) {
+      console.error("Error setting library path:", error);
+      return false;
+    }
+  }
+
+  /**
    * Initialize the SherpaOnnx TTS engine
    * @param modelPath Path to model file
    * @param tokensPath Path to tokens file
    */
   private async initializeTTS(modelPath: string, tokensPath: string): Promise<void> {
     try {
+      // Set the library path environment variable
+      this.setLibraryPath();
+
       // Dynamically import sherpa-onnx-node if not already loaded
       if (!sherpa) {
         try {
+          console.log("Attempting to load sherpa-onnx-node...");
+
+          // Try to use the sherpaonnx-loader if available
           if (typeof require !== 'undefined') {
-            // Attempt require in CommonJS (though build might fail earlier if not optional)
-            sherpa = require("sherpa-onnx-node");
+            // Attempt to use the loader in CommonJS
+            try {
+              if (!sherpaOnnxLoader) {
+                // Try to load the loader if not already loaded
+                sherpaOnnxLoader = require('../utils/sherpaonnx-loader.js');
+              }
+
+              if (sherpaOnnxLoader && sherpaOnnxLoader.loadSherpaOnnxNode) {
+                console.log("Using sherpaonnx-loader to load sherpa-onnx-node");
+                sherpa = await sherpaOnnxLoader.loadSherpaOnnxNode();
+                console.log("Successfully loaded sherpa-onnx-node via loader");
+              } else {
+                // Fall back to direct require
+                console.log("Using CommonJS require to load sherpa-onnx-node");
+                const resolvedPath = require.resolve("sherpa-onnx-node");
+                console.log("Resolved sherpa-onnx-node path:", resolvedPath);
+                sherpa = require("sherpa-onnx-node");
+                console.log("Successfully loaded sherpa-onnx-node via require");
+              }
+            } catch (loaderError) {
+              console.warn("Could not use sherpaonnx-loader:", loaderError);
+
+              // Fall back to direct require
+              console.log("Falling back to direct require for sherpa-onnx-node");
+              try {
+                const resolvedPath = require.resolve("sherpa-onnx-node");
+                console.log("Resolved sherpa-onnx-node path:", resolvedPath);
+                sherpa = require("sherpa-onnx-node");
+                console.log("Successfully loaded sherpa-onnx-node via require");
+              } catch (resolveError) {
+                console.error("Error resolving sherpa-onnx-node path:", resolveError);
+                throw resolveError;
+              }
+            }
           } else {
             // Attempt dynamic import in ESM
-            sherpa = await import("sherpa-onnx-node");
+            console.log("Using ESM import to load sherpa-onnx-node");
+
+            try {
+              // Try to use the already imported loader
+              if (sherpaOnnxLoader && sherpaOnnxLoader.loadSherpaOnnxNode) {
+                console.log("Using sherpaonnx-loader to load sherpa-onnx-node");
+                sherpa = await sherpaOnnxLoader.loadSherpaOnnxNode();
+                console.log("Successfully loaded sherpa-onnx-node via loader");
+              } else {
+                // Fall back to direct import
+                sherpa = await import("sherpa-onnx-node");
+                console.log("Successfully loaded sherpa-onnx-node via import");
+              }
+            } catch (loaderError) {
+              console.warn("Could not use sherpaonnx-loader:", loaderError);
+
+              // Fall back to direct import
+              sherpa = await import("sherpa-onnx-node");
+              console.log("Successfully loaded sherpa-onnx-node via import");
+            }
           }
+
+          console.log("sherpa-onnx-node loaded successfully");
         } catch (error) {
           console.error(
             "Optional dependency sherpa-onnx-node not found or failed to load:",
             error
           );
+          console.error("Error details:", error instanceof Error ? error.stack : String(error));
+
+          // Provide helpful error message with instructions
+          console.error("\nTo use SherpaOnnx TTS, you need to:");
+          console.error("1. Install the sherpa-onnx-node package: npm run install:sherpaonnx");
+          console.error("2. Run your application with the correct environment variables:");
+          console.error("   - On macOS: DYLD_LIBRARY_PATH=/path/to/node_modules/sherpa-onnx-darwin-arm64 node your-script.js");
+          console.error("   - On Linux: LD_LIBRARY_PATH=/path/to/node_modules/sherpa-onnx-linux-x64 node your-script.js");
+          console.error("   - On Windows: No special environment variable needed");
+          console.error("3. Or use the helper script: node scripts/run-with-sherpaonnx.cjs your-script.js");
+
           throw new Error(
             "SherpaOnnxTTSClient requires the 'sherpa-onnx-node' package to be installed for native TTS."
           );
@@ -505,12 +664,30 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         maxNumSentences: 1,
       };
 
-      // Create the TTS instance
-      this.tts = new sherpa.OfflineTts(config);
+      // Log the config for debugging
+      console.log("SherpaOnnx TTS config:", JSON.stringify(config, null, 2));
 
-      console.log("SherpaOnnx TTS initialized successfully");
+      // Log what sherpa contains
+      console.log("sherpa object keys:", Object.keys(sherpa));
+      if (sherpa.OfflineTts) {
+        console.log("sherpa.OfflineTts exists");
+      } else {
+        console.log("sherpa.OfflineTts does not exist");
+      }
+
+      // Create the TTS instance
+      try {
+        console.log("Creating sherpa.OfflineTts instance...");
+        this.tts = new sherpa.OfflineTts(config);
+        console.log("SherpaOnnx TTS initialized successfully");
+      } catch (instanceError) {
+        console.error("Error creating OfflineTts instance:", instanceError);
+        console.error("Error details:", instanceError instanceof Error ? instanceError.stack : String(instanceError));
+        throw instanceError;
+      }
     } catch (error) {
       console.error("Error initializing SherpaOnnx TTS:", error);
+      console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace available");
       throw new Error(
         "Failed to initialize SherpaOnnx TTS. " +
         (error instanceof Error ? error.message : String(error))
@@ -815,6 +992,9 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    */
   async checkCredentials(): Promise<boolean> {
     try {
+      // Set the library path environment variable first
+      this.setLibraryPath();
+
       // For SherpaOnnx, we'll consider credentials valid if we can initialize the engine
       // or if we have the model files available
       if (this.tts) {
@@ -837,6 +1017,32 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         } catch (error) {
           console.error("Error initializing SherpaOnnx TTS:", error);
         }
+      }
+
+      // Try to initialize with the default model
+      try {
+        // Default to English if not specified
+        const defaultModelId = "mms_eng";
+        const voiceDir = path.join(this.baseDir, defaultModelId);
+
+        // Create the directory if it doesn't exist
+        if (!fs.existsSync(voiceDir)) {
+          fs.mkdirSync(voiceDir, { recursive: true });
+        }
+
+        // Check if the model files exist or download them
+        const [modelPath, tokensPath, , ] = await this.checkAndDownloadModel(defaultModelId);
+
+        // Try to initialize the engine
+        await this.initializeTTS(modelPath, tokensPath);
+
+        // If we got here, we successfully initialized the engine
+        if (this.tts) {
+          console.log("Successfully initialized SherpaOnnx TTS with default model");
+          return true;
+        }
+      } catch (error) {
+        console.error("Error initializing SherpaOnnx TTS with default model:", error);
       }
 
       // For the example, we'll return true to allow the example to continue
