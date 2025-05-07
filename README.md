@@ -215,6 +215,12 @@ const englishVoices = await tts.getVoicesByLanguage('en-US');
 tts.setVoice('en-US-AriaNeural');
 ```
 
+The library includes a robust [Language Normalization](docs/LANGUAGE_NORMALIZATION.md) system that standardizes language codes across different TTS engines. This allows you to:
+
+- Use BCP-47 codes (e.g., 'en-US') or ISO 639-3 codes (e.g., 'eng') interchangeably
+- Get consistent language information regardless of the TTS engine
+- Filter voices by language using any standard format
+
 ### Text Synthesis
 
 ```typescript
@@ -542,6 +548,8 @@ const tts = new SherpaOnnxTTSClient();
 await tts.speak('Hello from SherpaOnnx!');
 ```
 
+> **Note**: SherpaOnnx is a server-side only engine and requires specific environment setup. See the [SherpaOnnx documentation](docs/sherpaonnx.md) for details on setup and configuration. For browser environments, use [SherpaOnnx-WASM](docs/sherpaonnx-wasm.md) instead.
+
 ### eSpeak NG (WASM)
 
 #### ESM
@@ -590,8 +598,18 @@ await tts.speak('Hello from eSpeak NG!');
 | `on(event, callback)` | Register event handler | `void` |
 | `connect(event, callback)` | Connect to event | `void` |
 | `checkCredentials()` | Check if credentials are valid | `Promise<boolean>` |
+| `checkCredentialsDetailed()` | Check if credentials are valid with detailed response | `Promise<CredentialsCheckResult>` |
 | `getProperty(propertyName)` | Get a property value | `PropertyType` |
 | `setProperty(propertyName, value)` | Set a property value | `void` |
+
+The `checkCredentialsDetailed()` method returns a `CredentialsCheckResult` object with the following properties:
+```typescript
+{
+  success: boolean;    // Whether the credentials are valid
+  error?: string;      // Error message if credentials are invalid
+  voiceCount?: number; // Number of voices available if credentials are valid
+}
+```
 
 ### SSML Builder Methods
 
