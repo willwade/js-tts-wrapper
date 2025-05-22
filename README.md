@@ -7,8 +7,8 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 - [Features](#features)
 - [Supported TTS Engines](#supported-tts-engines)
 - [Installation](#installation)
-  - [Using Dependency Groups](#using-dependency-groups)
-  - [Manual Installation](#manual-installation)
+  - [Installation](#installation-1)
+  - [Using npm scripts](#using-npm-scripts)
 - [Quick Start](#quick-start)
 - [Core Functionality](#core-functionality)
   - [Voice Management](#voice-management)
@@ -53,37 +53,9 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 
 ## Installation
 
-The library uses a modular approach where TTS engine-specific dependencies are optional. You can install dependencies in two ways:
+The library uses a modular approach where TTS engine-specific dependencies are optional. You can install the package and its dependencies as follows:
 
-### Using Dependency Groups (npm 8.3.0+)
-
-Install the package with specific engine dependencies using the bracket notation (similar to pip extras):
-
-```bash
-# Install with specific engine dependencies
-npm install js-tts-wrapper[azure]      # Install with Azure dependencies
-npm install js-tts-wrapper[google]     # Install with Google Cloud dependencies
-npm install js-tts-wrapper[polly]      # Install with AWS Polly dependencies
-npm install js-tts-wrapper[elevenlabs] # Install with ElevenLabs dependencies
-npm install js-tts-wrapper[openai]     # Install with OpenAI dependencies
-npm install js-tts-wrapper[playht]     # Install with PlayHT dependencies
-npm install js-tts-wrapper[watson]     # Install with IBM Watson dependencies
-npm install js-tts-wrapper[witai]      # Install with Wit.ai dependencies
-npm install js-tts-wrapper[sherpaonnx] # Install with SherpaOnnx dependencies
-
-# Install with multiple engine dependencies
-npm install js-tts-wrapper[azure,google,polly]
-
-# Install with all cloud-based engines
-npm install js-tts-wrapper[cloud]
-
-# Install with all engines
-npm install js-tts-wrapper[all]
-```
-
-### Manual Installation
-
-Alternatively, you can install the package and its dependencies manually:
+### Installation
 
 ```bash
 # Install the base package
@@ -95,6 +67,29 @@ npm install @google-cloud/text-to-speech  # For Google Cloud
 npm install @aws-sdk/client-polly  # For AWS Polly
 npm install node-fetch@2  # For ElevenLabs and PlayHT
 npm install openai  # For OpenAI
+npm install sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream  # For SherpaOnnx
+npm install sound-play speaker pcm-convert  # For Node.js audio playback
+```
+
+### Using npm scripts
+
+After installing the base package, you can use the npm scripts provided by the package to install specific engine dependencies:
+
+```bash
+# Navigate to your project directory where js-tts-wrapper is installed
+cd your-project
+
+# Install Azure dependencies
+npx js-tts-wrapper@latest run install:azure
+
+# Install SherpaOnnx dependencies
+npx js-tts-wrapper@latest run install:sherpaonnx
+
+# Install Node.js audio playback dependencies
+npx js-tts-wrapper@latest run install:node-audio
+
+# Install all development dependencies
+npx js-tts-wrapper@latest run install:all-dev
 ```
 
 ## Quick Start
@@ -248,7 +243,7 @@ await tts.startPlaybackWithCallbacks('Hello world', (word, start, end) => {
 });
 ```
 
-> **Note**: Audio playback with `speak()` and `speakStreamed()` methods is supported in both browser environments and Node.js environments with the optional `sound-play` package installed. To enable Node.js audio playback, install the package with `npm install js-tts-wrapper[node-audio]`.
+> **Note**: Audio playback with `speak()` and `speakStreamed()` methods is supported in both browser environments and Node.js environments with the optional `sound-play` package installed. To enable Node.js audio playback, install the required packages with `npm install sound-play speaker pcm-convert` or use the npm script `npx js-tts-wrapper@latest run install:node-audio`.
 
 ### File Output
 
@@ -665,20 +660,34 @@ The library uses a peer dependencies approach to minimize the installation footp
 npm install js-tts-wrapper
 
 # Install dependencies for specific engines
-npm install js-tts-wrapper[azure]     # For Azure TTS
-npm install js-tts-wrapper[google]    # For Google TTS
-npm install js-tts-wrapper[polly]     # For AWS Polly
-npm install js-tts-wrapper[openai]    # For OpenAI TTS
-npm install js-tts-wrapper[sherpaonnx] # For SherpaOnnx TTS
+npm install @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk  # For Azure TTS
+npm install @google-cloud/text-to-speech  # For Google TTS
+npm install @aws-sdk/client-polly  # For AWS Polly
+npm install openai  # For OpenAI TTS
+npm install sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream  # For SherpaOnnx TTS
 
 # Install dependencies for Node.js audio playback
-npm install js-tts-wrapper[node-audio] # For audio playback in Node.js
+npm install sound-play speaker pcm-convert  # For audio playback in Node.js
+```
 
-# Install dependencies for cloud engines
-npm install js-tts-wrapper[cloud]     # For Azure, Google, Polly, and OpenAI
+You can also use the npm scripts provided by the package to install specific engine dependencies:
 
-# Install all dependencies
-npm install js-tts-wrapper[all]       # For all engines and features
+```bash
+# Navigate to your project directory where js-tts-wrapper is installed
+cd your-project
+
+# Install specific engine dependencies
+npx js-tts-wrapper@latest run install:azure
+npx js-tts-wrapper@latest run install:google
+npx js-tts-wrapper@latest run install:polly
+npx js-tts-wrapper@latest run install:openai
+npx js-tts-wrapper@latest run install:sherpaonnx
+
+# Install Node.js audio playback dependencies
+npx js-tts-wrapper@latest run install:node-audio
+
+# Install all development dependencies
+npx js-tts-wrapper@latest run install:all-dev
 ```
 
 ## Node.js Audio Playback
@@ -687,9 +696,14 @@ The library supports audio playback in Node.js environments with the optional `s
 
 To enable Node.js audio playback:
 
-1. Install the required dependency:
+1. Install the required dependencies:
    ```bash
-   npm install js-tts-wrapper[node-audio]
+   npm install sound-play speaker pcm-convert
+   ```
+
+   Or use the npm script:
+   ```bash
+   npx js-tts-wrapper@latest run install:node-audio
    ```
 
 2. Use the TTS client as usual:
