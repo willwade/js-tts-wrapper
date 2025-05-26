@@ -450,7 +450,12 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
     const tokensPath = path.join(voiceDir, "tokens.txt");
 
     // Check if files exist in voice directory
-    if (!this.checkFilesExist(modelPath, tokensPath)) {
+    if (this.checkFilesExist(modelPath, tokensPath)) {
+      const lexiconPath = path.join(voiceDir, "lexicon.txt");
+      const dictDir = this.getDictDir(voiceDir);
+
+      return [modelPath, tokensPath, lexiconPath, dictDir];
+    } else {
       console.log(
         "Downloading model and tokens languages for",
         modelId,
@@ -467,11 +472,6 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       if (!this.checkFilesExist(modelPath, tokensPath)) {
         throw new Error(`Failed to download model files for ${modelId}`);
       }
-
-      return [modelPath, tokensPath, lexiconPath, dictDir];
-    } else {
-      const lexiconPath = path.join(voiceDir, "lexicon.txt");
-      const dictDir = this.getDictDir(voiceDir);
 
       return [modelPath, tokensPath, lexiconPath, dictDir];
     }
@@ -491,7 +491,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       // Determine platform-specific library paths and environment variables
       let libPathEnvVar = '';
       let possiblePaths: string[] = [];
-      let pathSeparator = process.platform === 'win32' ? ';' : ':';
+      const pathSeparator = process.platform === 'win32' ? ';' : ':';
 
       if (process.platform === 'darwin') {
         // macOS uses DYLD_LIBRARY_PATH
@@ -669,16 +669,30 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
       // Log what sherpa contains
       console.log("sherpa object keys:", Object.keys(sherpa));
-      if (sherpa.OfflineTts) {
-        console.log("sherpa.OfflineTts exists");
+
+      // Handle different module export formats
+      let OfflineTts = sherpa.OfflineTts;
+      if (!OfflineTts && sherpa.default && sherpa.default.OfflineTts) {
+        console.log("Using sherpa.default.OfflineTts");
+        OfflineTts = sherpa.default.OfflineTts;
+      } else if (OfflineTts) {
+        console.log("Using sherpa.OfflineTts");
       } else {
         console.log("sherpa.OfflineTts does not exist");
+        console.log("Available sherpa properties:", Object.keys(sherpa));
+        if (sherpa.default) {
+          console.log("Available sherpa.default properties:", Object.keys(sherpa.default));
+        }
+      }
+
+      if (!OfflineTts) {
+        throw new Error("OfflineTts constructor not found in sherpa-onnx-node package");
       }
 
       // Create the TTS instance
       try {
-        console.log("Creating sherpa.OfflineTts instance...");
-        this.tts = new sherpa.OfflineTts(config);
+        console.log("Creating OfflineTts instance...");
+        this.tts = new OfflineTts(config);
         console.log("SherpaOnnx TTS initialized successfully");
       } catch (instanceError) {
         console.error("Error creating OfflineTts instance:", instanceError);
