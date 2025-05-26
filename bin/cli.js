@@ -12,9 +12,6 @@ import path from "node:path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Get the package root directory
-const packageRoot = path.resolve(__dirname, "..");
-
 /**
  * Execute a command and return a promise
  * @param {string} command - Command to execute

@@ -104,11 +104,11 @@ export async function loadSherpaOnnxNode(): Promise<any> {
       // For ESM
       return await import("sherpa-onnx-node");
     }
-  } catch (error) {
+  } catch (error: unknown) {
     // If loading fails, provide helpful error message
     console.warn(
       "Failed to load sherpa-onnx-node directly. " +
-      "This might be because the environment variables need to be set before the Node.js process starts."
+        "This might be because the environment variables need to be set before the Node.js process starts."
     );
 
     console.error("\nTo use SherpaOnnx TTS, you need to:");
@@ -116,12 +116,14 @@ export async function loadSherpaOnnxNode(): Promise<any> {
     console.error("   npx js-tts-wrapper install sherpaonnx");
     console.error("2. Ensure you're using Node.js 16+ (current version:", process.version, ")");
     console.error("3. The library will automatically set environment variables for you");
-    console.error("4. If you still have issues, try the helper script: node scripts/run-with-sherpaonnx.cjs your-script.js");
+    console.error(
+      "4. If you still have issues, try the helper script: node scripts/run-with-sherpaonnx.cjs your-script.js"
+    );
 
     throw new Error(
       "Could not load sherpa-onnx-node. " +
-      "Please use the run-with-sherpaonnx.cjs script to run your application: " +
-      "node scripts/run-with-sherpaonnx.cjs your-script.js"
+        "Please use the run-with-sherpaonnx.cjs script to run your application: " +
+        "node scripts/run-with-sherpaonnx.cjs your-script.js"
     );
   }
 }
@@ -140,7 +142,7 @@ export function canRunSherpaOnnx(): boolean {
 
     // Check if the platform-specific library is installed
     return !!findSherpaOnnxLibraryPath();
-  } catch (error) {
+  } catch (_error: unknown) {
     return false;
   }
 }
