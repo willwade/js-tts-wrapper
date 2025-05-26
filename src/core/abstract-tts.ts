@@ -484,9 +484,27 @@ export abstract class AbstractTTSClient {
    * Pause audio playback
    */
   pause(): void {
-    if (this.audio.audioElement && this.audio.isPlaying && !this.audio.isPaused) {
-      this.audio.audioElement.pause();
-      this.audio.isPaused = true;
+    if (isBrowser) {
+      // Browser environment - use HTML5 Audio element
+      if (this.audio.audioElement && this.audio.isPlaying && !this.audio.isPaused) {
+        this.audio.audioElement.pause();
+        this.audio.isPaused = true;
+      }
+    } else if (isNode) {
+      // Node.js environment - use node-speaker
+      try {
+        // Import dynamically to avoid circular dependencies
+        import('./node-audio-control').then(nodeAudio => {
+          const paused = nodeAudio.pauseAudioPlayback();
+          if (paused) {
+            this.audio.isPaused = true;
+          }
+        }).catch(error => {
+          console.error("Error importing node-audio-control:", error);
+        });
+      } catch (error) {
+        console.error("Error pausing audio in Node.js:", error);
+      }
     }
   }
 
@@ -494,9 +512,27 @@ export abstract class AbstractTTSClient {
    * Resume audio playback
    */
   resume(): void {
-    if (this.audio.audioElement && this.audio.isPlaying && this.audio.isPaused) {
-      this.audio.audioElement.play();
-      this.audio.isPaused = false;
+    if (isBrowser) {
+      // Browser environment - use HTML5 Audio element
+      if (this.audio.audioElement && this.audio.isPlaying && this.audio.isPaused) {
+        this.audio.audioElement.play();
+        this.audio.isPaused = false;
+      }
+    } else if (isNode) {
+      // Node.js environment - use node-speaker
+      try {
+        // Import dynamically to avoid circular dependencies
+        import('./node-audio-control').then(nodeAudio => {
+          const resumed = nodeAudio.resumeAudioPlayback();
+          if (resumed) {
+            this.audio.isPaused = false;
+          }
+        }).catch(error => {
+          console.error("Error importing node-audio-control:", error);
+        });
+      } catch (error) {
+        console.error("Error resuming audio in Node.js:", error);
+      }
     }
   }
 
@@ -504,11 +540,30 @@ export abstract class AbstractTTSClient {
    * Stop audio playback
    */
   stop(): void {
-    if (this.audio.audioElement) {
-      this.audio.audioElement.pause();
-      this.audio.audioElement.currentTime = 0;
-      this.audio.isPlaying = false;
-      this.audio.isPaused = false;
+    if (isBrowser) {
+      // Browser environment - use HTML5 Audio element
+      if (this.audio.audioElement) {
+        this.audio.audioElement.pause();
+        this.audio.audioElement.currentTime = 0;
+        this.audio.isPlaying = false;
+        this.audio.isPaused = false;
+      }
+    } else if (isNode) {
+      // Node.js environment - use node-speaker
+      try {
+        // Import dynamically to avoid circular dependencies
+        import('./node-audio-control').then(nodeAudio => {
+          const stopped = nodeAudio.stopAudioPlayback();
+          if (stopped) {
+            this.audio.isPlaying = false;
+            this.audio.isPaused = false;
+          }
+        }).catch(error => {
+          console.error("Error importing node-audio-control:", error);
+        });
+      } catch (error) {
+        console.error("Error stopping audio in Node.js:", error);
+      }
     }
   }
 

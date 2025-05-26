@@ -1,6 +1,6 @@
 /**
  * Browser-compatible entry point for js-tts-wrapper
- * 
+ *
  * This file exports only the components that work in browser environments.
  */
 

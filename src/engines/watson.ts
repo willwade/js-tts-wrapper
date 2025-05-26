@@ -52,7 +52,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
         {
           method: "GET",
           headers: {
-            "Authorization": `Bearer ${this.iamToken}`,
+            Authorization: `Bearer ${this.iamToken}`,
             "Content-Type": "application/json",
           },
         }
@@ -79,7 +79,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
     // Transform Watson voices to unified format
     return rawVoices.map((voice: any) => ({
       id: voice.name,
-      name: voice.name.split('_')[1].replace("V3Voice", ""),
+      name: voice.name.split("_")[1].replace("V3Voice", ""),
       gender: voice.gender === "female" ? "Female" : voice.gender === "male" ? "Male" : "Unknown",
       provider: "ibm",
       languageCodes: [
@@ -98,19 +98,16 @@ export class WatsonTTSClient extends AbstractTTSClient {
    */
   private async _refreshIAMToken(): Promise<void> {
     try {
-      const response = await fetch(
-        "https://iam.cloud.ibm.com/identity/token",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: new URLSearchParams({
-            "apikey": this.apiKey,
-            "grant_type": "urn:ibm:params:oauth:grant-type:apikey",
-          }),
-        }
-      );
+      const response = await fetch("https://iam.cloud.ibm.com/identity/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          apikey: this.apiKey,
+          grant_type: "urn:ibm:params:oauth:grant-type:apikey",
+        }),
+      });
 
       if (!response.ok) {
         throw new Error(`Failed to refresh IAM token: ${response.statusText}`);
@@ -140,21 +137,23 @@ export class WatsonTTSClient extends AbstractTTSClient {
     // Check if the input is already SSML
     const isSSML = SSMLUtils.isSSML(text);
 
+    let processedText = text;
+
     // If the input is SpeechMarkdown and useSpeechMarkdown is enabled, convert it to SSML
-    if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
-      text = SpeechMarkdown.toSSML(text);
+    if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
+      processedText = SpeechMarkdown.toSSML(processedText);
     }
 
     // If the input is already SSML, use it directly
     if (isSSML) {
-      return text;
+      return processedText;
     }
 
     // Otherwise, create SSML from plain text
     this.ssml.clearSSML();
 
     // Create SSML with voice and prosody
-    let ssmlContent = text;
+    let ssmlContent = processedText;
 
     // Apply prosody settings if specified
     if (options?.rate || options?.pitch || options?.volume) {
@@ -163,11 +162,11 @@ export class WatsonTTSClient extends AbstractTTSClient {
       if (options.pitch) prosodyAttrs.push(`pitch="${options.pitch}"`);
       if (options.volume !== undefined) prosodyAttrs.push(`volume="${options.volume}%"`);
 
-      ssmlContent = `<prosody ${prosodyAttrs.join(' ')}>${ssmlContent}</prosody>`;
+      ssmlContent = `<prosody ${prosodyAttrs.join(" ")}>${ssmlContent}</prosody>`;
     }
 
     // Add voice tag
-    ssmlContent = `<voice name="${voice || 'en-US_AllisonV3Voice'}">${ssmlContent}</voice>`;
+    ssmlContent = `<voice name="${voice || "en-US_AllisonV3Voice"}">${ssmlContent}</voice>`;
 
     // Wrap with speak tags
     return this.ssml.wrapWithSpeak(ssmlContent);
@@ -197,9 +196,9 @@ export class WatsonTTSClient extends AbstractTTSClient {
         {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${this.iamToken}`,
+            Authorization: `Bearer ${this.iamToken}`,
             "Content-Type": "application/json",
-            "Accept": "audio/wav",
+            Accept: "audio/wav",
           },
           body: JSON.stringify({
             text: ssml,
@@ -247,12 +246,11 @@ export class WatsonTTSClient extends AbstractTTSClient {
     this.wordBoundaries = [];
 
     // Check if we're in a browser environment
-    if (typeof window !== 'undefined' && 'WebSocket' in window) {
+    if (typeof window !== "undefined" && "WebSocket" in window) {
       return this._synthToBytestreamWithBrowserWebSocket(ssml, voice);
-    } else {
-      // In Node.js environment, use the REST API
-      return this._synthToBytestreamWithREST(ssml, options);
     }
+    // In Node.js environment, use the REST API
+    return this._synthToBytestreamWithREST(ssml, options);
   }
 
   /**
@@ -278,7 +276,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
       const chunks: Uint8Array[] = [];
       const wordTimings: Array<{ text: string; offset: number; duration: number }> = [];
 
-      ws.binaryType = 'arraybuffer';
+      ws.binaryType = "arraybuffer";
 
       ws.onopen = () => {
         const message = {
@@ -299,13 +297,13 @@ export class WatsonTTSClient extends AbstractTTSClient {
           try {
             const data = JSON.parse(event.data);
             if (data.words) {
-              data.words.forEach((timing: [string, number, number]) => {
+              for (const timing of data.words as [string, number, number][]) {
                 wordTimings.push({
                   text: timing[0],
                   offset: timing[1] * 1000, // Convert to milliseconds
                   duration: (timing[2] - timing[1]) * 1000, // Convert to milliseconds
                 });
-              });
+              }
               this.wordBoundaries = wordTimings;
             }
           } catch (e) {
@@ -329,7 +327,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
               controller.enqueue(chunk);
             }
             controller.close();
-          }
+          },
         });
 
         resolve({
@@ -362,9 +360,9 @@ export class WatsonTTSClient extends AbstractTTSClient {
         {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${this.iamToken}`,
+            Authorization: `Bearer ${this.iamToken}`,
             "Content-Type": "application/json",
-            "Accept": "audio/wav",
+            Accept: "audio/wav",
           },
           body: JSON.stringify({
             text: ssml,
@@ -379,7 +377,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
       }
 
       // Create estimated word timings based on text length
-      const words = ssml.replace(/<[^>]*>/g, '').split(/\s+/);
+      const words = ssml.replace(/<[^>]*>/g, "").split(/\s+/);
       const estimatedDuration = 0.3; // Estimated duration per word in seconds
       const wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
 
@@ -425,5 +423,5 @@ export class WatsonTTSClient extends AbstractTTSClient {
  * Extended options for Watson TTS
  */
 export interface WatsonTTSOptions extends SpeakOptions {
-  format?: 'mp3' | 'wav';
+  format?: "mp3" | "wav";
 }

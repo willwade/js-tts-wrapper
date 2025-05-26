@@ -1,4 +1,4 @@
-declare module 'sound-play' {
+declare module "sound-play" {
   /**
    * Play a sound file
    * @param file Path to the sound file

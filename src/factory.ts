@@ -16,11 +16,13 @@ import type { TTSCredentials } from "./types";
 let MockTTSClient: any;
 try {
   // Dynamic import to avoid circular dependencies
-  import("./__tests__/mock-tts-client.helper.js").then((module) => {
-    MockTTSClient = module.MockTTSClient;
-  }).catch(() => {
-    // Ignore errors
-  });
+  import("./__tests__/mock-tts-client.helper.js")
+    .then((module) => {
+      MockTTSClient = module.MockTTSClient;
+    })
+    .catch(() => {
+      // Ignore errors
+    });
 } catch (_e) {
   // Ignore errors
 }
@@ -48,7 +50,9 @@ export function createTTSClient(engine: SupportedTTS, credentials?: TTSCredentia
     case "polly":
       return new PollyTTSClient(credentials as import("./engines/polly").PollyTTSCredentials);
     case "elevenlabs":
-      return new ElevenLabsTTSClient(credentials as import("./engines/elevenlabs").ElevenLabsCredentials);
+      return new ElevenLabsTTSClient(
+        credentials as import("./engines/elevenlabs").ElevenLabsCredentials
+      );
     case "openai":
       return new OpenAITTSClient(credentials as import("./engines/openai").OpenAITTSCredentials);
     case "playht":
@@ -66,9 +70,10 @@ export function createTTSClient(engine: SupportedTTS, credentials?: TTSCredentia
     case "mock":
       if (MockTTSClient) {
         return new MockTTSClient();
-      } else {
-        throw new Error("MockTTSClient is not available. This is only available in development/testing environments.");
       }
+      throw new Error(
+        "MockTTSClient is not available. This is only available in development/testing environments."
+      );
     default:
       throw new Error(`Engine '${engine}' is not supported in the factory.`);
   }

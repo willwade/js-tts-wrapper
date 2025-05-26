@@ -1,3 +1,7 @@
+dist/*
+espeak-ng-data/*
+*.wav
+*.mp3
 node_modules/
 .node_modules/
 built/*
@@ -30,8 +34,7 @@ TEST-results.xml
 /lib/
 /coverage
 /coverage/*
-/dist
-/dist/*
+
 .env
 .env.local
 .envrc

@@ -104,7 +104,7 @@ export async function loadSherpaOnnxNode(): Promise<any> {
       // For ESM
       return await import("sherpa-onnx-node");
     }
-  } catch (error: unknown) {
+  } catch (_error: unknown) {
     // If loading fails, provide helpful error message
     console.warn(
       "Failed to load sherpa-onnx-node directly. " +

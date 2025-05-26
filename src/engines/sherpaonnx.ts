@@ -1,8 +1,8 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
-import * as fs from "fs";
-import * as path from "path";
-import * as os from "os";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
 // Import necessary modules for ESM path resolution
 // import { fileURLToPath } from 'url'; // No longer needed
 import decompress from "decompress";
@@ -59,7 +59,10 @@ export interface SherpaOnnxTTSCredentials extends TTSCredentials {
 interface ModelConfig {
   url: string;
   name?: string;
-  language: ({ lang_code: string; language_name: string; country: string; } | { "Iso Code": string; "Language Name": string; Country: string; })[];
+  language: (
+    | { lang_code: string; language_name: string; country: string }
+    | { "Iso Code": string; "Language Name": string; Country: string }
+  )[];
   gender?: "Male" | "Female" | "Unknown";
   description?: string;
   compression?: boolean;
@@ -155,7 +158,9 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       return SHERPA_MODELS_CONFIG;
     } catch (error: any) {
       // This should ideally not happen if the generation script ran correctly
-      throw new Error(`Could not load embedded models configuration. Build might be broken. Error: ${error.message}`);
+      throw new Error(
+        `Could not load embedded models configuration. Build might be broken. Error: ${error.message}`
+      );
     }
   }
 
@@ -171,8 +176,10 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
       // Diagnostic log to check the NATIVE fetch implementation we captured
       console.log(`DEBUG: typeof nativeFetch = ${typeof nativeFetch}`);
-      if (typeof nativeFetch === 'function' && nativeFetch.toString) {
-        console.log(`DEBUG: nativeFetch.toString() = ${nativeFetch.toString().substring(0, 200)}...`); // Log first 200 chars
+      if (typeof nativeFetch === "function" && nativeFetch.toString) {
+        console.log(
+          `DEBUG: nativeFetch.toString() = ${nativeFetch.toString().substring(0, 200)}...`
+        ); // Log first 200 chars
       }
 
       // Use the captured native fetch
@@ -183,9 +190,12 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       }
 
       // Add check before calling arrayBuffer
-      if (typeof response.arrayBuffer !== 'function') {
-        console.error('DEBUG: response object does NOT have arrayBuffer method. Response keys:', Object.keys(response));
-        throw new Error('response.arrayBuffer is not a function');
+      if (typeof response.arrayBuffer !== "function") {
+        console.error(
+          "DEBUG: response object does NOT have arrayBuffer method. Response keys:",
+          Object.keys(response)
+        );
+        throw new Error("response.arrayBuffer is not a function");
       }
       const buffer = await response.arrayBuffer();
       fs.writeFileSync(destination, Buffer.from(buffer));
@@ -194,7 +204,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       const err = error as Error;
       console.error(`Error downloading file: ${err.message}`);
       // Log the full error object for more details
-      console.error('DEBUG: Full download error stack:', err.stack);
+      console.error("DEBUG: Full download error stack:", err.stack);
       throw err;
     }
   }
@@ -205,7 +215,10 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    * @param destinationDir Destination directory
    * @returns Promise resolving to a map of extracted file paths
    */
-  private async extractTarBz2(archivePath: string, destinationDir: string): Promise<Map<string, string>> {
+  private async extractTarBz2(
+    archivePath: string,
+    destinationDir: string
+  ): Promise<Map<string, string>> {
     try {
       console.log(`Extracting archive ${archivePath} to ${destinationDir}`);
 
@@ -216,7 +229,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
       // Use the decompress library to extract the archive
       const files = await decompress(archivePath, destinationDir, {
-        plugins: [decompressTarbz2()]
+        plugins: [decompressTarbz2()],
       });
 
       console.log(`Extracted ${files.length} files from ${archivePath}`);
@@ -246,10 +259,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    * @param tokensPath Path to tokens file
    * @returns True if both files exist and are not empty
    */
-  private checkFilesExist(
-    modelPath: string,
-    tokensPath: string
-  ): boolean {
+  private checkFilesExist(modelPath: string, tokensPath: string): boolean {
     try {
       // Check that both files exist
       if (!fs.existsSync(modelPath) || !fs.existsSync(tokensPath)) {
@@ -433,9 +443,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    * @param modelId Voice model ID
    * @returns Tuple of (model_path, tokens_path, lexicon_path, dict_dir)
    */
-  private async checkAndDownloadModel(
-    modelId: string
-  ): Promise<[string, string, string, string]> {
+  private async checkAndDownloadModel(modelId: string): Promise<[string, string, string, string]> {
     // Create voice-specific directory
     const voiceDir = path.join(this.baseDir, modelId);
 
@@ -455,26 +463,22 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       const dictDir = this.getDictDir(voiceDir);
 
       return [modelPath, tokensPath, lexiconPath, dictDir];
-    } else {
-      console.log(
-        "Downloading model and tokens languages for",
-        modelId,
-        "because we can't find it"
-      );
-
-      // Download to voice-specific directory
-      const [, , lexiconPath, dictDir] = await this.downloadModelAndTokens(
-        voiceDir,
-        modelId
-      );
-
-      // Verify files were downloaded correctly
-      if (!this.checkFilesExist(modelPath, tokensPath)) {
-        throw new Error(`Failed to download model files for ${modelId}`);
-      }
-
-      return [modelPath, tokensPath, lexiconPath, dictDir];
     }
+
+    console.log("Downloading model and tokens languages for", modelId, "because we can't find it");
+
+    // Download to voice-specific directory
+    const [_modelPath, _tokensPath, lexiconPath, dictDir] = await this.downloadModelAndTokens(
+      voiceDir,
+      modelId
+    );
+
+    // Verify files were downloaded correctly
+    if (!this.checkFilesExist(modelPath, tokensPath)) {
+      throw new Error(`Failed to download model files for ${modelId}`);
+    }
+
+    return [modelPath, tokensPath, lexiconPath, dictDir];
   }
 
   /**
@@ -484,35 +488,33 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
   private setLibraryPath(): boolean {
     try {
       // Only needed in Node.js environment
-      if (typeof process === 'undefined' || typeof process.env === 'undefined') {
+      if (typeof process === "undefined" || typeof process.env === "undefined") {
         return false;
       }
 
       // Determine platform-specific library paths and environment variables
-      let libPathEnvVar = '';
+      let libPathEnvVar = "";
       let possiblePaths: string[] = [];
-      const pathSeparator = process.platform === 'win32' ? ';' : ':';
+      const pathSeparator = process.platform === "win32" ? ";" : ":";
 
-      if (process.platform === 'darwin') {
+      if (process.platform === "darwin") {
         // macOS uses DYLD_LIBRARY_PATH
-        libPathEnvVar = 'DYLD_LIBRARY_PATH';
+        libPathEnvVar = "DYLD_LIBRARY_PATH";
         possiblePaths = [
-          path.join(process.cwd(), 'node_modules', 'sherpa-onnx-darwin-arm64'),
-          path.join(process.cwd(), 'node_modules', 'sherpa-onnx-darwin-x64')
+          path.join(process.cwd(), "node_modules", "sherpa-onnx-darwin-arm64"),
+          path.join(process.cwd(), "node_modules", "sherpa-onnx-darwin-x64"),
         ];
-      } else if (process.platform === 'linux') {
+      } else if (process.platform === "linux") {
         // Linux uses LD_LIBRARY_PATH
-        libPathEnvVar = 'LD_LIBRARY_PATH';
+        libPathEnvVar = "LD_LIBRARY_PATH";
         possiblePaths = [
-          path.join(process.cwd(), 'node_modules', 'sherpa-onnx-linux-arm64'),
-          path.join(process.cwd(), 'node_modules', 'sherpa-onnx-linux-x64')
+          path.join(process.cwd(), "node_modules", "sherpa-onnx-linux-arm64"),
+          path.join(process.cwd(), "node_modules", "sherpa-onnx-linux-x64"),
         ];
-      } else if (process.platform === 'win32') {
+      } else if (process.platform === "win32") {
         // Windows uses PATH
-        libPathEnvVar = 'PATH';
-        possiblePaths = [
-          path.join(process.cwd(), 'node_modules', 'sherpa-onnx-win-x64')
-        ];
+        libPathEnvVar = "PATH";
+        possiblePaths = [path.join(process.cwd(), "node_modules", "sherpa-onnx-win-x64")];
       } else {
         console.warn(`Unsupported platform: ${process.platform}`);
         return false;
@@ -520,7 +522,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
       // Find the sherpa-onnx library directory
       if (libPathEnvVar) {
-        let sherpaOnnxPath = '';
+        let sherpaOnnxPath = "";
         for (const libPath of possiblePaths) {
           if (fs.existsSync(libPath)) {
             console.log(`Found sherpa-onnx library at ${libPath}`);
@@ -531,18 +533,21 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
         if (sherpaOnnxPath) {
           // Set the environment variable
-          const currentPath = process.env[libPathEnvVar] || '';
+          const currentPath = process.env[libPathEnvVar] || "";
           if (!currentPath.includes(sherpaOnnxPath)) {
-            process.env[libPathEnvVar] = sherpaOnnxPath + (currentPath ? pathSeparator + currentPath : '');
+            process.env[libPathEnvVar] =
+              sherpaOnnxPath + (currentPath ? pathSeparator + currentPath : "");
             console.log(`Set ${libPathEnvVar} to ${process.env[libPathEnvVar]}`);
             return true;
           }
           // Already set correctly
           return true;
-        } else {
-          console.warn(`Could not find sherpa-onnx library directory for ${process.platform}. SherpaOnnx TTS may not work correctly.`);
-          return false;
         }
+
+        console.warn(
+          `Could not find sherpa-onnx library directory for ${process.platform}. SherpaOnnx TTS may not work correctly.`
+        );
+        return false;
       }
 
       return false;
@@ -568,15 +573,15 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
           console.log("Attempting to load sherpa-onnx-node...");
 
           // Try to use the sherpaonnx-loader if available
-          if (typeof require !== 'undefined') {
+          if (typeof require !== "undefined") {
             // Attempt to use the loader in CommonJS
             try {
               if (!sherpaOnnxLoader) {
                 // Try to load the loader if not already loaded
-                sherpaOnnxLoader = require('../utils/sherpaonnx-loader.js');
+                sherpaOnnxLoader = require("../utils/sherpaonnx-loader.js");
               }
 
-              if (sherpaOnnxLoader && sherpaOnnxLoader.loadSherpaOnnxNode) {
+              if (sherpaOnnxLoader?.loadSherpaOnnxNode) {
                 console.log("Using sherpaonnx-loader to load sherpa-onnx-node");
                 sherpa = await sherpaOnnxLoader.loadSherpaOnnxNode();
                 console.log("Successfully loaded sherpa-onnx-node via loader");
@@ -609,7 +614,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
             try {
               // Try to use the already imported loader
-              if (sherpaOnnxLoader && sherpaOnnxLoader.loadSherpaOnnxNode) {
+              if (sherpaOnnxLoader?.loadSherpaOnnxNode) {
                 console.log("Using sherpaonnx-loader to load sherpa-onnx-node");
                 sherpa = await sherpaOnnxLoader.loadSherpaOnnxNode();
                 console.log("Successfully loaded sherpa-onnx-node via loader");
@@ -629,20 +634,25 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
           console.log("sherpa-onnx-node loaded successfully");
         } catch (error) {
-          console.error(
-            "Optional dependency sherpa-onnx-node not found or failed to load:",
-            error
-          );
+          console.error("Optional dependency sherpa-onnx-node not found or failed to load:", error);
           console.error("Error details:", error instanceof Error ? error.stack : String(error));
 
           // Provide helpful error message with instructions
           console.error("\nTo use SherpaOnnx TTS, you need to:");
           console.error("1. Install the sherpa-onnx-node package:");
           console.error("   npx js-tts-wrapper install sherpaonnx");
-          console.error("   OR: npm install sherpa-onnx-node@^1.12.0 decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream");
-          console.error("2. Ensure you're using Node.js 16+ (current version:", process.version, ")");
+          console.error(
+            "   OR: npm install sherpa-onnx-node@^1.12.0 decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream"
+          );
+          console.error(
+            "2. Ensure you're using Node.js 16+ (current version:",
+            process.version,
+            ")"
+          );
           console.error("3. The library will automatically set environment variables for you");
-          console.error("4. If you still have issues, try the helper script: node scripts/run-with-sherpaonnx.cjs your-script.js");
+          console.error(
+            "4. If you still have issues, try the helper script: node scripts/run-with-sherpaonnx.cjs your-script.js"
+          );
 
           throw new Error(
             "SherpaOnnxTTSClient requires the 'sherpa-onnx-node' package to be installed for native TTS."
@@ -696,15 +706,20 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         console.log("SherpaOnnx TTS initialized successfully");
       } catch (instanceError) {
         console.error("Error creating OfflineTts instance:", instanceError);
-        console.error("Error details:", instanceError instanceof Error ? instanceError.stack : String(instanceError));
+        console.error(
+          "Error details:",
+          instanceError instanceof Error ? instanceError.stack : String(instanceError)
+        );
         throw instanceError;
       }
     } catch (error) {
       console.error("Error initializing SherpaOnnx TTS:", error);
-      console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace available");
+      console.error(
+        "Error stack:",
+        error instanceof Error ? error.stack : "No stack trace available"
+      );
       throw new Error(
-        "Failed to initialize SherpaOnnx TTS. " +
-        (error instanceof Error ? error.message : String(error))
+        `Failed to initialize SherpaOnnx TTS. ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
@@ -745,8 +760,8 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
             // Try to get language code from different possible properties
             if (firstLang["Iso Code"]) {
               langCode = firstLang["Iso Code"];
-            } else if (firstLang["lang_code"]) {
-              langCode = firstLang["lang_code"];
+            } else if (firstLang.lang_code) {
+              langCode = firstLang.lang_code;
             }
 
             // If we have a language name but no code, use the name
@@ -817,7 +832,8 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
       try {
         // Check and download the model if needed
-        const [modelPath, tokensPath, , ] = await this.checkAndDownloadModel(voiceId);
+        const [modelPath, tokensPath, _lexiconPath, _dictDir] =
+          await this.checkAndDownloadModel(voiceId);
 
         // Initialize the TTS engine
         await this.initializeTTS(modelPath, tokensPath);
@@ -863,9 +879,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       }
 
       if (!this.tts) {
-        console.warn(
-          "SherpaOnnx TTS is not initialized. Using mock implementation for example."
-        );
+        console.warn("SherpaOnnx TTS is not initialized. Using mock implementation for example.");
 
         // Generate mock audio data for example purposes
         // In a real application, you would want to throw an error here
@@ -881,11 +895,18 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       }
 
       // Calculate speed value - use much more conservative values for natural speech
-      const speedValue = this.properties.rate === "slow" ? 0.5 :
-                         this.properties.rate === "medium" ? 0.7 :
-                         this.properties.rate === "fast" ? 0.9 : 0.7;
+      const speedValue =
+        this.properties.rate === "slow"
+          ? 0.5
+          : this.properties.rate === "medium"
+            ? 0.7
+            : this.properties.rate === "fast"
+              ? 0.9
+              : 0.7;
 
-      console.log(`SherpaOnnx generating audio with speed: ${speedValue} (rate: ${this.properties.rate})`);
+      console.log(
+        `SherpaOnnx generating audio with speed: ${speedValue} (rate: ${this.properties.rate})`
+      );
 
       // Generate audio using the real TTS engine
       const audio = this.tts.generate({
@@ -894,8 +915,10 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         speed: speedValue,
       }) as SherpaOnnxAudio;
 
-      // Convert Float32Array to WAV format with proper header
-      return this.convertToWav(audio.samples);
+      console.log(`SherpaOnnx audio generated with sample rate: ${audio.sampleRate}`);
+
+      // Convert Float32Array to WAV format with proper header using actual sample rate
+      return this.convertToWav(audio.samples, audio.sampleRate);
     } catch (error) {
       console.error("Error synthesizing speech:", error);
       throw error;
@@ -935,9 +958,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
       // Handle case where TTS is not initialized (similar to synthToBytes)
       if (!this.tts) {
-        console.warn(
-          "SherpaOnnx TTS is not initialized. Returning empty stream and boundaries."
-        );
+        console.warn("SherpaOnnx TTS is not initialized. Returning empty stream and boundaries.");
         const emptyStream = new ReadableStream<Uint8Array>({
           start(controller) {
             controller.close();
@@ -947,9 +968,14 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       }
 
       // Calculate speed value - use much more conservative values for natural speech
-      const speedValue = this.properties.rate === "slow" ? 0.5 :
-                         this.properties.rate === "medium" ? 0.7 :
-                         this.properties.rate === "fast" ? 0.9 : 0.7;
+      const speedValue =
+        this.properties.rate === "slow"
+          ? 0.5
+          : this.properties.rate === "medium"
+            ? 0.7
+            : this.properties.rate === "fast"
+              ? 0.9
+              : 0.7;
 
       // Generate audio using the TTS engine
       const result = this.tts.generate({
@@ -960,10 +986,13 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
       // Extract samples and word boundaries
       const samples = result.samples;
+      const sampleRate = result.sampleRate;
       const rawWordBoundaries = result.wordBoundaries || [];
 
-      // Convert Float32Array samples to WAV format with proper header
-      const buffer = this.convertToWav(samples);
+      console.log(`SherpaOnnx bytestream audio generated with sample rate: ${sampleRate}`);
+
+      // Convert Float32Array samples to WAV format with proper header using actual sample rate
+      const buffer = this.convertToWav(samples, sampleRate);
 
       // Create a readable stream from the audio bytes
       const audioStream = new ReadableStream<Uint8Array>({
@@ -974,11 +1003,13 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       });
 
       // Map raw boundaries to the expected format { text, offset, duration }
-      const formattedWordBoundaries = rawWordBoundaries.map((wb: { word: string; start: number; end: number }) => ({
+      const formattedWordBoundaries = rawWordBoundaries.map(
+        (wb: { word: string; start: number; end: number }) => ({
           text: wb.word,
           offset: wb.start * 1000, // Assuming start is in seconds, convert to ms
-          duration: (wb.end - wb.start) * 1000 // Calculate duration in ms
-      }));
+          duration: (wb.end - wb.start) * 1000, // Calculate duration in ms
+        })
+      );
 
       // Return both the audio stream and the formatted word boundaries
       return {
@@ -994,10 +1025,11 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
   /**
    * Convert Float32Array audio samples to WAV format with proper header
    * @param samples Float32Array of audio samples
+   * @param actualSampleRate Actual sample rate of the audio data
    * @returns Uint8Array containing WAV file data
    */
-  private convertToWav(samples: Float32Array): Uint8Array {
-    const sampleRate = 22050; // SherpaOnnx default sample rate
+  private convertToWav(samples: Float32Array, actualSampleRate?: number): Uint8Array {
+    const sampleRate = actualSampleRate || 22050; // Use actual sample rate or fallback to default
     const numChannels = 1; // Mono
     const bitsPerSample = 16;
 
@@ -1006,7 +1038,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
     for (let i = 0; i < samples.length; i++) {
       // Convert float to 16-bit PCM
       const sample = Math.max(-1, Math.min(1, samples[i]));
-      int16Samples[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+      int16Samples[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
     }
 
     // Create WAV header
@@ -1130,7 +1162,8 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         }
 
         // Check if the model files exist or download them
-        const [modelPath, tokensPath, , ] = await this.checkAndDownloadModel(defaultModelId);
+        const [modelPath, tokensPath, _lexiconPath, _dictDir] =
+          await this.checkAndDownloadModel(defaultModelId);
 
         // Try to initialize the engine
         await this.initializeTTS(modelPath, tokensPath);

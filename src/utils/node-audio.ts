@@ -4,8 +4,29 @@
 
 import { isNode } from "./environment";
 
-// Dynamic import for CommonJS modules
-async function dynamicRequire(moduleName: string): Promise<any> {
+// Global state for audio playback
+interface AudioState {
+  isPlaying: boolean;
+  isPaused: boolean;
+  currentProcess: any;
+  tempFile: string | null;
+  childProcess: any;
+  fs: any;
+}
+
+const audioState: AudioState = {
+  isPlaying: false,
+  isPaused: false,
+  currentProcess: null,
+  tempFile: null,
+  childProcess: null,
+  fs: null,
+};
+
+// This function is no longer used, but we keep it for reference
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// @ts-ignore
+async function _unusedDynamicRequire(moduleName: string): Promise<any> {
   // In Node.js, we can use a dynamic import
   if (isNode) {
     try {
@@ -38,22 +59,291 @@ export async function isNodeAudioAvailable(): Promise<boolean> {
   if (!isNode) return false;
 
   try {
-    const soundPlay = await dynamicRequire("sound-play");
-    // Check if it's a valid module with a play function
-    // It could be either soundPlay.play or soundPlay.default.play
-    return !!(
-      soundPlay &&
-      (typeof soundPlay.play === "function" ||
-        (soundPlay.default && typeof soundPlay.default.play === "function"))
-    );
-  } catch (_e) {
+    // Try to load required modules
+    const childProcess = await import("node:child_process");
+    const fs = await import("node:fs");
+
+    // Store for later use
+    audioState.childProcess = childProcess;
+    audioState.fs = fs;
+
+    // Check if we have a suitable audio player
+    const platform = process.platform;
+
+    if (platform === "darwin") {
+      // Check if afplay is available on macOS
+      try {
+        childProcess.execSync("which afplay", { stdio: "ignore" });
+        return true;
+      } catch (_error) {
+        return false;
+      }
+    } else if (platform === "win32") {
+      // Windows should have PowerShell available
+      return true;
+    } else {
+      // Check if aplay is available on Linux
+      try {
+        childProcess.execSync("which aplay", { stdio: "ignore" });
+        return true;
+      } catch (_error) {
+        return false;
+      }
+    }
+  } catch (_error) {
     return false;
   }
+}
+
+// These functions are no longer used, but we keep them for reference
+// in case we need to handle WAV files in the future
+
+/**
+ * Parse a WAV file header to extract audio format information
+ * @param audioBytes Audio data as Uint8Array
+ * @returns Object containing audio format information
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// @ts-ignore
+function _unusedParseWavHeader(audioBytes: Uint8Array): {
+  sampleRate: number;
+  numChannels: number;
+  bitsPerSample: number;
+  dataOffset: number;
+  dataSize: number;
+  isValidWav: boolean;
+} {
+  const result = {
+    sampleRate: 0,
+    numChannels: 0,
+    bitsPerSample: 0,
+    dataOffset: 0,
+    dataSize: 0,
+    isValidWav: false,
+  };
+
+  // Check if it's a valid WAV file (has RIFF header)
+  const hasRiffHeader =
+    audioBytes.length >= 4 &&
+    audioBytes[0] === 0x52 && // 'R'
+    audioBytes[1] === 0x49 && // 'I'
+    audioBytes[2] === 0x46 && // 'F'
+    audioBytes[3] === 0x46; // 'F'
+
+  if (!hasRiffHeader || audioBytes.length < 44) {
+    return result;
+  }
+
+  result.isValidWav = true;
+  result.numChannels = audioBytes[22] | (audioBytes[23] << 8);
+  result.sampleRate =
+    audioBytes[24] | (audioBytes[25] << 8) | (audioBytes[26] << 16) | (audioBytes[27] << 24);
+  result.bitsPerSample = audioBytes[34] | (audioBytes[35] << 8);
+
+  // Find the data chunk
+  let offset = 36;
+  while (offset < audioBytes.length - 8) {
+    if (
+      audioBytes[offset] === 0x64 && // 'd'
+      audioBytes[offset + 1] === 0x61 && // 'a'
+      audioBytes[offset + 2] === 0x74 && // 't'
+      audioBytes[offset + 3] === 0x61 // 'a'
+    ) {
+      // Found the data chunk
+      const dataSize =
+        audioBytes[offset + 4] |
+        (audioBytes[offset + 5] << 8) |
+        (audioBytes[offset + 6] << 16) |
+        (audioBytes[offset + 7] << 24);
+      result.dataOffset = offset + 8;
+      result.dataSize = dataSize;
+      break;
+    }
+    offset += 4;
+    // Skip the chunk size
+    const chunkSize =
+      audioBytes[offset] |
+      (audioBytes[offset + 1] << 8) |
+      (audioBytes[offset + 2] << 16) |
+      (audioBytes[offset + 3] << 24);
+    offset += 4 + chunkSize;
+  }
+
+  return result;
+}
+
+/**
+ * Create a WAV file with the given audio data
+ * @param audioBytes Audio data as Uint8Array
+ * @param sampleRate Sample rate in Hz
+ * @param numChannels Number of channels
+ * @param bitsPerSample Bits per sample
+ * @returns Uint8Array containing the WAV file
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// @ts-ignore
+function _unusedCreateWavFile(
+  audioBytes: Uint8Array,
+  sampleRate: number,
+  numChannels: number,
+  bitsPerSample: number
+): Uint8Array {
+  // Calculate sizes
+  const dataSize = audioBytes.length;
+  const blockAlign = numChannels * (bitsPerSample / 8);
+  const byteRate = sampleRate * blockAlign;
+
+  // Create WAV header
+  const headerSize = 44; // Standard WAV header size
+  const wavFile = new Uint8Array(headerSize + dataSize);
+
+  // RIFF header
+  wavFile.set([0x52, 0x49, 0x46, 0x46]); // "RIFF"
+  // Chunk size (file size - 8)
+  const chunkSize = headerSize + dataSize - 8;
+  wavFile[4] = chunkSize & 0xff;
+  wavFile[5] = (chunkSize >> 8) & 0xff;
+  wavFile[6] = (chunkSize >> 16) & 0xff;
+  wavFile[7] = (chunkSize >> 24) & 0xff;
+  wavFile.set([0x57, 0x41, 0x56, 0x45], 8); // "WAVE"
+
+  // Format chunk
+  wavFile.set([0x66, 0x6d, 0x74, 0x20], 12); // "fmt "
+  wavFile[16] = 16; // Chunk size (16 for PCM)
+  wavFile[17] = 0;
+  wavFile[18] = 0;
+  wavFile[19] = 0;
+  wavFile[20] = 1; // Audio format (1 for PCM)
+  wavFile[21] = 0;
+  wavFile[22] = numChannels; // Number of channels
+  wavFile[23] = 0;
+  // Sample rate
+  wavFile[24] = sampleRate & 0xff;
+  wavFile[25] = (sampleRate >> 8) & 0xff;
+  wavFile[26] = (sampleRate >> 16) & 0xff;
+  wavFile[27] = (sampleRate >> 24) & 0xff;
+  // Byte rate
+  wavFile[28] = byteRate & 0xff;
+  wavFile[29] = (byteRate >> 8) & 0xff;
+  wavFile[30] = (byteRate >> 16) & 0xff;
+  wavFile[31] = (byteRate >> 24) & 0xff;
+  // Block align
+  wavFile[32] = blockAlign & 0xff;
+  wavFile[33] = (blockAlign >> 8) & 0xff;
+  // Bits per sample
+  wavFile[34] = bitsPerSample & 0xff;
+  wavFile[35] = (bitsPerSample >> 8) & 0xff;
+
+  // Data chunk
+  wavFile.set([0x64, 0x61, 0x74, 0x61], 36); // "data"
+  // Data size
+  wavFile[40] = dataSize & 0xff;
+  wavFile[41] = (dataSize >> 8) & 0xff;
+  wavFile[42] = (dataSize >> 16) & 0xff;
+  wavFile[43] = (dataSize >> 24) & 0xff;
+
+  // Add audio data
+  wavFile.set(audioBytes, 44);
+
+  return wavFile;
+}
+
+/**
+ * Create a WAV header for raw PCM audio data
+ * @param audioData Raw PCM audio data
+ * @param sampleRate Sample rate in Hz
+ * @param numChannels Number of audio channels (default: 1)
+ * @param bitsPerSample Bits per sample (default: 16)
+ * @returns Uint8Array containing the complete WAV file
+ */
+function createWavFile(
+  audioData: Uint8Array,
+  sampleRate: number,
+  numChannels = 1,
+  bitsPerSample = 16
+): Uint8Array {
+  // Calculate sizes
+  const dataSize = audioData.length;
+  const blockAlign = numChannels * (bitsPerSample / 8);
+  const byteRate = sampleRate * blockAlign;
+
+  // Create WAV header (44 bytes)
+  const headerSize = 44;
+  const wavFile = new Uint8Array(headerSize + dataSize);
+
+  // RIFF header
+  wavFile.set([0x52, 0x49, 0x46, 0x46]); // "RIFF"
+  // Chunk size (file size - 8)
+  const chunkSize = headerSize + dataSize - 8;
+  wavFile[4] = chunkSize & 0xff;
+  wavFile[5] = (chunkSize >> 8) & 0xff;
+  wavFile[6] = (chunkSize >> 16) & 0xff;
+  wavFile[7] = (chunkSize >> 24) & 0xff;
+  wavFile.set([0x57, 0x41, 0x56, 0x45], 8); // "WAVE"
+
+  // Format chunk
+  wavFile.set([0x66, 0x6d, 0x74, 0x20], 12); // "fmt "
+  wavFile[16] = 16; // Chunk size (16 for PCM)
+  wavFile[17] = 0;
+  wavFile[18] = 0;
+  wavFile[19] = 0;
+  wavFile[20] = 1; // Audio format (1 for PCM)
+  wavFile[21] = 0;
+  wavFile[22] = numChannels; // Number of channels
+  wavFile[23] = 0;
+  // Sample rate
+  wavFile[24] = sampleRate & 0xff;
+  wavFile[25] = (sampleRate >> 8) & 0xff;
+  wavFile[26] = (sampleRate >> 16) & 0xff;
+  wavFile[27] = (sampleRate >> 24) & 0xff;
+  // Byte rate
+  wavFile[28] = byteRate & 0xff;
+  wavFile[29] = (byteRate >> 8) & 0xff;
+  wavFile[30] = (byteRate >> 16) & 0xff;
+  wavFile[31] = (byteRate >> 24) & 0xff;
+  // Block align
+  wavFile[32] = blockAlign & 0xff;
+  wavFile[33] = (blockAlign >> 8) & 0xff;
+  // Bits per sample
+  wavFile[34] = bitsPerSample & 0xff;
+  wavFile[35] = (bitsPerSample >> 8) & 0xff;
+
+  // Data chunk
+  wavFile.set([0x64, 0x61, 0x74, 0x61], 36); // "data"
+  // Data size
+  wavFile[40] = dataSize & 0xff;
+  wavFile[41] = (dataSize >> 8) & 0xff;
+  wavFile[42] = (dataSize >> 16) & 0xff;
+  wavFile[43] = (dataSize >> 24) & 0xff;
+
+  // Add audio data
+  wavFile.set(audioData, 44);
+
+  return wavFile;
+}
+
+/**
+ * Check if audio data is raw PCM (no WAV header)
+ * @param audioBytes Audio data to check
+ * @returns True if the data appears to be raw PCM
+ */
+function isRawPCM(audioBytes: Uint8Array): boolean {
+  // Check if it's NOT a WAV file (doesn't start with RIFF header)
+  const hasRiffHeader =
+    audioBytes.length >= 4 &&
+    audioBytes[0] === 0x52 && // 'R'
+    audioBytes[1] === 0x49 && // 'I'
+    audioBytes[2] === 0x46 && // 'F'
+    audioBytes[3] === 0x46; // 'F'
+
+  return !hasRiffHeader;
 }
 
 /**
  * Play audio in Node.js
  * @param audioBytes Audio data as Uint8Array
+ * @param sampleRate Sample rate in Hz (default: 24000 for WitAI, 16000 for others)
+ * @param engineName Name of the TTS engine (used to determine if raw PCM conversion is needed)
  * @returns Promise that resolves when audio playback is complete
  */
 export async function playAudioInNode(
@@ -65,205 +355,183 @@ export async function playAudioInNode(
     throw new Error("This function can only be used in Node.js");
   }
 
-  // Try to require the necessary modules
-  let fs: any;
-  let os: any;
-  let path: any;
-  let soundPlay: any;
-  try {
-    fs = await dynamicRequire("node:fs");
-    os = await dynamicRequire("node:os");
-    path = await dynamicRequire("node:path");
-    soundPlay = await dynamicRequire("sound-play");
-  } catch (error) {
-    throw new Error(
-      `Failed to load required Node.js modules: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
-
-  // Create a temporary file to play
-  const tempDir = os.tmpdir();
-  const tempFile = path.join(tempDir, `tts-audio-${Date.now()}.wav`);
+  // Stop any currently playing audio
+  stopAudioPlayback();
 
   try {
-    // Check if audioBytes is a valid WAV file (has RIFF header)
-    const hasRiffHeader =
-      audioBytes.length >= 4 &&
-      audioBytes[0] === 0x52 && // 'R'
-      audioBytes[1] === 0x49 && // 'I'
-      audioBytes[2] === 0x46 && // 'F'
-      audioBytes[3] === 0x46; // 'F'
+    // Load required modules if not already loaded
+    if (!audioState.childProcess || !audioState.fs) {
+      audioState.childProcess = await import("node:child_process");
+      audioState.fs = await import("node:fs");
+    }
 
-    if (hasRiffHeader) {
-      // If we have a WAV file with a RIFF header, we need to check if the sample rate
-      // in the header matches the provided sample rate. If not, we need to update the header.
-      if (audioBytes.length >= 44) {
-        // Create a copy of the audio bytes
-        const updatedAudioBytes = new Uint8Array(audioBytes);
+    const os = await import("node:os");
+    const path = await import("node:path");
 
-        // Special handling for Polly audio
-        if (engineName === "polly") {
-          // For Polly, use the exact same sample rate as in the Python implementation (16000 Hz)
-          // This should match the Python implementation's wav.setparams((1, 2, 16000, 0, "NONE", "NONE"))
-          const pollyPlaybackRate = 16000;
+    // Create a temporary file to play
+    const tempDir = os.tmpdir();
+    const tempFile = path.join(tempDir, `tts-audio-${Date.now()}.wav`);
+    audioState.tempFile = tempFile;
 
-          // Update the sample rate in the WAV header (bytes 24-27)
-          updatedAudioBytes[24] = pollyPlaybackRate & 0xff;
-          updatedAudioBytes[25] = (pollyPlaybackRate >> 8) & 0xff;
-          updatedAudioBytes[26] = (pollyPlaybackRate >> 16) & 0xff;
-          updatedAudioBytes[27] = (pollyPlaybackRate >> 24) & 0xff;
+    // Determine if we need to add a WAV header
+    let finalAudioBytes = audioBytes;
 
-          // Update the byte rate in the WAV header (bytes 28-31)
-          // Byte rate = Sample rate * Num channels * Bits per sample / 8
-          const numChannels = updatedAudioBytes[22] | (updatedAudioBytes[23] << 8);
-          const bitsPerSample = updatedAudioBytes[34] | (updatedAudioBytes[35] << 8);
-          const byteRate = (pollyPlaybackRate * numChannels * bitsPerSample) / 8;
+    // Check if this is raw PCM data that needs a WAV header
+    if (isRawPCM(audioBytes)) {
+      // Determine sample rate based on engine
+      let actualSampleRate = sampleRate || 24000; // Default to WitAI's sample rate
 
-          updatedAudioBytes[28] = byteRate & 0xff;
-          updatedAudioBytes[29] = (byteRate >> 8) & 0xff;
-          updatedAudioBytes[30] = (byteRate >> 16) & 0xff;
-          updatedAudioBytes[31] = (byteRate >> 24) & 0xff;
-
-          // Write the updated audio bytes to the temp file
-          fs.writeFileSync(tempFile, Buffer.from(updatedAudioBytes));
-        } else if (sampleRate) {
-          // For other engines, use the provided sample rate
-          // Update the sample rate in the WAV header (bytes 24-27)
-          updatedAudioBytes[24] = sampleRate & 0xff;
-          updatedAudioBytes[25] = (sampleRate >> 8) & 0xff;
-          updatedAudioBytes[26] = (sampleRate >> 16) & 0xff;
-          updatedAudioBytes[27] = (sampleRate >> 24) & 0xff;
-
-          // Update the byte rate in the WAV header (bytes 28-31)
-          // Byte rate = Sample rate * Num channels * Bits per sample / 8
-          const numChannels = updatedAudioBytes[22] | (updatedAudioBytes[23] << 8);
-          const bitsPerSample = updatedAudioBytes[34] | (updatedAudioBytes[35] << 8);
-          const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
-
-          updatedAudioBytes[28] = byteRate & 0xff;
-          updatedAudioBytes[29] = (byteRate >> 8) & 0xff;
-          updatedAudioBytes[30] = (byteRate >> 16) & 0xff;
-          updatedAudioBytes[31] = (byteRate >> 24) & 0xff;
-
-          // Write the updated audio bytes to the temp file
-          fs.writeFileSync(tempFile, Buffer.from(updatedAudioBytes));
-        } else {
-          // Write audio bytes to temp file as is
-          fs.writeFileSync(tempFile, Buffer.from(audioBytes));
-        }
-      } else {
-        // Write audio bytes to temp file as is
-        fs.writeFileSync(tempFile, Buffer.from(audioBytes));
-      }
-    } else {
-      // Create a valid WAV file with the audio bytes as PCM data
-      // This is a minimal WAV file header for the audio data
-      // Use the provided sample rate or 24000 Hz as a default
-      // Different engines use different sample rates:
-      // - WitAI and many others: 24000 Hz
-      // - Polly PCM: 16000 Hz
-      // - Watson: 22050 Hz
-      let actualSampleRate = sampleRate || 24000;
-
-      // Special handling for Polly audio
-      if (engineName === "polly") {
-        // For Polly, use the exact same sample rate as in the Python implementation (16000 Hz)
-        // This should match the Python implementation's wav.setparams((1, 2, 16000, 0, "NONE", "NONE"))
+      if (engineName === "witai") {
+        actualSampleRate = 24000;
+      } else if (engineName === "polly") {
         actualSampleRate = 16000;
       }
-      const numChannels = 1;
-      const bitsPerSample = 16;
 
-      // Calculate sizes
-      const dataSize = audioBytes.length;
-      const blockAlign = numChannels * (bitsPerSample / 8);
-      const byteRate = actualSampleRate * blockAlign;
-
-      // Create WAV header
-      const headerSize = 44; // Standard WAV header size
-      const wavFile = new Uint8Array(headerSize + dataSize);
-
-      // RIFF header
-      wavFile.set([0x52, 0x49, 0x46, 0x46]); // "RIFF"
-      // Chunk size (file size - 8)
-      const chunkSize = headerSize + dataSize - 8;
-      wavFile[4] = chunkSize & 0xff;
-      wavFile[5] = (chunkSize >> 8) & 0xff;
-      wavFile[6] = (chunkSize >> 16) & 0xff;
-      wavFile[7] = (chunkSize >> 24) & 0xff;
-      wavFile.set([0x57, 0x41, 0x56, 0x45], 8); // "WAVE"
-
-      // Format chunk
-      wavFile.set([0x66, 0x6d, 0x74, 0x20], 12); // "fmt "
-      wavFile[16] = 16; // Chunk size (16 for PCM)
-      wavFile[17] = 0;
-      wavFile[18] = 0;
-      wavFile[19] = 0;
-      wavFile[20] = 1; // Audio format (1 for PCM)
-      wavFile[21] = 0;
-      wavFile[22] = numChannels; // Number of channels
-      wavFile[23] = 0;
-      // Sample rate
-      wavFile[24] = actualSampleRate & 0xff;
-      wavFile[25] = (actualSampleRate >> 8) & 0xff;
-      wavFile[26] = (actualSampleRate >> 16) & 0xff;
-      wavFile[27] = (actualSampleRate >> 24) & 0xff;
-      // Byte rate
-      wavFile[28] = byteRate & 0xff;
-      wavFile[29] = (byteRate >> 8) & 0xff;
-      wavFile[30] = (byteRate >> 16) & 0xff;
-      wavFile[31] = (byteRate >> 24) & 0xff;
-      // Block align
-      wavFile[32] = blockAlign & 0xff;
-      wavFile[33] = (blockAlign >> 8) & 0xff;
-      // Bits per sample
-      wavFile[34] = bitsPerSample & 0xff;
-      wavFile[35] = (bitsPerSample >> 8) & 0xff;
-
-      // Data chunk
-      wavFile.set([0x64, 0x61, 0x74, 0x61], 36); // "data"
-      // Data size
-      wavFile[40] = dataSize & 0xff;
-      wavFile[41] = (dataSize >> 8) & 0xff;
-      wavFile[42] = (dataSize >> 16) & 0xff;
-      wavFile[43] = (dataSize >> 24) & 0xff;
-
-      // Add audio data
-      wavFile.set(audioBytes, 44);
-
-      // Write WAV file
-      fs.writeFileSync(tempFile, Buffer.from(wavFile));
+      finalAudioBytes = createWavFile(audioBytes, actualSampleRate);
     }
 
-    try {
-      // Play the audio using sound-play
-      // Handle both CommonJS and ES module formats
-      if (typeof soundPlay.play === "function") {
-        await soundPlay.play(tempFile);
-      } else if (soundPlay.default && typeof soundPlay.default.play === "function") {
-        await soundPlay.default.play(tempFile);
-      } else {
-        throw new Error("sound-play module does not have a play function");
-      }
-    } finally {
-      // Clean up temp file
+    // Write the audio data to the temp file
+    audioState.fs.writeFileSync(tempFile, Buffer.from(finalAudioBytes));
+    console.log(`Audio saved to temporary file: ${tempFile}`);
+
+    // Determine which player to use based on platform
+    let command: string;
+    let args: string[];
+
+    const platform = process.platform;
+
+    if (platform === "darwin") {
+      // macOS
+      command = "afplay";
+      args = [tempFile];
+    } else if (platform === "win32") {
+      // Windows
+      command = "powershell";
+      args = ["-c", `(New-Object System.Media.SoundPlayer "${tempFile}").PlaySync()`];
+    } else {
+      // Linux and others - try to use aplay
+      command = "aplay";
+      args = ["-q", tempFile];
+    }
+
+    console.log(`Playing audio with ${command}...`);
+
+    return new Promise((resolve, reject) => {
       try {
-        fs.unlinkSync(tempFile);
-      } catch (_cleanupError) {
-        // Ignore cleanup errors
-      }
-    }
-  } catch (error) {
-    // Clean up temp file if it exists
-    try {
-      if (fs.existsSync(tempFile)) {
-        fs.unlinkSync(tempFile);
-      }
-    } catch (_cleanupError) {
-      // Ignore cleanup errors
-    }
+        // Spawn the process
+        const process = audioState.childProcess.spawn(command, args);
+        audioState.currentProcess = process;
+        audioState.isPlaying = true;
+        audioState.isPaused = false;
 
-    // Re-throw the original error
+        // Handle process events
+        process.on("close", (code: number) => {
+          console.log(`Audio playback process exited with code ${code}`);
+          cleanupTempFile();
+          audioState.currentProcess = null;
+          audioState.isPlaying = false;
+          audioState.isPaused = false;
+          resolve();
+        });
+
+        process.on("error", (err: Error) => {
+          console.error("Audio playback process error:", err);
+          cleanupTempFile();
+          audioState.currentProcess = null;
+          audioState.isPlaying = false;
+          audioState.isPaused = false;
+          reject(err);
+        });
+      } catch (error) {
+        console.error("Error starting audio playback:", error);
+        cleanupTempFile();
+        audioState.currentProcess = null;
+        audioState.isPlaying = false;
+        audioState.isPaused = false;
+        reject(error);
+      }
+    });
+  } catch (error) {
+    cleanupTempFile();
     throw error;
   }
+}
+
+/**
+ * Clean up temporary audio file
+ */
+function cleanupTempFile(): void {
+  if (audioState.tempFile && audioState.fs) {
+    try {
+      if (audioState.fs.existsSync(audioState.tempFile)) {
+        audioState.fs.unlinkSync(audioState.tempFile);
+      }
+    } catch (error) {
+      console.error("Error cleaning up temp file:", error);
+    }
+    audioState.tempFile = null;
+  }
+}
+
+/**
+ * Pause audio playback by stopping the current process
+ * @returns True if playback was paused, false otherwise
+ */
+export function pauseAudioPlayback(): boolean {
+  if (audioState.currentProcess && audioState.isPlaying && !audioState.isPaused) {
+    try {
+      // We'll implement pause by killing the process
+      // This is a simple approach that works across platforms
+      console.log("Pausing audio playback...");
+
+      if (audioState.currentProcess.kill) {
+        audioState.currentProcess.kill();
+        audioState.isPaused = true;
+        return true;
+      }
+    } catch (error) {
+      console.error("Error pausing audio playback:", error);
+    }
+  }
+  return false;
+}
+
+/**
+ * Resume audio playback is not supported in this implementation
+ * @returns Always false as resume is not supported
+ */
+export function resumeAudioPlayback(): boolean {
+  console.log("Resume not supported in the current implementation");
+  return false;
+}
+
+/**
+ * Stop audio playback
+ * @returns True if playback was stopped, false otherwise
+ */
+export function stopAudioPlayback(): boolean {
+  if (audioState.currentProcess && (audioState.isPlaying || audioState.isPaused)) {
+    try {
+      // Kill the audio playback process
+      if (audioState.currentProcess.kill) {
+        audioState.currentProcess.kill();
+      }
+
+      console.log("Stopped audio playback");
+
+      // Clean up
+      cleanupTempFile();
+      audioState.currentProcess = null;
+      audioState.isPlaying = false;
+      audioState.isPaused = false;
+      return true;
+    } catch (error) {
+      console.error("Error stopping audio playback:", error);
+      // Reset state even if there was an error
+      audioState.currentProcess = null;
+      audioState.isPlaying = false;
+      audioState.isPaused = false;
+    }
+  }
+  return false;
 }

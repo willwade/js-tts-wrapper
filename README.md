@@ -718,6 +718,42 @@ To enable Node.js audio playback:
 
 If the `sound-play` package is not installed, the library will fall back to providing informative messages and suggest installing the package.
 
+## Testing and Troubleshooting
+
+### Testing Audio Playback
+
+To test audio playback with any TTS engine, use the `PLAY_AUDIO` environment variable:
+
+```bash
+# Test a specific engine with audio playback
+PLAY_AUDIO=true node examples/test-engines.js [engine-name]
+
+# Examples:
+PLAY_AUDIO=true node examples/test-engines.js witai
+PLAY_AUDIO=true node examples/test-engines.js azure
+PLAY_AUDIO=true node examples/test-engines.js polly
+```
+
+### SherpaOnnx Specific Testing
+
+SherpaOnnx requires special environment setup. Use the helper script:
+
+```bash
+# Test SherpaOnnx with audio playback
+PLAY_AUDIO=true node scripts/run-with-sherpaonnx.cjs examples/test-engines.js sherpaonnx
+```
+
+### Common Issues
+
+1. **No Audio in Node.js**: Install audio dependencies with `npm install sound-play speaker pcm-convert`
+2. **SherpaOnnx Not Working**: Use the helper script and ensure environment variables are set correctly
+3. **WitAI Audio Issues**: The library automatically handles WitAI's raw PCM format conversion
+4. **Sample Rate Issues**: Different engines use different sample rates (WitAI: 24kHz, Polly: 16kHz) - this is handled automatically
+
+For detailed troubleshooting, see the [docs/](docs/) directory, especially:
+- [SherpaOnnx Documentation](docs/sherpaonnx.md)
+- [SherpaOnnx Troubleshooting](docs/sherpaonnx-troubleshooting.md)
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.

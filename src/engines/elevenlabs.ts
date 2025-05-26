@@ -10,7 +10,7 @@ const fetch = getFetch();
  * Extended options for ElevenLabs TTS
  */
 export interface ElevenLabsTTSOptions extends SpeakOptions {
-  format?: 'mp3' | 'wav'; // Define formats supported by this client logic (maps to pcm)
+  format?: "mp3" | "wav"; // Define formats supported by this client logic (maps to pcm)
 }
 
 /**
@@ -102,20 +102,22 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    * @returns Prepared text
    */
   private prepareText(text: string, options?: SpeakOptions): string {
+    let processedText = text;
+
     // Convert from Speech Markdown if requested
-    if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
+    if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
       // Convert to SSML first, then strip SSML tags
-      const ssml = SpeechMarkdown.toSSML(text);
-      text = this._stripSSML(ssml);
+      const ssml = SpeechMarkdown.toSSML(processedText);
+      processedText = this._stripSSML(ssml);
     }
 
     // If text is SSML, strip the tags as ElevenLabs doesn't support SSML
     // and has its own emotion analysis
-    if (this._isSSML(text)) {
-      text = this._stripSSML(text);
+    if (this._isSSML(processedText)) {
+      processedText = this._stripSSML(processedText);
     }
 
-    return text;
+    return processedText;
   }
 
   /**
@@ -124,10 +126,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Promise resolving to audio bytes
    */
-  async synthToBytes(
-    text: string,
-    options?: ElevenLabsTTSOptions
-  ): Promise<Uint8Array> {
+  async synthToBytes(text: string, options?: ElevenLabsTTSOptions): Promise<Uint8Array> {
     try {
       // Use voice from options or the default voice
       const voiceId = options?.voice || this.voiceId || "21m00Tcm4TlvDq8ikWAM"; // Default voice (Rachel)
@@ -281,12 +280,12 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       gender: undefined, // ElevenLabs doesn't provide gender
       languageCodes: [
         {
-          bcp47: voice.labels?.['accent'] || 'en-US',
-          iso639_3: (voice.labels?.['accent'] || 'en-US').split("-")[0] || "eng",
-          display: voice.labels?.['accent'] || "English",
+          bcp47: voice.labels?.accent || "en-US",
+          iso639_3: (voice.labels?.accent || "en-US").split("-")[0] || "eng",
+          display: voice.labels?.accent || "English",
         },
       ],
-      provider: 'elevenlabs',
+      provider: "elevenlabs",
     }));
   }
 

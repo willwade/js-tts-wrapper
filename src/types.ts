@@ -142,7 +142,7 @@ export type WordBoundary = {
    * Duration of the word being spoken, in milliseconds.
    */
   duration: number;
-}
+};
 
 /**
  * Detailed credentials check result
@@ -160,4 +160,4 @@ export type CredentialsCheckResult = {
    * Number of voices available if credentials are valid
    */
   voiceCount?: number;
-}
+};

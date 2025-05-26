@@ -15,8 +15,8 @@ export interface WitAITTSCredentials extends TTSCredentials {
  */
 export class WitAITTSClient extends AbstractTTSClient {
   private token: string;
-  private baseUrl: string = "https://api.wit.ai";
-  private apiVersion: string = "20240601";
+  private baseUrl = "https://api.wit.ai";
+  private apiVersion = "20240601";
   private headers: Record<string, string>;
   protected sampleRate = 24000; // Default sample rate for WitAI
 
@@ -33,8 +33,8 @@ export class WitAITTSClient extends AbstractTTSClient {
 
     this.token = credentials.token as string;
     this.headers = {
-      "Authorization": `Bearer ${this.token}`,
-      "Content-Type": "application/json"
+      Authorization: `Bearer ${this.token}`,
+      "Content-Type": "application/json",
     };
   }
 
@@ -44,13 +44,10 @@ export class WitAITTSClient extends AbstractTTSClient {
    */
   protected async _getVoices(): Promise<any[]> {
     try {
-      const response = await fetch(
-        `${this.baseUrl}/voices?v=${this.apiVersion}`,
-        {
-          method: "GET",
-          headers: this.headers,
-        }
-      );
+      const response = await fetch(`${this.baseUrl}/voices?v=${this.apiVersion}`, {
+        method: "GET",
+        headers: this.headers,
+      });
 
       if (!response.ok) {
         throw new Error(`Failed to fetch voices: ${response.statusText}`);
@@ -115,19 +112,21 @@ export class WitAITTSClient extends AbstractTTSClient {
    * @returns Prepared text
    */
   private prepareText(text: string, options?: SpeakOptions): string {
+    let processedText = text;
+
     // Check if the input is SpeechMarkdown and useSpeechMarkdown is enabled, convert it to plain text
-    if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
+    if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
       // Convert SpeechMarkdown to SSML first, then strip SSML tags
-      const ssml = SpeechMarkdown.toSSML(text);
-      text = SSMLUtils.stripSSML(ssml);
+      const ssml = SpeechMarkdown.toSSML(processedText);
+      processedText = SSMLUtils.stripSSML(ssml);
     }
 
     // If the input is SSML, convert it to plain text
-    if (SSMLUtils.isSSML(text)) {
-      text = SSMLUtils.stripSSML(text);
+    if (SSMLUtils.isSSML(processedText)) {
+      processedText = SSMLUtils.stripSSML(processedText);
     }
 
-    return text;
+    return processedText;
   }
 
   /**
@@ -137,9 +136,9 @@ export class WitAITTSClient extends AbstractTTSClient {
    */
   private getAcceptHeader(format?: string): string {
     const formats: Record<string, string> = {
-      "pcm": "audio/raw",
-      "mp3": "audio/mpeg",
-      "wav": "audio/wav",
+      pcm: "audio/raw",
+      mp3: "audio/mpeg",
+      wav: "audio/wav",
     };
 
     return formats[format || ""] || "audio/raw"; // Default to PCM if unspecified
@@ -176,29 +175,26 @@ export class WitAITTSClient extends AbstractTTSClient {
       // Set headers for audio format
       const headers = {
         ...this.headers,
-        "Accept": this.getAcceptHeader(format)
+        Accept: this.getAcceptHeader(format),
       };
 
       const data = {
         q: preparedText,
         voice: voice,
-        style: "default" // Add a default style
+        style: "default", // Add a default style
       };
 
       console.log("WitAI TTS Request:", {
         url: `${this.baseUrl}/synthesize?v=${this.apiVersion}`,
         headers: headers,
-        data: data
+        data: data,
       });
 
-      const response = await fetch(
-        `${this.baseUrl}/synthesize?v=${this.apiVersion}`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify(data),
-        }
-      );
+      const response = await fetch(`${this.baseUrl}/synthesize?v=${this.apiVersion}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(data),
+      });
 
       if (!response.ok) {
         // Try to get more detailed error information
@@ -207,7 +203,7 @@ export class WitAITTSClient extends AbstractTTSClient {
           const errorData = await response.text();
           console.error("WitAI TTS Error Response:", errorData);
           errorMessage += ` - ${errorData}`;
-        } catch (e) {
+        } catch (_e) {
           // Ignore error parsing error
         }
         throw new Error(errorMessage);
@@ -258,29 +254,26 @@ export class WitAITTSClient extends AbstractTTSClient {
       // Set headers for audio format
       const headers = {
         ...this.headers,
-        "Accept": this.getAcceptHeader(format)
+        Accept: this.getAcceptHeader(format),
       };
 
       const data = {
         q: preparedText,
         voice: voice,
-        style: "default" // Add a default style
+        style: "default", // Add a default style
       };
 
       console.log("WitAI TTS Bytestream Request:", {
         url: `${this.baseUrl}/synthesize?v=${this.apiVersion}`,
         headers: headers,
-        data: data
+        data: data,
       });
 
-      const response = await fetch(
-        `${this.baseUrl}/synthesize?v=${this.apiVersion}`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify(data),
-        }
-      );
+      const response = await fetch(`${this.baseUrl}/synthesize?v=${this.apiVersion}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(data),
+      });
 
       if (!response.ok) {
         // Try to get more detailed error information
@@ -289,7 +282,7 @@ export class WitAITTSClient extends AbstractTTSClient {
           const errorData = await response.text();
           console.error("WitAI TTS Bytestream Error Response:", errorData);
           errorMessage += ` - ${errorData}`;
-        } catch (e) {
+        } catch (_e) {
           // Ignore error parsing error
         }
         throw new Error(errorMessage);
@@ -340,5 +333,5 @@ export class WitAITTSClient extends AbstractTTSClient {
  * Extended options for WitAI TTS
  */
 export interface WitAITTSOptions extends SpeakOptions {
-  format?: 'mp3' | 'wav' | 'pcm';
+  format?: "mp3" | "wav" | "pcm";
 }

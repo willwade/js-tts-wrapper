@@ -1,4 +1,4 @@
-declare module 'espeak-ng' {
+declare module "espeak-ng" {
   export interface EspeakNgOptions {
     voice?: string;
     rate?: number;
@@ -12,10 +12,7 @@ declare module 'espeak-ng' {
     [key: string]: any;
   }
 
-  export function synthesize(
-    text: string,
-    options?: EspeakNgOptions
-  ): Promise<EspeakNgResult>;
+  export function synthesize(text: string, options?: EspeakNgOptions): Promise<EspeakNgResult>;
 
   const espeakng: {
     synthesize: typeof synthesize;
