@@ -23,6 +23,7 @@ import {
   PlayHTTTSClient,
   PollyTTSClient,
   SherpaOnnxTTSClient,
+  SherpaOnnxWasmTTSClient, // Add SherpaOnnx WASM client
   EspeakTTSClient, // Import Espeak normally from ESM
   WitAITTSClient
 } from "../dist/esm/index.js"; // Import from ESM index
@@ -252,6 +253,13 @@ async function runTests() {
       })
     },
     {
+      name: "sherpaonnx-wasm",
+      // Initialize SherpaOnnx WASM client (for Node.js testing)
+      factory: () => new SherpaOnnxWasmTTSClient({
+        wasmPath: process.env.SHERPAONNX_WASM_PATH || null
+      })
+    },
+    {
       name: "espeak",
       factory: () => new EspeakTTSClient() // Initialize espeak directly
     },
@@ -302,7 +310,8 @@ function parseArgs() {
     console.log('  openai         OpenAI TTS');
     console.log('  playht         PlayHT TTS');
     console.log('  polly          AWS Polly TTS');
-    console.log('  sherpaonnx     SherpaOnnx TTS');
+    console.log('  sherpaonnx     SherpaOnnx TTS (Node.js/Server)');
+    console.log('  sherpaonnx-wasm SherpaOnnx TTS (WebAssembly/Browser)');
     console.log('  espeak         eSpeak TTS');
     console.log('  witai          Wit.ai TTS');
     console.log('');
@@ -336,6 +345,7 @@ if (engineToTest) {
     { name: "playht", factory: () => new PlayHTTTSClient({ apiKey: process.env.PLAYHT_API_KEY || '', userId: process.env.PLAYHT_USER_ID || '' }) },
     { name: "polly", factory: () => new PollyTTSClient({ region: process.env.POLLY_REGION || '', accessKeyId: process.env.POLLY_AWS_KEY_ID || '', secretAccessKey: process.env.POLLY_AWS_ACCESS_KEY || '' }) },
     { name: "sherpaonnx", factory: () => new SherpaOnnxTTSClient({ noDefaultDownload: true, modelPath: process.env.SHERPAONNX_MODEL_PATH || null }) },
+    { name: "sherpaonnx-wasm", factory: () => new SherpaOnnxWasmTTSClient({ wasmPath: process.env.SHERPAONNX_WASM_PATH || null }) },
     { name: "espeak", factory: () => new EspeakTTSClient() },
     { name: "witai", factory: () => new WitAITTSClient({ token: process.env.WITAI_TOKEN || '' }) }
   ];
