@@ -68,7 +68,7 @@ npm install @aws-sdk/client-polly  # For AWS Polly
 npm install node-fetch@2  # For ElevenLabs and PlayHT
 npm install openai  # For OpenAI
 npm install sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream  # For SherpaOnnx
-npm install sound-play speaker pcm-convert  # For Node.js audio playback
+npm install sound-play pcm-convert  # For Node.js audio playback
 ```
 
 ### Using npm scripts
@@ -243,7 +243,7 @@ await tts.startPlaybackWithCallbacks('Hello world', (word, start, end) => {
 });
 ```
 
-> **Note**: Audio playback with `speak()` and `speakStreamed()` methods is supported in both browser environments and Node.js environments with the optional `sound-play` package installed. To enable Node.js audio playback, install the required packages with `npm install sound-play speaker pcm-convert` or use the npm script `npx js-tts-wrapper@latest run install:node-audio`.
+> **Note**: Audio playback with `speak()` and `speakStreamed()` methods is supported in both browser environments and Node.js environments with the optional `sound-play` package installed. To enable Node.js audio playback, install the required packages with `npm install sound-play pcm-convert` or use the npm script `npx js-tts-wrapper@latest run install:node-audio`.
 
 ### File Output
 
@@ -698,7 +698,7 @@ To enable Node.js audio playback:
 
 1. Install the required dependencies:
    ```bash
-   npm install sound-play speaker pcm-convert
+   npm install sound-play pcm-convert
    ```
 
    Or use the npm script:

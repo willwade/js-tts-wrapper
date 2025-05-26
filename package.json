@@ -82,9 +82,9 @@
     "pre-push": "npm run check",
     "install:deps": "echo 'Use npm install js-tts-wrapper[engine] instead. For example: npm install js-tts-wrapper[azure]'",
     "install:node-audio": "npm install sound-play",
-    "install:node-speaker": "npm install speaker pcm-convert",
+    "install:node-speaker": "npm install pcm-convert",
     "install:sherpaonnx": "npm install sherpa-onnx-node@^1.12.0 decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream",
-    "install:all-dev": "npm install openai @google-cloud/text-to-speech @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream sound-play speaker pcm-convert"
+    "install:all-dev": "npm install openai @google-cloud/text-to-speech @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream sound-play pcm-convert"
   },
   "keywords": [
     "tts",
@@ -118,12 +118,10 @@
     "lint-staged": "^15.5.0",
     "mock-fs": "^5.5.0",
     "pcm-convert": "^1.6.5",
-    "pcm-util": "^3.0.0",
     "rimraf": "^6.0.1",
     "rollup": "^4.39.0",
     "sinon": "^20.0.0",
     "sound-play": "^1.1.0",
-    "speaker": "^0.5.5",
     "speechmarkdown-js": "^2.1.0",
     "ts-jest": "^29.3.2",
     "tsc-alias": "^1.8.15",
@@ -133,25 +131,23 @@
     "ws": "^8.17.1"
   },
   "peerDependencies": {
-    "@aws-sdk/client-polly": "^3.799.0",
-
-    "@google-cloud/text-to-speech": "^6.0.1",
+    "@aws-sdk/client-polly": "^3.817.0",
+    "@google-cloud/text-to-speech": "^6.1.0",
     "decompress": "^4.2.1",
     "decompress-bzip2": "^4.0.0",
     "decompress-tarbz2": "^4.1.1",
     "decompress-targz": "^4.1.1",
-    "microsoft-cognitiveservices-speech-sdk": "^1.43.1",
-    "openai": "^4.97.0",
+    "microsoft-cognitiveservices-speech-sdk": "^1.44.0",
+    "openai": "^4.103.0",
     "pcm-convert": "^1.6.5",
+    "sherpa-onnx-node": "^1.12.0",
     "sound-play": "^1.1.0",
-    "speaker": "^0.5.4",
     "tar-stream": "^3.1.7"
   },
   "peerDependenciesMeta": {
     "@aws-sdk/client-polly": {
       "optional": true
     },
-
     "@google-cloud/text-to-speech": {
       "optional": true
     },
@@ -177,9 +173,6 @@
       "optional": true
     },
     "sound-play": {
-      "optional": true
-    },
-    "speaker": {
       "optional": true
     },
     "pcm-convert": {
@@ -211,7 +204,6 @@
     "witai": {},
     "node-audio": {
       "sound-play": "^1.1.0",
-      "speaker": "^0.5.4",
       "pcm-convert": "^1.6.5"
     },
     "sherpaonnx": {
@@ -241,7 +233,6 @@
       "decompress-targz": "^4.1.1",
       "tar-stream": "^3.1.7",
       "sound-play": "^1.1.0",
-      "speaker": "^0.5.4",
       "pcm-convert": "^1.6.5"
     }
   },
