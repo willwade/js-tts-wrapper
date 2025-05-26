@@ -880,13 +880,18 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         return this.convertToWav(mockSamples);
       }
 
+      // Calculate speed value - use much more conservative values for natural speech
+      const speedValue = this.properties.rate === "slow" ? 0.5 :
+                         this.properties.rate === "medium" ? 0.7 :
+                         this.properties.rate === "fast" ? 0.9 : 0.7;
+
+      console.log(`SherpaOnnx generating audio with speed: ${speedValue} (rate: ${this.properties.rate})`);
+
       // Generate audio using the real TTS engine
       const audio = this.tts.generate({
         text: plainText,
         sid: 0, // Default speaker ID
-        speed: this.properties.rate === "slow" ? 0.8 :
-               this.properties.rate === "medium" ? 1.0 :
-               this.properties.rate === "fast" ? 1.2 : 1.0,
+        speed: speedValue,
       }) as SherpaOnnxAudio;
 
       // Convert Float32Array to WAV format with proper header
@@ -941,13 +946,16 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         return { audioStream: emptyStream, wordBoundaries: [] };
       }
 
+      // Calculate speed value - use much more conservative values for natural speech
+      const speedValue = this.properties.rate === "slow" ? 0.5 :
+                         this.properties.rate === "medium" ? 0.7 :
+                         this.properties.rate === "fast" ? 0.9 : 0.7;
+
       // Generate audio using the TTS engine
       const result = this.tts.generate({
         text: plainText,
         sid: 0, // Default speaker ID
-        speed: this.properties.rate === "slow" ? 0.8 :
-               this.properties.rate === "medium" ? 1.0 :
-               this.properties.rate === "fast" ? 1.2 : 1.0,
+        speed: speedValue,
       });
 
       // Extract samples and word boundaries
