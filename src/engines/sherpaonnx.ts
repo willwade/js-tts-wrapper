@@ -637,12 +637,12 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
           // Provide helpful error message with instructions
           console.error("\nTo use SherpaOnnx TTS, you need to:");
-          console.error("1. Install the sherpa-onnx-node package: npm run install:sherpaonnx");
-          console.error("2. Run your application with the correct environment variables:");
-          console.error("   - On macOS: DYLD_LIBRARY_PATH=/path/to/node_modules/sherpa-onnx-darwin-arm64 node your-script.js");
-          console.error("   - On Linux: LD_LIBRARY_PATH=/path/to/node_modules/sherpa-onnx-linux-x64 node your-script.js");
-          console.error("   - On Windows: No special environment variable needed");
-          console.error("3. Or use the helper script: node scripts/run-with-sherpaonnx.cjs your-script.js");
+          console.error("1. Install the sherpa-onnx-node package:");
+          console.error("   npx js-tts-wrapper install sherpaonnx");
+          console.error("   OR: npm install sherpa-onnx-node@^1.12.0 decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream");
+          console.error("2. Ensure you're using Node.js 16+ (current version:", process.version, ")");
+          console.error("3. The library will automatically set environment variables for you");
+          console.error("4. If you still have issues, try the helper script: node scripts/run-with-sherpaonnx.cjs your-script.js");
 
           throw new Error(
             "SherpaOnnxTTSClient requires the 'sherpa-onnx-node' package to be installed for native TTS."

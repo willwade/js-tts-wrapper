@@ -54,7 +54,7 @@ export async function loadSherpaOnnxNode(): Promise<any> {
   if (!libraryPath) {
     throw new Error(
       "Could not find sherpa-onnx library directory. " +
-        "Please install the sherpa-onnx-node package with: npm run install:sherpaonnx"
+        "Please install the sherpa-onnx-node package with: npx js-tts-wrapper install sherpaonnx"
     );
   }
 
@@ -112,12 +112,11 @@ export async function loadSherpaOnnxNode(): Promise<any> {
     );
 
     console.error("\nTo use SherpaOnnx TTS, you need to:");
-    console.error("1. Install the sherpa-onnx-node package: npm run install:sherpaonnx");
-    console.error("2. Run your application with the correct environment variables:");
-    console.error(`   - On macOS: DYLD_LIBRARY_PATH=${libraryPath} node your-script.js`);
-    console.error("   - On Linux: LD_LIBRARY_PATH=/path/to/node_modules/sherpa-onnx-linux-x64 node your-script.js");
-    console.error("   - On Windows: No special environment variable needed");
-    console.error("3. Or use the helper script: node scripts/run-with-sherpaonnx.cjs your-script.js");
+    console.error("1. Install the sherpa-onnx-node package:");
+    console.error("   npx js-tts-wrapper install sherpaonnx");
+    console.error("2. Ensure you're using Node.js 16+ (current version:", process.version, ")");
+    console.error("3. The library will automatically set environment variables for you");
+    console.error("4. If you still have issues, try the helper script: node scripts/run-with-sherpaonnx.cjs your-script.js");
 
     throw new Error(
       "Could not load sherpa-onnx-node. " +
