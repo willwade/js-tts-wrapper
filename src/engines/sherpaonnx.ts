@@ -852,6 +852,16 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         plainText = this.stripSSML(plainText);
       }
 
+      // Ensure TTS is initialized before synthesis
+      if (!this.tts) {
+        // Try to initialize with default model if not already initialized
+        try {
+          await this.checkCredentials(); // This will initialize the TTS if possible
+        } catch (initError) {
+          console.warn("Failed to initialize SherpaOnnx TTS:", initError);
+        }
+      }
+
       if (!this.tts) {
         console.warn(
           "SherpaOnnx TTS is not initialized. Using mock implementation for example."
@@ -928,6 +938,16 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       let plainText = text;
       if (this._isSSML(plainText)) {
         plainText = this.stripSSML(plainText);
+      }
+
+      // Ensure TTS is initialized before synthesis
+      if (!this.tts) {
+        // Try to initialize with default model if not already initialized
+        try {
+          await this.checkCredentials(); // This will initialize the TTS if possible
+        } catch (initError) {
+          console.warn("Failed to initialize SherpaOnnx TTS:", initError);
+        }
       }
 
       // Handle case where TTS is not initialized (similar to synthToBytes)
