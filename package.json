@@ -1,6 +1,6 @@
 {
   "name": "js-tts-wrapper",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "A JavaScript/TypeScript library that provides a unified API for working with multiple cloud-based Text-to-Speech (TTS) services",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -81,10 +81,18 @@
     "prepare": "husky",
     "pre-push": "npm run check",
     "install:deps": "echo 'Use npm install js-tts-wrapper[engine] instead. For example: npm install js-tts-wrapper[azure]'",
+    "install:azure": "npm install @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk",
+    "install:google": "npm install @google-cloud/text-to-speech",
+    "install:polly": "npm install @aws-sdk/client-polly",
+    "install:openai": "npm install openai",
+    "install:elevenlabs": "npm install node-fetch@2",
+    "install:playht": "npm install node-fetch@2",
     "install:node-audio": "npm install sound-play",
     "install:node-speaker": "npm install pcm-convert",
     "install:sherpaonnx": "npm install sherpa-onnx-node@^1.12.0 decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream",
-    "install:all-dev": "npm install openai @google-cloud/text-to-speech @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream sound-play pcm-convert"
+    "install:espeak": "npm install text2wav",
+    "install:espeak-wasm": "npm install mespeak",
+    "install:all-dev": "npm install openai @google-cloud/text-to-speech @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream text2wav mespeak sound-play pcm-convert"
   },
   "keywords": [
     "tts",
@@ -137,12 +145,14 @@
     "decompress-bzip2": "^4.0.0",
     "decompress-tarbz2": "^4.1.1",
     "decompress-targz": "^4.1.1",
+    "mespeak": "^2.0.2",
     "microsoft-cognitiveservices-speech-sdk": "^1.44.0",
     "openai": "^4.103.0",
     "pcm-convert": "^1.6.5",
     "sherpa-onnx-node": "^1.12.0",
     "sound-play": "^1.1.0",
-    "tar-stream": "^3.1.7"
+    "tar-stream": "^3.1.7",
+    "text2wav": "^0.0.14"
   },
   "peerDependenciesMeta": {
     "@aws-sdk/client-polly": {
@@ -163,6 +173,9 @@
     "decompress-targz": {
       "optional": true
     },
+    "mespeak": {
+      "optional": true
+    },
     "microsoft-cognitiveservices-speech-sdk": {
       "optional": true
     },
@@ -179,6 +192,9 @@
       "optional": true
     },
     "tar-stream": {
+      "optional": true
+    },
+    "text2wav": {
       "optional": true
     }
   },
@@ -202,6 +218,12 @@
       "openai": "^4.93.0"
     },
     "witai": {},
+    "espeak": {
+      "text2wav": "^0.0.14"
+    },
+    "espeak-wasm": {
+      "mespeak": "^2.0.2"
+    },
     "node-audio": {
       "sound-play": "^1.1.0",
       "pcm-convert": "^1.6.5"
@@ -232,6 +254,8 @@
       "decompress-tarbz2": "^4.1.1",
       "decompress-targz": "^4.1.1",
       "tar-stream": "^3.1.7",
+      "text2wav": "^0.0.14",
+      "mespeak": "^2.0.2",
       "sound-play": "^1.1.0",
       "pcm-convert": "^1.6.5"
     }
@@ -250,6 +274,7 @@
     "@local/espeakng": "file:./wasm/espeakng",
     "aws-sdk": "^2.1638.0",
     "elevenlabs": "^0.6.0",
-    "sherpa-onnx-node": "^1.12.0"
+    "sherpa-onnx-node": "^1.12.0",
+    "text2wav": "^0.0.14"
   }
 }

@@ -1,15 +1,16 @@
 // Factory for TTS clients (browser/server compatible)
 import { AzureTTSClient } from "./engines/azure.js";
 import { ElevenLabsTTSClient } from "./engines/elevenlabs.js";
+import { EspeakWasmTTSClient } from "./engines/espeak-wasm.js";
+import { EspeakTTSClient } from "./engines/espeak.js";
 import { GoogleTTSClient } from "./engines/google.js";
 import { OpenAITTSClient } from "./engines/openai.js";
 import { PlayHTTTSClient } from "./engines/playht.js";
 import { PollyTTSClient } from "./engines/polly.js";
+import { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm.js";
+import { SherpaOnnxTTSClient } from "./engines/sherpaonnx.js";
 import { WatsonTTSClient } from "./engines/watson.js";
 import { WitAITTSClient } from "./engines/witai.js";
-import { SherpaOnnxTTSClient } from "./engines/sherpaonnx.js";
-import { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm.js";
-import { EspeakTTSClient } from "./engines/espeak.js";
 import type { TTSCredentials } from "./types";
 
 // Import MockTTSClient for testing
@@ -39,6 +40,7 @@ export type SupportedTTS =
   | "sherpaonnx"
   | "sherpaonnx-wasm"
   | "espeak"
+  | "espeak-wasm"
   | "mock";
 
 export function createTTSClient(engine: SupportedTTS, credentials?: TTSCredentials) {
@@ -67,6 +69,8 @@ export function createTTSClient(engine: SupportedTTS, credentials?: TTSCredentia
       return new SherpaOnnxWasmTTSClient(credentials as any);
     case "espeak":
       return new EspeakTTSClient(credentials as any);
+    case "espeak-wasm":
+      return new EspeakWasmTTSClient(credentials as any);
     case "mock":
       if (MockTTSClient) {
         return new MockTTSClient();

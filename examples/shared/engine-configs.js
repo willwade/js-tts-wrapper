@@ -36,6 +36,7 @@ export async function getEngineConfigs() {
     SherpaOnnxTTSClient,
     SherpaOnnxWasmTTSClient,
     EspeakTTSClient,
+    EspeakWasmTTSClient,
     WatsonTTSClient,
     WitAITTSClient
   } = await import("../../dist/esm/index.js");
@@ -112,7 +113,12 @@ export async function getEngineConfigs() {
     {
       name: "espeak",
       factory: () => new EspeakTTSClient(),
-      description: "eSpeak TTS"
+      description: "eSpeak TTS (Node.js)"
+    },
+    {
+      name: "espeak-wasm",
+      factory: () => new EspeakWasmTTSClient(),
+      description: "eSpeak TTS (WebAssembly/Browser)"
     },
     {
       name: "watson",
@@ -147,6 +153,7 @@ export function getEngineConfigsCJS() {
     PollyTTSClient,
     SherpaOnnxTTSClient,
     EspeakTTSClient,
+    EspeakWasmTTSClient,
     WatsonTTSClient,
     WitAITTSClient
   } = require('../../dist/cjs/index.js');
@@ -217,7 +224,12 @@ export function getEngineConfigsCJS() {
     {
       name: "espeak",
       factory: () => new EspeakTTSClient(),
-      description: "eSpeak TTS"
+      description: "eSpeak TTS (Node.js)"
+    },
+    {
+      name: "espeak-wasm",
+      factory: () => new EspeakWasmTTSClient(),
+      description: "eSpeak TTS (WebAssembly/Browser)"
     },
     {
       name: "watson",

@@ -7,8 +7,8 @@
 
 import { AbstractTTSClient } from "../core/abstract-tts";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
+import { fileSystem, isBrowser, isNode, pathUtils } from "../utils/environment";
 import { estimateWordBoundaries } from "../utils/word-timing-estimator";
-import { isBrowser, isNode, fileSystem, pathUtils } from "../utils/environment";
 
 // Add SherpaOnnx to the Window interface
 declare global {

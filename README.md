@@ -47,8 +47,10 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 | OpenAI | OpenAI | `openai` |
 | PlayHT | PlayHT | `node-fetch@2` (Node.js only) |
 | AWS Polly | Amazon Web Services | `@aws-sdk/client-polly` |
-| SherpaOnnx | k2-fsa/sherpa-onnx | `sherpa-onnx-node`, `decompress`, `decompress-bzip2`, `decompress-tarbz2`, `decompress-targz`, `tar-stream` |
-| eSpeak NG | eSpeak NG | None (WASM included) |
+| SherpaOnnx | k2-fsa/sherpa-onnx | `sherpa-onnx-node`, `decompress`, `decompress-bzip2`, `decompress-tarbz2`, `decompress-targz`, `tar-stream` (Node.js only) |
+| SherpaOnnx-WASM | k2-fsa/sherpa-onnx | None (WASM included, browser only) |
+| eSpeak NG | eSpeak NG | `text2wav` (Node.js only) |
+| eSpeak NG-WASM | eSpeak NG | `mespeak` (Node.js) or meSpeak.js (browser) |
 | WitAI | Wit.ai | None (uses fetch API) |
 
 ## Installation
@@ -68,6 +70,8 @@ npm install @aws-sdk/client-polly  # For AWS Polly
 npm install node-fetch@2  # For ElevenLabs and PlayHT
 npm install openai  # For OpenAI
 npm install sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream  # For SherpaOnnx
+npm install text2wav  # For eSpeak NG (Node.js)
+npm install mespeak  # For eSpeak NG-WASM (Node.js)
 npm install sound-play pcm-convert  # For Node.js audio playback
 ```
 
@@ -84,6 +88,12 @@ npx js-tts-wrapper@latest run install:azure
 
 # Install SherpaOnnx dependencies
 npx js-tts-wrapper@latest run install:sherpaonnx
+
+# Install eSpeak NG dependencies (Node.js)
+npx js-tts-wrapper@latest run install:espeak
+
+# Install eSpeak NG-WASM dependencies (Node.js)
+npx js-tts-wrapper@latest run install:espeak-wasm
 
 # Install Node.js audio playback dependencies
 npx js-tts-wrapper@latest run install:node-audio
@@ -191,7 +201,7 @@ async function runExample() {
 runExample().catch(console.error);
 ```
 
-The factory supports all engines: `'azure'`, `'google'`, `'polly'`, `'elevenlabs'`, `'openai'`, `'playht'`, `'watson'`, `'witai'`, etc.
+The factory supports all engines: `'azure'`, `'google'`, `'polly'`, `'elevenlabs'`, `'openai'`, `'playht'`, `'watson'`, `'witai'`, `'sherpaonnx'`, `'sherpaonnx-wasm'`, `'espeak'`, `'espeak-wasm'`, etc.
 
 ## Core Functionality
 
@@ -545,7 +555,7 @@ await tts.speak('Hello from SherpaOnnx!');
 
 > **Note**: SherpaOnnx is a server-side only engine and requires specific environment setup. See the [SherpaOnnx documentation](docs/sherpaonnx.md) for details on setup and configuration. For browser environments, use [SherpaOnnx-WASM](docs/sherpaonnx-wasm.md) instead.
 
-### eSpeak NG (WASM)
+### eSpeak NG (Node.js)
 
 #### ESM
 ```javascript
@@ -565,6 +575,31 @@ const tts = new EspeakTTSClient();
 // Inside an async function
 await tts.speak('Hello from eSpeak NG!');
 ```
+
+> **Note**: This engine uses the `text2wav` package and is designed for Node.js environments only. For browser environments, use the eSpeak NG-WASM engine instead.
+
+### eSpeak NG-WASM (Cross-platform)
+
+#### ESM
+```javascript
+import { EspeakWasmTTSClient } from 'js-tts-wrapper';
+
+const tts = new EspeakWasmTTSClient();
+
+await tts.speak('Hello from eSpeak NG WASM!');
+```
+
+#### CommonJS
+```javascript
+const { EspeakWasmTTSClient } = require('js-tts-wrapper');
+
+const tts = new EspeakWasmTTSClient();
+
+// Inside an async function
+await tts.speak('Hello from eSpeak NG WASM!');
+```
+
+> **Note**: This engine works in both Node.js (using the `mespeak` package) and browser environments (using meSpeak.js). For browser use, include meSpeak.js in your HTML before using this engine.
 
 ## API Reference
 
@@ -665,6 +700,8 @@ npm install @google-cloud/text-to-speech  # For Google TTS
 npm install @aws-sdk/client-polly  # For AWS Polly
 npm install openai  # For OpenAI TTS
 npm install sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream  # For SherpaOnnx TTS
+npm install text2wav  # For eSpeak NG (Node.js)
+npm install mespeak  # For eSpeak NG-WASM (Node.js)
 
 # Install dependencies for Node.js audio playback
 npm install sound-play speaker pcm-convert  # For audio playback in Node.js
@@ -682,6 +719,8 @@ npx js-tts-wrapper@latest run install:google
 npx js-tts-wrapper@latest run install:polly
 npx js-tts-wrapper@latest run install:openai
 npx js-tts-wrapper@latest run install:sherpaonnx
+npx js-tts-wrapper@latest run install:espeak
+npx js-tts-wrapper@latest run install:espeak-wasm
 
 # Install Node.js audio playback dependencies
 npx js-tts-wrapper@latest run install:node-audio

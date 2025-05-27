@@ -1,89 +1,67 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 
-// Dynamic require function - will be set up when needed in Node.js environment
-let customRequire: any = null;
-let text2wav: any = null;
+// Dynamic require/import for meSpeak
+let meSpeak: any = null;
 
-// Function to set up require in Node.js environment only
-async function setupRequire() {
-  if (customRequire) return customRequire;
+// Function to load meSpeak module
+async function loadMeSpeak() {
+  if (meSpeak) return meSpeak;
 
-  // Only set up require in Node.js environment
-  if (typeof window === "undefined") {
+  try {
+    if (typeof window !== "undefined") {
+      // Browser environment - meSpeak should be loaded globally
+      if ((window as any).meSpeak) {
+        meSpeak = (window as any).meSpeak;
+        return meSpeak;
+      }
+      throw new Error(
+        "meSpeak is not loaded. Please include meSpeak.js in your HTML or install the mespeak package."
+      );
+    }
+    // Node.js environment - try to require mespeak package
     const { createRequire } = await import("node:module");
-
-    // Determine the base path differently for ESM vs CJS contexts
     let base_path: string;
 
-    // Check if __filename is defined (indicates CJS context)
     // @ts-ignore - __filename is defined in CJS module scope
     if (typeof __filename !== "undefined") {
-      // CJS context
       // @ts-ignore - __filename is defined in CJS module scope
       base_path = __filename;
     }
-    // Check if import.meta is defined (indicates ESM context)
-    // Use 'else if' to prioritize __filename if both are somehow present
     // @ts-ignore - TS might complain about import.meta in CJS build target
     else if (typeof import.meta !== "undefined" && import.meta.url) {
-      // ESM context
       // @ts-ignore - TS might complain about import.meta in CJS build target
       base_path = import.meta.url;
     } else {
-      // Final fallback if neither context is easily determined
-      console.warn("Could not determine module context (ESM/CJS), falling back to '.'.");
       base_path = ".";
     }
 
-    // Create a require function using the determined base path
-    customRequire = createRequire(base_path);
-  } else {
-    // Browser environment - we'll need meSpeak.js for browser support
-    throw new Error(
-      "eSpeak TTS in browsers requires meSpeak.js. Please use a different TTS engine for browser environments or implement meSpeak.js integration."
-    );
-  }
-
-  return customRequire;
-}
-
-// Function to load text2wav module
-async function loadText2Wav() {
-  if (text2wav) return text2wav;
-
-  try {
-    const requireFn = await setupRequire();
-    text2wav = requireFn("text2wav");
-    return text2wav;
+    const customRequire = createRequire(base_path);
+    meSpeak = customRequire("mespeak");
+    return meSpeak;
   } catch (err) {
-    console.error("Error loading text2wav:", err);
-    throw new Error("text2wav package not found. Please install it with: npm install text2wav");
+    console.error("Error loading meSpeak:", err);
+    throw new Error("meSpeak package not found. Please install it with: npm install mespeak");
   }
 }
 
-// text2wav options interface
-interface Text2WavOptions {
+// meSpeak options interface
+interface MeSpeakOptions {
   voice?: string;
   amplitude?: number;
-  wordGap?: number;
-  capital?: number;
-  lineLength?: number;
+  wordgap?: number;
   pitch?: number;
   speed?: number;
-  encoding?: 1 | 2 | 4;
-  hasTags?: boolean;
-  noFinalPause?: boolean;
-  punct?: string | boolean;
+  variant?: string;
+  volume?: number;
+  rawdata?: boolean | string;
 }
 
 /**
- * eSpeak TTS Client (uses custom single-file espeak-ng build)
- *
- * TODO: Implement browser-side using speak.js WASM/asm.js
- * TODO: Implement Node.js using either child_process (native espeak) or speak.js
+ * eSpeak TTS client for browser environments using meSpeak.js
+ * This provides eSpeak functionality in browsers via WebAssembly
  */
-export class EspeakTTSClient extends AbstractTTSClient {
+export class EspeakWasmTTSClient extends AbstractTTSClient {
   constructor(credentials: TTSCredentials = {}) {
     super(credentials);
 
@@ -91,59 +69,57 @@ export class EspeakTTSClient extends AbstractTTSClient {
     this.voiceId = "en"; // Default English voice
   }
 
-  /**
-   * eSpeak does not require credentials in Node.js
-   */
-  async checkCredentials(): Promise<boolean> {
-    return true;
-  }
-
-  /**
-   * Synthesize text to audio bytes (Uint8Array)
-   * @param text Text to synthesize
-   * @param options Synthesis options
-   * @returns Promise resolving to audio bytes
-   */
   async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
     try {
-      // Load the text2wav module
-      const text2wavModule = await loadText2Wav();
+      // Load the meSpeak module
+      const meSpeakModule = await loadMeSpeak();
 
-      // Prepare options for text2wav
-      const text2wavOptions: Text2WavOptions = {};
+      // Prepare options for meSpeak
+      const meSpeakOptions: MeSpeakOptions = {
+        rawdata: true, // Get raw audio data instead of playing
+      };
 
       // Use voice from options or the default voice
       const voiceId = options?.voice || this.voiceId || "en";
-      text2wavOptions.voice = voiceId;
+      meSpeakOptions.voice = voiceId;
 
-      // Map other options to text2wav format
+      // Map other options to meSpeak format
       if (options?.rate) {
-        // text2wav uses speed in words per minute, default is 175
+        // meSpeak uses speed in words per minute, default is 175
         // Convert from rate (0.1-10) to WPM (50-400)
         const rateNum =
           typeof options.rate === "string" ? Number.parseFloat(options.rate) : options.rate;
         const rate = Math.max(0.1, Math.min(10, rateNum));
-        text2wavOptions.speed = Math.round(50 + ((rate - 0.1) * (400 - 50)) / (10 - 0.1));
+        meSpeakOptions.speed = Math.round(50 + ((rate - 0.1) * (400 - 50)) / (10 - 0.1));
       }
 
       if (options?.pitch) {
-        // text2wav uses pitch 0-99, default is 50
+        // meSpeak uses pitch 0-99, default is 50
         // Convert from pitch (0.1-2) to 0-99
         const pitchNum =
           typeof options.pitch === "string" ? Number.parseFloat(options.pitch) : options.pitch;
         const pitch = Math.max(0.1, Math.min(2, pitchNum));
-        text2wavOptions.pitch = Math.round(((pitch - 0.1) * 99) / (2 - 0.1));
+        meSpeakOptions.pitch = Math.round(((pitch - 0.1) * 99) / (2 - 0.1));
       }
 
-      // Call text2wav to generate audio
-      const audioBuffer = await text2wavModule(text, text2wavOptions);
-
-      // text2wav returns a Uint8Array, which is what we need
-      return audioBuffer;
+      // Call meSpeak to generate audio with a callback
+      return new Promise((resolve, reject) => {
+        meSpeakModule.speak(
+          text,
+          meSpeakOptions,
+          (success: boolean, _id: number, stream: ArrayBuffer) => {
+            if (success && stream) {
+              resolve(new Uint8Array(stream));
+            } else {
+              reject(new Error("Failed to synthesize speech with meSpeak"));
+            }
+          }
+        );
+      });
     } catch (err) {
-      console.error("eSpeak TTS synthesis error:", err);
+      console.error("eSpeak WASM TTS synthesis error:", err);
       throw new Error(
-        `Failed to synthesize speech with eSpeak: ${err instanceof Error ? err.message : String(err)}`
+        `Failed to synthesize speech with eSpeak WASM: ${err instanceof Error ? err.message : String(err)}`
       );
     }
   }
@@ -162,6 +138,7 @@ export class EspeakTTSClient extends AbstractTTSClient {
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
     const audioBytes = await this.synthToBytes(text, options);
+
     // "Fake" streaming by wrapping full audio in a ReadableStream
     const audioStream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -173,26 +150,26 @@ export class EspeakTTSClient extends AbstractTTSClient {
     return { audioStream, wordBoundaries: [] };
   }
 
-  // TODO: Add voice/language/rate/pitch options, browser WASM loader, etc.
-
   /**
-   * Return available voices for eSpeak
+   * Return available voices for eSpeak WASM
    */
   async _getVoices(): Promise<UnifiedVoice[]> {
-    // eSpeak supports many languages, here's a subset of common ones
-    // text2wav uses voice files from espeak-ng-data directory
+    // meSpeak supports many languages, here's a subset of common ones
     const commonVoices = [
       { id: "en", name: "English", language: "English" },
-      { id: "en+f3", name: "English (Female 3)", language: "English" },
-      { id: "en+m3", name: "English (Male 3)", language: "English" },
-      { id: "en+whisper", name: "English (Whisper)", language: "English" },
+      { id: "en-us", name: "English (US)", language: "English" },
+      { id: "en-rp", name: "English (RP)", language: "English" },
+      { id: "en-sc", name: "English (Scottish)", language: "English" },
       { id: "es", name: "Spanish", language: "Spanish" },
+      { id: "es-la", name: "Spanish (Latin America)", language: "Spanish" },
       { id: "fr", name: "French", language: "French" },
       { id: "de", name: "German", language: "German" },
       { id: "it", name: "Italian", language: "Italian" },
-      { id: "pt", name: "Portuguese", language: "Portuguese" },
+      { id: "pt", name: "Portuguese (Brazil)", language: "Portuguese" },
+      { id: "pt-pt", name: "Portuguese (European)", language: "Portuguese" },
       { id: "ru", name: "Russian", language: "Russian" },
       { id: "zh", name: "Chinese (Mandarin)", language: "Chinese" },
+      { id: "zh-yue", name: "Chinese (Cantonese)", language: "Chinese" },
       { id: "ja", name: "Japanese", language: "Japanese" },
       { id: "ko", name: "Korean", language: "Korean" },
       { id: "ar", name: "Arabic", language: "Arabic" },
@@ -213,12 +190,12 @@ export class EspeakTTSClient extends AbstractTTSClient {
 
     const voices: UnifiedVoice[] = commonVoices.map((voice) => ({
       id: voice.id,
-      name: `${voice.name} (eSpeak)`,
-      gender: "Unknown", // eSpeak doesn't typically provide gender info
+      name: `${voice.name} (eSpeak WASM)`,
+      gender: "Unknown", // meSpeak doesn't typically provide gender info
       provider: "espeak-ng",
       languageCodes: [
         {
-          bcp47: voice.id.split("+")[0], // Use the base language code
+          bcp47: voice.id.split("-")[0], // Use the base language code
           iso639_3: "", // Would need mapping
           display: voice.language,
         },
@@ -226,5 +203,43 @@ export class EspeakTTSClient extends AbstractTTSClient {
     }));
 
     return voices;
+  }
+
+  /**
+   * Check if credentials are valid (eSpeak doesn't need credentials)
+   */
+  async checkCredentials(): Promise<boolean> {
+    try {
+      await loadMeSpeak();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Get detailed credential validation info
+   */
+  async checkCredentialsAdvanced(): Promise<{
+    valid: boolean;
+    message: string;
+    details?: Record<string, any>;
+  }> {
+    try {
+      const meSpeakModule = await loadMeSpeak();
+      return {
+        valid: true,
+        message: "eSpeak WASM is available and ready to use",
+        details: {
+          version: meSpeakModule.version || "unknown",
+          environment: typeof window !== "undefined" ? "browser" : "node",
+        },
+      };
+    } catch (err) {
+      return {
+        valid: false,
+        message: `eSpeak WASM not available: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
   }
 }

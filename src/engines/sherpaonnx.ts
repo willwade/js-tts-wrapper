@@ -1,12 +1,12 @@
-import { AbstractTTSClient } from "../core/abstract-tts";
-import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import * as fs from "node:fs";
-import * as path from "node:path";
 import * as os from "node:os";
+import * as path from "node:path";
 // Import necessary modules for ESM path resolution
 // import { fileURLToPath } from 'url'; // No longer needed
 import decompress from "decompress";
 import decompressTarbz2 from "decompress-tarbz2";
+import { AbstractTTSClient } from "../core/abstract-tts";
+import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 
 // Capture native fetch at module level
 const nativeFetch = globalThis.fetch;
