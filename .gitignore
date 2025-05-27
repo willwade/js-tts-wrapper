@@ -56,3 +56,15 @@ aacspeakhelper-73ef9c911de3.json
 *.json.key
 *.p8
 *.pem
+
+# External dependencies and symlinks
+emsdk/
+espeak-ng/
+
+# Test files
+examples/test-browser-import.html
+
+# Documentation drafts
+docs/CREDENTIALS_ANALYSIS.md
+docs/CREDENTIALS_IMPLEMENTATION.md
+docs/sherpaonnx-troubleshooting.md
