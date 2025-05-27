@@ -97,7 +97,7 @@ beforeAll(async () => {
 
 describe("SherpaOnnxTTSClient", () => {
   let client: any; // Use 'any' because the class is loaded dynamically
-  let fetchSpy; 
+  let fetchSpy;
 
   beforeEach(() => {
     client = new SherpaOnnxTTSClient({});
@@ -112,13 +112,13 @@ describe("SherpaOnnxTTSClient", () => {
           description: "MMS English TTS model",
         },
     };
-    
+
     // Define the structure expected by fetch (Response object)
     const mockFetchResponse = {
         ok: true,
         statusText: "OK",
         // Use mockImplementation for the text method
-        text: jest.fn().mockImplementation(async () => JSON.stringify(mockFetchResponseData)), 
+        text: jest.fn().mockImplementation(async () => JSON.stringify(mockFetchResponseData)),
         // Add other methods like json() if necessary
         // json: jest.fn().mockResolvedValue(mockFetchResponseData),
     };
@@ -126,13 +126,16 @@ describe("SherpaOnnxTTSClient", () => {
     // Spy on global fetch and provide the mock implementation
     fetchSpy = jest.spyOn(global, 'fetch')
                    // Use mockImplementation to return a Promise resolving to the mock response
-                   .mockImplementation(async () => mockFetchResponse as any); 
+                   .mockImplementation(async () => mockFetchResponse as any);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     jest.clearAllMocks();
     // Restore the original fetch implementation
-    jest.restoreAllMocks(); 
+    jest.restoreAllMocks();
+
+    // Give any pending async operations time to complete
+    await new Promise(resolve => setTimeout(resolve, 100));
   });
 
   test("should initialize correctly", () => {
@@ -148,20 +151,26 @@ describe("SherpaOnnxTTSClient", () => {
   test("should set voice", async () => {
     await client.setVoice("mms_eng");
     expect(client.getProperty("voice")).toBe("mms_eng");
-  });
+    // Wait a bit to ensure any background operations complete
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }, 10000);
 
   test("should synthesize text to bytes", async () => {
     await client.setVoice("mms_eng");
     const bytes = await client.synthToBytes("Hello, world!");
     expect(bytes).toBeDefined();
     expect(bytes.length).toBeGreaterThan(0);
-  });
+    // Wait a bit to ensure any background operations complete
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }, 10000);
 
   test("should synthesize text to bytestream", async () => {
     await client.setVoice("mms_eng");
     const stream = await client.synthToBytestream("Hello, world!");
     expect(stream).toBeDefined();
-  });
+    // Wait a bit to ensure any background operations complete
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }, 10000);
 
   test("should synthesize text to bytestream with word boundaries", async () => {
     await client.setVoice("mms_eng");
@@ -176,18 +185,24 @@ describe("SherpaOnnxTTSClient", () => {
     } else {
       throw new Error("Expected result to have audioStream and wordBoundaries");
     }
-  });
+    // Wait a bit to ensure any background operations complete
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }, 10000);
 
   test("should strip SSML tags", async () => {
     await client.setVoice("mms_eng");
     const bytes = await client.synthToBytes("<speak>Hello, <break time='1s'/> world!</speak>");
     expect(bytes).toBeDefined();
     expect(bytes.length).toBeGreaterThan(0);
-  });
+    // Wait a bit to ensure any background operations complete
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }, 10000);
 
   test("should check credentials", async () => {
     await client.setVoice("mms_eng");
     const valid = await client.checkCredentials();
     expect(valid).toBe(true);
-  });
+    // Wait a bit to ensure any background operations complete
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }, 10000);
 });

@@ -668,24 +668,31 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         maxNumSentences: 1,
       };
 
-      // Log the config for debugging
-      console.log("SherpaOnnx TTS config:", JSON.stringify(config, null, 2));
-
-      // Log what sherpa contains
-      console.log("sherpa object keys:", Object.keys(sherpa));
+      // Log the config for debugging (only in non-test environments)
+      if (process.env.NODE_ENV !== "test") {
+        console.log("SherpaOnnx TTS config:", JSON.stringify(config, null, 2));
+        // Log what sherpa contains
+        console.log("sherpa object keys:", Object.keys(sherpa));
+      }
 
       // Handle different module export formats
       let OfflineTts = sherpa.OfflineTts;
       if (!OfflineTts && sherpa.default && sherpa.default.OfflineTts) {
-        console.log("Using sherpa.default.OfflineTts");
+        if (process.env.NODE_ENV !== "test") {
+          console.log("Using sherpa.default.OfflineTts");
+        }
         OfflineTts = sherpa.default.OfflineTts;
       } else if (OfflineTts) {
-        console.log("Using sherpa.OfflineTts");
+        if (process.env.NODE_ENV !== "test") {
+          console.log("Using sherpa.OfflineTts");
+        }
       } else {
-        console.log("sherpa.OfflineTts does not exist");
-        console.log("Available sherpa properties:", Object.keys(sherpa));
-        if (sherpa.default) {
-          console.log("Available sherpa.default properties:", Object.keys(sherpa.default));
+        if (process.env.NODE_ENV !== "test") {
+          console.log("sherpa.OfflineTts does not exist");
+          console.log("Available sherpa properties:", Object.keys(sherpa));
+          if (sherpa.default) {
+            console.log("Available sherpa.default properties:", Object.keys(sherpa.default));
+          }
         }
       }
 
@@ -695,9 +702,13 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
       // Create the TTS instance
       try {
-        console.log("Creating OfflineTts instance...");
+        if (process.env.NODE_ENV !== "test") {
+          console.log("Creating OfflineTts instance...");
+        }
         this.tts = new OfflineTts(config);
-        console.log("SherpaOnnx TTS initialized successfully");
+        if (process.env.NODE_ENV !== "test") {
+          console.log("SherpaOnnx TTS initialized successfully");
+        }
       } catch (instanceError) {
         console.error("Error creating OfflineTts instance:", instanceError);
         console.error(

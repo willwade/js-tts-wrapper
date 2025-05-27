@@ -165,8 +165,9 @@ engines.forEach((engineName) => {
       }
     });
 
-    afterAll(() => {
-      // No cleanup needed
+    afterAll(async () => {
+      // Give any pending async operations time to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
       client = null;
     });
 
