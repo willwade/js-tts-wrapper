@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real TTS Engine Browser Test</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 10px;
+    }
+
+    .warning {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      border-radius: 5px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    .warning h3 {
+      margin-top: 0;
+      color: #856404;
+    }
+
+    .test-section {
+      background: white;
+      margin-bottom: 20px;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      border-left: 4px solid #667eea;
+    }
+
+    .credentials {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+
+    .form-group input, .form-group textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .form-group textarea {
+      height: 80px;
+      resize: vertical;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #667eea;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-bottom: 10px;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #5a67d8;
+    }
+
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .btn-success {
+      background-color: #28a745;
+    }
+
+    .btn-success:hover {
+      background-color: #218838;
+    }
+
+    .btn-warning {
+      background-color: #ffc107;
+      color: #212529;
+    }
+
+    .btn-warning:hover {
+      background-color: #e0a800;
+    }
+
+    .status {
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .status-ready { background: #d4edda; color: #155724; }
+    .status-error { background: #f8d7da; color: #721c24; }
+    .status-testing { background: #fff3cd; color: #856404; }
+    .status-disabled { background: #e2e3e5; color: #6c757d; }
+
+    .log {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 5px;
+      padding: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+
+    .log-entry {
+      margin-bottom: 5px;
+      padding: 2px 0;
+    }
+
+    .log-timestamp {
+      color: #6c757d;
+      margin-right: 10px;
+    }
+
+    .log-info { color: #17a2b8; }
+    .log-success { color: #28a745; }
+    .log-warning { color: #ffc107; }
+    .log-error { color: #dc3545; }
+
+    .audio-player {
+      margin-top: 15px;
+    }
+
+    .audio-player audio {
+      width: 100%;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Real TTS Engine Browser Test</h1>
+    <p>Test actual cloud TTS engines in browser environment</p>
+  </div>
+
+  <div class="warning">
+    <h3>⚠️ CORS and Security Notice</h3>
+    <ul>
+      <li><strong>API Keys:</strong> Never expose production API keys in client-side code</li>
+      <li><strong>CORS:</strong> Some APIs may require CORS proxy or server-side implementation</li>
+      <li><strong>Testing:</strong> Use test/development API keys only</li>
+      <li><strong>Rate Limits:</strong> Be mindful of API rate limits during testing</li>
+    </ul>
+  </div>
+
+  <div class="test-section">
+    <h2>ElevenLabs TTS Engine</h2>
+    <div class="status status-disabled" id="elevenlabs-status">Not Initialized</div>
+
+    <div class="credentials">
+      <h3>Credentials</h3>
+      <div class="form-group">
+        <label for="elevenlabs-apikey">API Key:</label>
+        <input type="password" id="elevenlabs-apikey" placeholder="Enter your ElevenLabs API key">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="elevenlabs-text">Text to Synthesize:</label>
+      <textarea id="elevenlabs-text" placeholder="Enter text to convert to speech...">Hello, this is a test of ElevenLabs text-to-speech in the browser. How does it sound?</textarea>
+    </div>
+
+    <button onclick="initElevenLabs()">Initialize Engine</button>
+    <button onclick="testElevenLabs()" disabled id="test-elevenlabs">Test Synthesis</button>
+    <button onclick="listVoices()" disabled id="list-voices">List Voices</button>
+
+    <div class="audio-player hidden" id="elevenlabs-audio">
+      <audio controls></audio>
+    </div>
+
+    <div class="log" id="elevenlabs-log"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>OpenAI TTS Engine</h2>
+    <div class="status status-disabled" id="openai-status">Not Initialized</div>
+
+    <div class="credentials">
+      <h3>Credentials</h3>
+      <div class="form-group">
+        <label for="openai-apikey">API Key:</label>
+        <input type="password" id="openai-apikey" placeholder="Enter your OpenAI API key">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="openai-text">Text to Synthesize:</label>
+      <textarea id="openai-text" placeholder="Enter text to convert to speech...">Hello, this is a test of OpenAI text-to-speech in the browser. The voice quality is quite impressive.</textarea>
+    </div>
+
+    <button onclick="initOpenAI()">Initialize Engine</button>
+    <button onclick="testOpenAI()" disabled id="test-openai">Test Synthesis</button>
+    <button onclick="listOpenAIVoices()" disabled id="list-openai-voices">List Voices</button>
+
+    <div class="audio-player hidden" id="openai-audio">
+      <audio controls></audio>
+    </div>
+
+    <div class="log" id="openai-log"></div>
+  </div>
+
+  <script type="module">
+    import {
+      ElevenLabsTTSClient,
+      OpenAITTSClient,
+      isBrowser
+    } from '../dist/esm/browser.js';
+
+    console.log('Environment check - isBrowser:', isBrowser);
+
+    // Global state
+    window.elevenLabsClient = null;
+    window.openaiClient = null;
+
+    // ElevenLabs functions
+    window.initElevenLabs = async () => {
+      try {
+        updateStatus('elevenlabs', 'testing', 'Initializing...');
+        logToEngine('elevenlabs', 'info', 'Starting ElevenLabs initialization...');
+
+        const apiKey = document.getElementById('elevenlabs-apikey').value.trim();
+        if (!apiKey) {
+          throw new Error('API Key is required');
+        }
+
+        // Create client
+        window.elevenLabsClient = new ElevenLabsTTSClient({ apiKey });
+
+        // Set up event listeners
+        window.elevenLabsClient.on('start', () => logToEngine('elevenlabs', 'info', 'Playback started'));
+        window.elevenLabsClient.on('end', () => logToEngine('elevenlabs', 'info', 'Playback ended'));
+        window.elevenLabsClient.on('error', (error) => logToEngine('elevenlabs', 'error', `Error: ${error.message}`));
+
+        // Check credentials
+        logToEngine('elevenlabs', 'info', 'Checking credentials...');
+        const credentialsValid = await window.elevenLabsClient.checkCredentials();
+        if (!credentialsValid) {
+          throw new Error('Invalid API credentials');
+        }
+
+        logToEngine('elevenlabs', 'success', 'Credentials validated successfully');
+
+        // Get voices
+        logToEngine('elevenlabs', 'info', 'Loading available voices...');
+        const voices = await window.elevenLabsClient.getVoices();
+        logToEngine('elevenlabs', 'success', `Found ${voices.length} voices`);
+
+        if (voices.length > 0) {
+          const voice = voices[0];
+          logToEngine('elevenlabs', 'info', `Using voice: ${voice.name} (${voice.id})`);
+        }
+
+        // Enable buttons
+        document.getElementById('test-elevenlabs').disabled = false;
+        document.getElementById('list-voices').disabled = false;
+        updateStatus('elevenlabs', 'ready', 'Ready');
+        logToEngine('elevenlabs', 'success', 'ElevenLabs engine initialized successfully!');
+
+      } catch (error) {
+        logToEngine('elevenlabs', 'error', `Initialization failed: ${error.message}`);
+        updateStatus('elevenlabs', 'error', 'Error');
+        console.error('ElevenLabs init error:', error);
+      }
+    };
+
+    window.testElevenLabs = async () => {
+      if (!window.elevenLabsClient) {
+        logToEngine('elevenlabs', 'error', 'Engine not initialized');
+        return;
+      }
+
+      try {
+        updateStatus('elevenlabs', 'testing', 'Synthesizing...');
+
+        const text = document.getElementById('elevenlabs-text').value.trim();
+        if (!text) {
+          throw new Error('Please enter text to synthesize');
+        }
+
+        logToEngine('elevenlabs', 'info', `Synthesizing: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
+
+        // Synthesize
+        const audioData = await window.elevenLabsClient.synthToBytes(text, { format: 'mp3' });
+        logToEngine('elevenlabs', 'success', `Generated ${audioData.length} bytes of audio`);
+
+        // Play audio
+        await playAudio('elevenlabs', audioData, 'mp3');
+
+        updateStatus('elevenlabs', 'ready', 'Ready');
+
+      } catch (error) {
+        logToEngine('elevenlabs', 'error', `Synthesis failed: ${error.message}`);
+        updateStatus('elevenlabs', 'error', 'Error');
+        console.error('ElevenLabs synthesis error:', error);
+      }
+    };
+
+    window.listVoices = async () => {
+      if (!window.elevenLabsClient) {
+        logToEngine('elevenlabs', 'error', 'Engine not initialized');
+        return;
+      }
+
+      try {
+        logToEngine('elevenlabs', 'info', 'Fetching voice list...');
+        const voices = await window.elevenLabsClient.getVoices();
+
+        logToEngine('elevenlabs', 'success', `Available voices (${voices.length}):`);
+        voices.slice(0, 10).forEach((voice, index) => {
+          logToEngine('elevenlabs', 'info', `  ${index + 1}. ${voice.name} (${voice.id})`);
+        });
+
+        if (voices.length > 10) {
+          logToEngine('elevenlabs', 'info', `  ... and ${voices.length - 10} more voices`);
+        }
+
+      } catch (error) {
+        logToEngine('elevenlabs', 'error', `Failed to fetch voices: ${error.message}`);
+        console.error('ElevenLabs voices error:', error);
+      }
+    };
+
+    // OpenAI functions
+    window.initOpenAI = async () => {
+      try {
+        updateStatus('openai', 'testing', 'Initializing...');
+        logToEngine('openai', 'info', 'Starting OpenAI initialization...');
+
+        const apiKey = document.getElementById('openai-apikey').value.trim();
+        if (!apiKey) {
+          throw new Error('API Key is required');
+        }
+
+        // Create client
+        window.openaiClient = new OpenAITTSClient({ apiKey });
+
+        // Set up event listeners
+        window.openaiClient.on('start', () => logToEngine('openai', 'info', 'Playback started'));
+        window.openaiClient.on('end', () => logToEngine('openai', 'info', 'Playback ended'));
+        window.openaiClient.on('error', (error) => logToEngine('openai', 'error', `Error: ${error.message}`));
+
+        // Check credentials
+        logToEngine('openai', 'info', 'Checking credentials...');
+        const credentialsValid = await window.openaiClient.checkCredentials();
+        if (!credentialsValid) {
+          throw new Error('Invalid API credentials');
+        }
+
+        logToEngine('openai', 'success', 'Credentials validated successfully');
+
+        // Get voices
+        logToEngine('openai', 'info', 'Loading available voices...');
+        const voices = await window.openaiClient.getVoices();
+        logToEngine('openai', 'success', `Found ${voices.length} voices`);
+
+        if (voices.length > 0) {
+          const voice = voices[0];
+          logToEngine('openai', 'info', `Using voice: ${voice.name} (${voice.id})`);
+        }
+
+        // Enable buttons
+        document.getElementById('test-openai').disabled = false;
+        document.getElementById('list-openai-voices').disabled = false;
+        updateStatus('openai', 'ready', 'Ready');
+        logToEngine('openai', 'success', 'OpenAI engine initialized successfully!');
+
+      } catch (error) {
+        logToEngine('openai', 'error', `Initialization failed: ${error.message}`);
+        updateStatus('openai', 'error', 'Error');
+        console.error('OpenAI init error:', error);
+      }
+    };
+
+    window.testOpenAI = async () => {
+      if (!window.openaiClient) {
+        logToEngine('openai', 'error', 'Engine not initialized');
+        return;
+      }
+
+      try {
+        updateStatus('openai', 'testing', 'Synthesizing...');
+
+        const text = document.getElementById('openai-text').value.trim();
+        if (!text) {
+          throw new Error('Please enter text to synthesize');
+        }
+
+        logToEngine('openai', 'info', `Synthesizing: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
+
+        // Synthesize
+        const audioData = await window.openaiClient.synthToBytes(text, { format: 'mp3' });
+        logToEngine('openai', 'success', `Generated ${audioData.length} bytes of audio`);
+
+        // Play audio
+        await playAudio('openai', audioData, 'mp3');
+
+        updateStatus('openai', 'ready', 'Ready');
+
+      } catch (error) {
+        logToEngine('openai', 'error', `Synthesis failed: ${error.message}`);
+        updateStatus('openai', 'error', 'Error');
+        console.error('OpenAI synthesis error:', error);
+      }
+    };
+
+    window.listOpenAIVoices = async () => {
+      if (!window.openaiClient) {
+        logToEngine('openai', 'error', 'Engine not initialized');
+        return;
+      }
+
+      try {
+        logToEngine('openai', 'info', 'Fetching voice list...');
+        const voices = await window.openaiClient.getVoices();
+
+        logToEngine('openai', 'success', `Available voices (${voices.length}):`);
+        voices.forEach((voice, index) => {
+          logToEngine('openai', 'info', `  ${index + 1}. ${voice.name} (${voice.id})`);
+        });
+
+      } catch (error) {
+        logToEngine('openai', 'error', `Failed to fetch voices: ${error.message}`);
+        console.error('OpenAI voices error:', error);
+      }
+    };
+
+    // Utility functions
+    async function playAudio(engineId, audioData, format) {
+      try {
+        // Create blob and URL
+        const mimeType = format === 'mp3' ? 'audio/mpeg' : 'audio/wav';
+        const blob = new Blob([audioData], { type: mimeType });
+        const audioUrl = URL.createObjectURL(blob);
+
+        // Show audio player
+        const audioContainer = document.getElementById(`${engineId}-audio`);
+        const audioElement = audioContainer.querySelector('audio');
+        audioElement.src = audioUrl;
+        audioContainer.classList.remove('hidden');
+
+        logToEngine(engineId, 'success', 'Audio ready for playback');
+
+        // Auto-play
+        try {
+          await audioElement.play();
+          logToEngine(engineId, 'success', 'Audio playback started');
+        } catch (playError) {
+          logToEngine(engineId, 'warning', 'Auto-play blocked by browser. Click play button to hear audio.');
+        }
+
+        // Clean up URL after playback
+        audioElement.addEventListener('ended', () => {
+          URL.revokeObjectURL(audioUrl);
+          logToEngine(engineId, 'info', 'Audio playback finished');
+        });
+
+      } catch (error) {
+        logToEngine(engineId, 'error', `Audio playback failed: ${error.message}`);
+      }
+    }
+
+    function updateStatus(engineId, status, text) {
+      const statusElement = document.getElementById(`${engineId}-status`);
+      if (statusElement) {
+        statusElement.className = `status status-${status}`;
+        statusElement.textContent = text;
+      }
+    }
+
+    function logToEngine(engineId, level, message) {
+      const logContainer = document.getElementById(`${engineId}-log`);
+      if (!logContainer) return;
+
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log-entry';
+      logEntry.innerHTML = `
+        <span class="log-timestamp">[${timestamp}]</span>
+        <span class="log-${level}">${message}</span>
+      `;
+
+      logContainer.appendChild(logEntry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    // Initialize
+    console.log('Real TTS engine browser test ready');
+    logToEngine('elevenlabs', 'info', 'ElevenLabs engine ready for initialization');
+    logToEngine('openai', 'info', 'OpenAI engine ready for initialization');
+  </script>
+</body>
+</html>

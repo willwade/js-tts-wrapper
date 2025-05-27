@@ -31,6 +31,9 @@ export class AzureTTSClient extends AbstractTTSClient {
     // Type assertion is safe here due to the AzureTTSCredentials interface
     this.subscriptionKey = credentials.subscriptionKey as string;
     this.region = credentials.region as string;
+
+    // Set a default voice for Azure TTS
+    this.voiceId = "en-US-AriaNeural";
   }
 
   /**
@@ -139,7 +142,7 @@ export class AzureTTSClient extends AbstractTTSClient {
 
     // Attempt to load SDK if needed for word boundaries in Node.js
     let sdkInstance: any = null;
-    if (useWordBoundary && typeof window === "undefined") { 
+    if (useWordBoundary && typeof window === "undefined") {
       sdkInstance = await this.loadSDK();
     }
 
@@ -173,7 +176,7 @@ export class AzureTTSClient extends AbstractTTSClient {
     // @ts-ignore - Suppress module not found error for SDK types during build
     this.sdkLoadingPromise = import("microsoft-cognitiveservices-speech-sdk")
       .then(sdkModule => {
-        this.sdk = sdkModule; 
+        this.sdk = sdkModule;
         this.sdkLoadingPromise = null; // Reset promise after successful load
         console.log("Microsoft Speech SDK loaded successfully.");
         return this.sdk;
@@ -468,14 +471,14 @@ export class AzureTTSClient extends AbstractTTSClient {
     // Use voice from options or the default voice
     const voiceId = options?.voice || this.voiceId;
 
-    // Add voice selection if a voice is set
-    if (voiceId) {
-      // Insert voice tag after <speak> tag
-      ssml = ssml.replace(
-        "<speak",
-        `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${this.lang}"`
-      );
+    // Always add the required SSML attributes for Azure
+    ssml = ssml.replace(
+      "<speak",
+      `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${this.lang}"`
+    );
 
+    // Add voice selection if a voice is set (should always be true now)
+    if (voiceId) {
       // Insert voice tag before the content
       ssml = ssml.replace(">", `><voice name="${voiceId}">`);
 

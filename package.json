@@ -41,7 +41,7 @@
     "build": "npm run build:cjs && npm run build:esm && npm run build:browser && npm run fix:cjs-imports",
     "build:cjs": "node scripts/generate-models-ts.cjs && tsc -p tsconfig.cjs.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
     "build:esm": "node scripts/generate-models-ts.cjs && tsc -p tsconfig.esm.json && tsc-alias -p tsconfig.esm.json && tsc-esm-fix --target=dist/esm --ext=.js --dirnameVar --filenameVar --sourceMap",
-    "build:browser": "tsc -p tsconfig.browser.json",
+    "build:browser": "cp dist/esm/browser.js dist/browser.js && cp dist/esm/browser.d.ts dist/browser.d.ts",
     "build:bundle": "rollup -c rollup.config.js",
     "fix:cjs-imports": "node scripts/fix-cjs-imports.js",
     "dev": "tsc --watch",

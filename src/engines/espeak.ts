@@ -1,32 +1,50 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
-import { createRequire } from "node:module";
 
-// Determine the base path differently for ESM vs CJS contexts
-let base_path: string;
+// Dynamic require function - will be set up when needed in Node.js environment
+let customRequire: any = null;
 
-// Check if __filename is defined (indicates CJS context)
-// @ts-ignore - __filename is defined in CJS module scope
-if (typeof __filename !== "undefined") {
-  // CJS context
-  // @ts-ignore - __filename is defined in CJS module scope
-  base_path = __filename;
+// Function to set up require in Node.js environment only
+async function setupRequire() {
+  if (customRequire) return customRequire;
+
+  // Only set up require in Node.js environment
+  if (typeof window === "undefined") {
+    const { createRequire } = await import("node:module");
+
+    // Determine the base path differently for ESM vs CJS contexts
+    let base_path: string;
+
+    // Check if __filename is defined (indicates CJS context)
+    // @ts-ignore - __filename is defined in CJS module scope
+    if (typeof __filename !== "undefined") {
+      // CJS context
+      // @ts-ignore - __filename is defined in CJS module scope
+      base_path = __filename;
+    }
+    // Check if import.meta is defined (indicates ESM context)
+    // Use 'else if' to prioritize __filename if both are somehow present
+    // @ts-ignore - TS might complain about import.meta in CJS build target
+    else if (typeof import.meta !== "undefined" && import.meta.url) {
+      // ESM context
+      // @ts-ignore - TS might complain about import.meta in CJS build target
+      base_path = import.meta.url;
+    } else {
+      // Final fallback if neither context is easily determined
+      console.warn("Could not determine module context (ESM/CJS), falling back to '.'.");
+      base_path = ".";
+    }
+
+    // Create a require function using the determined base path
+    customRequire = createRequire(base_path);
+  } else {
+    throw new Error(
+      "eSpeak TTS is not supported in browser environments yet. Use eSpeak WASM build instead."
+    );
+  }
+
+  return customRequire;
 }
-// Check if import.meta is defined (indicates ESM context)
-// Use 'else if' to prioritize __filename if both are somehow present
-// @ts-ignore - TS might complain about import.meta in CJS build target
-else if (typeof import.meta !== "undefined" && import.meta.url) {
-  // ESM context
-  // @ts-ignore - TS might complain about import.meta in CJS build target
-  base_path = import.meta.url;
-} else {
-  // Final fallback if neither context is easily determined
-  console.warn("Could not determine module context (ESM/CJS), falling back to '.'.");
-  base_path = ".";
-}
-
-// Create a require function using the determined base path
-const customRequire = createRequire(base_path);
 
 // Define the expected shape of the module returned by the factory
 interface EspeakNGModule {
@@ -71,8 +89,10 @@ export class EspeakTTSClient extends AbstractTTSClient {
     // Use custom-built espeak-ng WASM/JS for both Node.js and browser
     let EspeakModule: EspeakNGFactory;
     try {
+      // Set up require function for Node.js environment
+      const requireFn = await setupRequire();
       // Require the single-file custom build using the correct relative path from dist/
-      EspeakModule = customRequire("../../../wasm/espeakng/espeakng.js");
+      EspeakModule = requireFn("../../../wasm/espeakng/espeakng.js");
     } catch (err) {
       console.error("Error importing custom espeakng build:", err);
       throw new Error(
@@ -162,8 +182,10 @@ export class EspeakTTSClient extends AbstractTTSClient {
   async _getVoices(): Promise<UnifiedVoice[]> {
     let EspeakModule: EspeakNGFactory;
     try {
+      // Set up require function for Node.js environment
+      const requireFn = await setupRequire();
       // Require the single-file custom build using the correct relative path from dist/
-      EspeakModule = customRequire("../../../wasm/espeakng/espeakng.js");
+      EspeakModule = requireFn("../../../wasm/espeakng/espeakng.js");
     } catch (err) {
       console.error("Error importing custom espeakng build:", err);
       throw new Error(

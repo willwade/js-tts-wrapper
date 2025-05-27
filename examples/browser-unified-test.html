@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JS TTS Wrapper - Unified Browser Test Runner</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 10px;
+    }
+
+    .controls {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .engine-section {
+      background: white;
+      margin-bottom: 20px;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      border-left: 4px solid #667eea;
+    }
+
+    .engine-section.disabled {
+      opacity: 0.6;
+      border-left-color: #ccc;
+    }
+
+    .engine-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .engine-title {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .engine-status {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8em;
+      font-weight: bold;
+    }
+
+    .status-ready { background: #d4edda; color: #155724; }
+    .status-error { background: #f8d7da; color: #721c24; }
+    .status-testing { background: #fff3cd; color: #856404; }
+    .status-disabled { background: #e2e3e5; color: #6c757d; }
+
+    .credentials-section {
+      margin-bottom: 15px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 5px;
+    }
+
+    .form-group {
+      margin-bottom: 10px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .form-group textarea {
+      height: 80px;
+      resize: vertical;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+    }
+
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+
+    .btn-primary {
+      background-color: #007bff;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #0056b3;
+    }
+
+    .btn-success {
+      background-color: #28a745;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background-color: #1e7e34;
+    }
+
+    .btn-warning {
+      background-color: #ffc107;
+      color: #212529;
+    }
+
+    .btn-warning:hover {
+      background-color: #e0a800;
+    }
+
+    .btn-danger {
+      background-color: #dc3545;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background-color: #c82333;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .log {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .log-entry {
+      margin-bottom: 5px;
+      padding: 2px 0;
+    }
+
+    .log-timestamp {
+      color: #6c757d;
+      margin-right: 10px;
+    }
+
+    .log-info { color: #17a2b8; }
+    .log-success { color: #28a745; }
+    .log-warning { color: #ffc107; }
+    .log-error { color: #dc3545; }
+
+    .format-selector {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .format-selector label {
+      margin: 0 !important;
+      font-weight: normal;
+    }
+
+    .audio-player {
+      margin-top: 10px;
+    }
+
+    .audio-player audio {
+      width: 100%;
+    }
+
+    .global-controls {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .global-controls button {
+      margin: 0 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+
+    .info-box {
+      background: #e7f3ff;
+      border: 1px solid #b3d9ff;
+      border-radius: 5px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    .info-box h3 {
+      margin-top: 0;
+      color: #0066cc;
+    }
+
+    .info-box ul {
+      margin-bottom: 0;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>JS TTS Wrapper - Unified Browser Test Runner</h1>
+    <p>Test TTS engines in browser environment with real-time audio playback</p>
+  </div>
+
+  <div class="info-box">
+    <h3>Browser Testing Information</h3>
+    <ul>
+      <li><strong>Environment:</strong> Browser-based testing with Web Audio API</li>
+      <li><strong>CORS:</strong> Some engines may require CORS proxy for API calls</li>
+      <li><strong>API Keys:</strong> Enter your credentials below (stored in browser session only)</li>
+      <li><strong>Audio:</strong> Audio will play automatically when synthesis completes</li>
+    </ul>
+  </div>
+
+  <div class="controls">
+    <div class="global-controls">
+      <button id="testAllBtn" class="btn-primary">Test All Engines</button>
+      <button id="stopAllBtn" class="btn-danger">Stop All Tests</button>
+      <button id="clearLogsBtn" class="btn-warning">Clear All Logs</button>
+    </div>
+
+    <div class="form-group">
+      <label for="globalText">Global Test Text:</label>
+      <textarea id="globalText" placeholder="Enter text to test with all engines...">Hello, this is a test of the text-to-speech engine. How does it sound?</textarea>
+    </div>
+  </div>
+
+  <!-- Engine sections will be dynamically generated here -->
+  <div id="engineSections"></div>
+
+  <script type="module">
+    // Import the TTS library
+    import {
+      AzureTTSClient,
+      ElevenLabsTTSClient,
+      GoogleTTSClient,
+      OpenAITTSClient,
+      PlayHTTTSClient,
+      PollyTTSClient,
+      WatsonTTSClient,
+      WitAITTSClient,
+      SherpaOnnxWasmTTSClient,
+      EspeakTTSClient,
+      createBrowserTTSClient,
+      isBrowser,
+      isNode
+    } from '../dist/esm/browser.js';
+
+    // Try to import MockTTSClient if available
+    let MockTTSClient;
+    try {
+      const mockModule = await import('../dist/esm/browser.js');
+      MockTTSClient = mockModule.MockTTSClient;
+    } catch (e) {
+      // MockTTSClient not available, create a simple mock
+      MockTTSClient = class {
+        constructor() {
+          this.events = {};
+        }
+        on(event, callback) {
+          if (!this.events[event]) this.events[event] = [];
+          this.events[event].push(callback);
+        }
+        emit(event, ...args) {
+          if (this.events[event]) {
+            this.events[event].forEach(cb => cb(...args));
+          }
+        }
+        async checkCredentials() { return true; }
+        async getVoices() { return [{ id: 'mock', name: 'Mock Voice', language: 'en-US' }]; }
+        async synthToBytes(text, options = {}) {
+          this.emit('start');
+          // Create a simple beep sound
+          const sampleRate = 22050;
+          const duration = 1; // 1 second
+          const samples = new Float32Array(sampleRate * duration);
+          for (let i = 0; i < samples.length; i++) {
+            samples[i] = Math.sin(2 * Math.PI * 440 * i / sampleRate) * 0.3;
+          }
+
+          // Convert to WAV
+          const buffer = new ArrayBuffer(44 + samples.length * 2);
+          const view = new DataView(buffer);
+
+          // WAV header
+          view.setUint32(0, 0x46464952, true); // "RIFF"
+          view.setUint32(4, 36 + samples.length * 2, true);
+          view.setUint32(8, 0x45564157, true); // "WAVE"
+          view.setUint32(12, 0x20746d66, true); // "fmt "
+          view.setUint32(16, 16, true);
+          view.setUint16(20, 1, true);
+          view.setUint16(22, 1, true);
+          view.setUint32(24, sampleRate, true);
+          view.setUint32(28, sampleRate * 2, true);
+          view.setUint16(32, 2, true);
+          view.setUint16(34, 16, true);
+          view.setUint32(36, 0x61746164, true); // "data"
+          view.setUint32(40, samples.length * 2, true);
+
+          // Audio data
+          let offset = 44;
+          for (let i = 0; i < samples.length; i++) {
+            const sample = Math.max(-1, Math.min(1, samples[i]));
+            view.setInt16(offset, sample * 0x7FFF, true);
+            offset += 2;
+          }
+
+          this.emit('end');
+          return new Uint8Array(buffer);
+        }
+      };
+    }
+
+    // Global state
+    window.ttsClients = {};
+    window.audioContext = null;
+    window.isTestingAll = false;
+
+    // Engine configurations
+    const engineConfigs = [
+      {
+        id: 'mock',
+        name: 'Mock TTS',
+        description: 'Mock engine for testing (no credentials required)',
+        clientClass: MockTTSClient,
+        credentialFields: [],
+        supportedFormats: ['wav', 'mp3', 'ogg'],
+        supportsSSML: true,
+        requiresCredentials: false
+      },
+      {
+        id: 'azure',
+        name: 'Microsoft Azure TTS',
+        description: 'Azure Cognitive Services Speech',
+        clientClass: AzureTTSClient,
+        credentialFields: [
+          { name: 'subscriptionKey', label: 'Subscription Key', type: 'password', required: true },
+          { name: 'region', label: 'Region', type: 'text', required: true, placeholder: 'e.g., eastus' }
+        ],
+        supportedFormats: ['wav', 'mp3'],
+        supportsSSML: true,
+        requiresCredentials: true
+      },
+      {
+        id: 'elevenlabs',
+        name: 'ElevenLabs TTS',
+        description: 'ElevenLabs AI Voice Generation',
+        clientClass: ElevenLabsTTSClient,
+        credentialFields: [
+          { name: 'apiKey', label: 'API Key', type: 'password', required: true }
+        ],
+        supportedFormats: ['mp3', 'wav'],
+        supportsSSML: false,
+        requiresCredentials: true
+      },
+      {
+        id: 'google',
+        name: 'Google Cloud TTS',
+        description: 'Google Cloud Text-to-Speech',
+        clientClass: GoogleTTSClient,
+        credentialFields: [
+          { name: 'keyFilename', label: 'Service Account Key (JSON)', type: 'textarea', required: true, placeholder: 'Paste JSON content here...' }
+        ],
+        supportedFormats: ['wav', 'mp3'],
+        supportsSSML: true,
+        requiresCredentials: true
+      },
+      {
+        id: 'openai',
+        name: 'OpenAI TTS',
+        description: 'OpenAI Text-to-Speech',
+        clientClass: OpenAITTSClient,
+        credentialFields: [
+          { name: 'apiKey', label: 'API Key', type: 'password', required: true }
+        ],
+        supportedFormats: ['mp3', 'wav'],
+        supportsSSML: false,
+        requiresCredentials: true
+      },
+      {
+        id: 'playht',
+        name: 'PlayHT TTS',
+        description: 'PlayHT AI Voice Generation',
+        clientClass: PlayHTTTSClient,
+        credentialFields: [
+          { name: 'apiKey', label: 'API Key', type: 'password', required: true },
+          { name: 'userId', label: 'User ID', type: 'text', required: true }
+        ],
+        supportedFormats: ['mp3', 'wav'],
+        supportsSSML: false,
+        requiresCredentials: true
+      },
+      {
+        id: 'polly',
+        name: 'AWS Polly TTS',
+        description: 'Amazon Polly Text-to-Speech',
+        clientClass: PollyTTSClient,
+        credentialFields: [
+          { name: 'accessKeyId', label: 'Access Key ID', type: 'text', required: true },
+          { name: 'secretAccessKey', label: 'Secret Access Key', type: 'password', required: true },
+          { name: 'region', label: 'Region', type: 'text', required: true, placeholder: 'e.g., us-east-1' }
+        ],
+        supportedFormats: ['wav', 'mp3'],
+        supportsSSML: true,
+        requiresCredentials: true
+      },
+      {
+        id: 'witai',
+        name: 'Wit.ai TTS',
+        description: 'Meta Wit.ai Text-to-Speech',
+        clientClass: WitAITTSClient,
+        credentialFields: [
+          { name: 'apiToken', label: 'API Token', type: 'password', required: true }
+        ],
+        supportedFormats: ['wav', 'mp3'],
+        supportsSSML: false,
+        requiresCredentials: true
+      },
+      {
+        id: 'watson',
+        name: 'IBM Watson TTS',
+        description: 'IBM Watson Text-to-Speech',
+        clientClass: WatsonTTSClient,
+        credentialFields: [
+          { name: 'apikey', label: 'API Key', type: 'password', required: true },
+          { name: 'url', label: 'Service URL', type: 'text', required: true, placeholder: 'e.g., https://api.us-south.text-to-speech.watson.cloud.ibm.com' }
+        ],
+        supportedFormats: ['wav', 'mp3'],
+        supportsSSML: true,
+        requiresCredentials: true
+      },
+      {
+        id: 'sherpaonnx-wasm',
+        name: 'SherpaOnnx WASM TTS',
+        description: 'SherpaOnnx WebAssembly (browser-compatible)',
+        clientClass: SherpaOnnxWasmTTSClient,
+        credentialFields: [],
+        supportedFormats: ['wav'],
+        supportsSSML: false,
+        requiresCredentials: false
+      },
+      {
+        id: 'espeak',
+        name: 'eSpeak NG WASM',
+        description: 'eSpeak NG WebAssembly (browser-compatible)',
+        clientClass: EspeakTTSClient,
+        credentialFields: [],
+        supportedFormats: ['wav'],
+        supportsSSML: true,
+        requiresCredentials: false
+      }
+    ];
+
+    // Initialize the application
+    function init() {
+      console.log('Initializing browser TTS test runner...');
+      console.log('Environment check - isBrowser:', isBrowser, 'isNode:', isNode);
+
+      // Initialize audio context
+      initAudioContext();
+
+      // Generate engine sections
+      generateEngineSections();
+
+      // Set up global event listeners
+      setupGlobalEventListeners();
+
+      console.log('Initialization complete');
+    }
+
+    function initAudioContext() {
+      try {
+        window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('Audio context initialized');
+      } catch (error) {
+        console.error('Failed to initialize audio context:', error);
+      }
+    }
+
+    function generateEngineSections() {
+      const container = document.getElementById('engineSections');
+
+      engineConfigs.forEach(config => {
+        const section = createEngineSection(config);
+        container.appendChild(section);
+      });
+    }
+
+    function createEngineSection(config) {
+      const section = document.createElement('div');
+      section.className = 'engine-section';
+      section.id = `engine-${config.id}`;
+
+      section.innerHTML = `
+        <div class="engine-header">
+          <div class="engine-title">${config.name}</div>
+          <div class="engine-status status-disabled" id="status-${config.id}">Not Initialized</div>
+        </div>
+
+        <p style="color: #666; margin-bottom: 15px;">${config.description}</p>
+
+        ${config.requiresCredentials ? `
+        <div class="credentials-section">
+          <h4 style="margin-top: 0;">Credentials</h4>
+          ${config.credentialFields.map(field => `
+            <div class="form-group">
+              <label for="${config.id}-${field.name}">${field.label}:</label>
+              ${field.type === 'textarea'
+                ? `<textarea id="${config.id}-${field.name}" placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''}></textarea>`
+                : `<input type="${field.type}" id="${config.id}-${field.name}" placeholder="${field.placeholder || ''}" ${field.required ? 'required' : ''}>`
+              }
+            </div>
+          `).join('')}
+        </div>
+        ` : ''}
+
+        <div class="form-group">
+          <label for="${config.id}-text">Test Text:</label>
+          <textarea id="${config.id}-text" placeholder="Enter text to synthesize...">Hello, this is a test of ${config.name}.</textarea>
+        </div>
+
+        <div class="format-selector">
+          <label>Format:</label>
+          ${config.supportedFormats.map((format, index) => `
+            <label>
+              <input type="radio" name="${config.id}-format" value="${format}" ${index === 0 ? 'checked' : ''}>
+              ${format.toUpperCase()}
+            </label>
+          `).join('')}
+        </div>
+
+        <div class="button-group">
+          <button class="btn-primary" onclick="initializeEngine('${config.id}')">Initialize</button>
+          <button class="btn-success" onclick="testEngine('${config.id}', 'plain')" disabled id="test-plain-${config.id}">Test Plain Text</button>
+          ${config.supportsSSML ? `<button class="btn-success" onclick="testEngine('${config.id}', 'ssml')" disabled id="test-ssml-${config.id}">Test SSML</button>` : ''}
+          <button class="btn-warning" onclick="testVoices('${config.id}')" disabled id="test-voices-${config.id}">List Voices</button>
+          <button class="btn-danger" onclick="stopEngine('${config.id}')" disabled id="stop-${config.id}">Stop</button>
+        </div>
+
+        <div class="audio-player hidden" id="audio-${config.id}">
+          <audio controls></audio>
+        </div>
+
+        <div class="log" id="log-${config.id}"></div>
+      `;
+
+      return section;
+    }
+
+    function setupGlobalEventListeners() {
+      document.getElementById('testAllBtn').addEventListener('click', testAllEngines);
+      document.getElementById('stopAllBtn').addEventListener('click', stopAllEngines);
+      document.getElementById('clearLogsBtn').addEventListener('click', clearAllLogs);
+    }
+
+    // Engine management functions
+    window.initializeEngine = async function(engineId) {
+      const config = engineConfigs.find(c => c.id === engineId);
+      if (!config) return;
+
+      try {
+        updateEngineStatus(engineId, 'testing', 'Initializing...');
+        logToEngine(engineId, 'info', 'Initializing engine...');
+
+        // Get credentials
+        const credentials = {};
+        if (config.requiresCredentials) {
+          for (const field of config.credentialFields) {
+            const element = document.getElementById(`${engineId}-${field.name}`);
+            if (field.required && !element.value.trim()) {
+              throw new Error(`${field.label} is required`);
+            }
+
+            if (field.name === 'keyFilename' && element.value.trim()) {
+              // Handle JSON key file content
+              try {
+                credentials[field.name] = JSON.parse(element.value.trim());
+              } catch (e) {
+                throw new Error('Invalid JSON format for service account key');
+              }
+            } else {
+              credentials[field.name] = element.value.trim();
+            }
+          }
+        }
+
+        // Create client
+        const client = new config.clientClass(credentials);
+
+        // Set up event listeners
+        client.on('start', () => logToEngine(engineId, 'info', 'Playback started'));
+        client.on('end', () => logToEngine(engineId, 'info', 'Playback ended'));
+        client.on('boundary', (word, start, end) => {
+          logToEngine(engineId, 'info', `Word boundary: "${word}" at ${start}s`);
+        });
+        client.on('error', (error) => logToEngine(engineId, 'error', `Error: ${error.message}`));
+
+        // Check credentials if required
+        if (config.requiresCredentials) {
+          logToEngine(engineId, 'info', 'Checking credentials...');
+          const credentialsValid = await client.checkCredentials();
+          if (!credentialsValid) {
+            throw new Error('Invalid credentials');
+          }
+          logToEngine(engineId, 'success', 'Credentials validated');
+        }
+
+        // Get voices
+        logToEngine(engineId, 'info', 'Loading voices...');
+        const voices = await client.getVoices();
+        logToEngine(engineId, 'success', `Found ${voices.length} voices`);
+
+        // Store client
+        window.ttsClients[engineId] = client;
+
+        // Enable buttons
+        enableEngineButtons(engineId, true);
+        updateEngineStatus(engineId, 'ready', 'Ready');
+        logToEngine(engineId, 'success', 'Engine initialized successfully');
+
+      } catch (error) {
+        logToEngine(engineId, 'error', `Initialization failed: ${error.message}`);
+        updateEngineStatus(engineId, 'error', 'Error');
+        enableEngineButtons(engineId, false);
+      }
+    };
+
+    window.testEngine = async function(engineId, mode) {
+      const client = window.ttsClients[engineId];
+      if (!client) {
+        logToEngine(engineId, 'error', 'Engine not initialized');
+        return;
+      }
+
+      try {
+        updateEngineStatus(engineId, 'testing', 'Synthesizing...');
+
+        const textElement = document.getElementById(`${engineId}-text`);
+        let text = textElement.value.trim();
+
+        if (!text) {
+          text = document.getElementById('globalText').value.trim();
+        }
+
+        if (!text) {
+          throw new Error('No text to synthesize');
+        }
+
+        // Wrap in SSML if needed
+        if (mode === 'ssml' && !text.includes('<speak>')) {
+          text = `<speak>${text}</speak>`;
+        }
+
+        // Get selected format
+        const formatRadio = document.querySelector(`input[name="${engineId}-format"]:checked`);
+        const format = formatRadio ? formatRadio.value : 'wav';
+
+        logToEngine(engineId, 'info', `Synthesizing ${mode} text: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
+        logToEngine(engineId, 'info', `Format: ${format}`);
+
+        // Synthesize
+        const audioData = await client.synthToBytes(text, { format });
+        logToEngine(engineId, 'success', `Generated ${audioData.length} bytes of audio`);
+
+        // Play audio
+        await playAudio(engineId, audioData, format);
+
+        updateEngineStatus(engineId, 'ready', 'Ready');
+
+      } catch (error) {
+        logToEngine(engineId, 'error', `Synthesis failed: ${error.message}`);
+        updateEngineStatus(engineId, 'error', 'Error');
+      }
+    };
+
+    window.testVoices = async function(engineId) {
+      const client = window.ttsClients[engineId];
+      if (!client) {
+        logToEngine(engineId, 'error', 'Engine not initialized');
+        return;
+      }
+
+      try {
+        logToEngine(engineId, 'info', 'Fetching voices...');
+        const voices = await client.getVoices();
+
+        logToEngine(engineId, 'success', `Found ${voices.length} voices:`);
+        voices.slice(0, 10).forEach((voice, index) => {
+          logToEngine(engineId, 'info', `  ${index + 1}. ${voice.name} (${voice.id}) - ${voice.language || 'Unknown language'}`);
+        });
+
+        if (voices.length > 10) {
+          logToEngine(engineId, 'info', `  ... and ${voices.length - 10} more voices`);
+        }
+
+      } catch (error) {
+        logToEngine(engineId, 'error', `Failed to fetch voices: ${error.message}`);
+      }
+    };
+
+    window.stopEngine = function(engineId) {
+      const client = window.ttsClients[engineId];
+      if (client && typeof client.stop === 'function') {
+        client.stop();
+        logToEngine(engineId, 'warning', 'Engine stopped');
+      }
+    };
+
+    // Utility functions
+    async function playAudio(engineId, audioData, format) {
+      try {
+        if (!window.audioContext) {
+          throw new Error('Audio context not available');
+        }
+
+        // Create blob and URL
+        const mimeType = format === 'mp3' ? 'audio/mpeg' : 'audio/wav';
+        const blob = new Blob([audioData], { type: mimeType });
+        const audioUrl = URL.createObjectURL(blob);
+
+        // Show audio player
+        const audioContainer = document.getElementById(`audio-${engineId}`);
+        const audioElement = audioContainer.querySelector('audio');
+        audioElement.src = audioUrl;
+        audioContainer.classList.remove('hidden');
+
+        // Auto-play
+        try {
+          await audioElement.play();
+          logToEngine(engineId, 'success', 'Audio playback started');
+        } catch (playError) {
+          logToEngine(engineId, 'warning', 'Auto-play blocked by browser. Click play button to hear audio.');
+        }
+
+        // Clean up URL after playback
+        audioElement.addEventListener('ended', () => {
+          URL.revokeObjectURL(audioUrl);
+        });
+
+      } catch (error) {
+        logToEngine(engineId, 'error', `Audio playback failed: ${error.message}`);
+      }
+    }
+
+    function updateEngineStatus(engineId, status, text) {
+      const statusElement = document.getElementById(`status-${engineId}`);
+      if (statusElement) {
+        statusElement.className = `engine-status status-${status}`;
+        statusElement.textContent = text;
+      }
+    }
+
+    function enableEngineButtons(engineId, enabled) {
+      const buttons = [
+        `test-plain-${engineId}`,
+        `test-ssml-${engineId}`,
+        `test-voices-${engineId}`,
+        `stop-${engineId}`
+      ];
+
+      buttons.forEach(buttonId => {
+        const button = document.getElementById(buttonId);
+        if (button) {
+          button.disabled = !enabled;
+        }
+      });
+    }
+
+    function logToEngine(engineId, level, message) {
+      const logContainer = document.getElementById(`log-${engineId}`);
+      if (!logContainer) return;
+
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log-entry';
+      logEntry.innerHTML = `
+        <span class="log-timestamp">[${timestamp}]</span>
+        <span class="log-${level}">${message}</span>
+      `;
+
+      logContainer.appendChild(logEntry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    // Global test functions
+    async function testAllEngines() {
+      if (window.isTestingAll) return;
+
+      window.isTestingAll = true;
+      document.getElementById('testAllBtn').disabled = true;
+
+      const globalText = document.getElementById('globalText').value.trim();
+      if (!globalText) {
+        alert('Please enter global test text');
+        window.isTestingAll = false;
+        document.getElementById('testAllBtn').disabled = false;
+        return;
+      }
+
+      console.log('Starting test of all engines...');
+
+      // Test engines that don't require credentials first
+      for (const config of engineConfigs.filter(c => !c.requiresCredentials)) {
+        if (!window.isTestingAll) break;
+
+        try {
+          console.log(`Testing ${config.name}...`);
+          await window.initializeEngine(config.id);
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Brief pause
+          await window.testEngine(config.id, 'plain');
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Pause between tests
+        } catch (error) {
+          console.error(`Failed to test ${config.name}:`, error);
+        }
+      }
+
+      // Test engines with credentials if they're configured
+      for (const config of engineConfigs.filter(c => c.requiresCredentials)) {
+        if (!window.isTestingAll) break;
+
+        // Check if credentials are provided
+        const hasCredentials = config.credentialFields.every(field => {
+          const element = document.getElementById(`${config.id}-${field.name}`);
+          return !field.required || (element && element.value.trim());
+        });
+
+        if (hasCredentials) {
+          try {
+            console.log(`Testing ${config.name}...`);
+            await window.initializeEngine(config.id);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await window.testEngine(config.id, 'plain');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          } catch (error) {
+            console.error(`Failed to test ${config.name}:`, error);
+          }
+        } else {
+          console.log(`Skipping ${config.name} - no credentials provided`);
+        }
+      }
+
+      window.isTestingAll = false;
+      document.getElementById('testAllBtn').disabled = false;
+      console.log('All engine tests completed');
+    }
+
+    function stopAllEngines() {
+      window.isTestingAll = false;
+
+      Object.keys(window.ttsClients).forEach(engineId => {
+        window.stopEngine(engineId);
+      });
+
+      console.log('All engines stopped');
+    }
+
+    function clearAllLogs() {
+      engineConfigs.forEach(config => {
+        const logContainer = document.getElementById(`log-${config.id}`);
+        if (logContainer) {
+          logContainer.innerHTML = '';
+        }
+      });
+
+      console.log('All logs cleared');
+    }
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', init);
+
+    // Also initialize immediately if DOM is already loaded
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>

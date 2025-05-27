@@ -80,8 +80,8 @@ export class PlayHTTTSClient extends AbstractTTSClient {
 
     // Set default values
     this.voice = "s3://voice-cloning-zero-shot/d9ff78ba-d016-47f6-b0ef-dd630f59414e/female-cs/manifest.json";
-    this.voiceEngine = "PlayHT1.0";
-    this.outputFormat = "wav";
+    this.voiceEngine = "PlayHT2.0"; // Use PlayHT2.0 for cloned voices
+    this.outputFormat = "mp3"; // Use MP3 as default for better compatibility
   }
 
   /**
@@ -220,6 +220,28 @@ export class PlayHTTTSClient extends AbstractTTSClient {
       console.log(`Using original voice ID: ${originalId} (from modified ID: ${voiceId})`);
     } else {
       this.voice = voiceId;
+    }
+
+    // Auto-detect voice engine based on voice ID
+    this.autoDetectVoiceEngine(voiceId);
+  }
+
+  /**
+   * Auto-detect voice engine based on voice ID
+   * @param voiceId Voice ID to analyze
+   */
+  private autoDetectVoiceEngine(voiceId: string): void {
+    // Extract the original voice ID if it has a '#' suffix
+    const originalVoiceId = voiceId.includes('#') ? voiceId.split('#')[0] : voiceId;
+
+    // Cloned voices (s3:// URLs) work better with PlayHT2.0
+    if (originalVoiceId.startsWith('s3://')) {
+      this.voiceEngine = "PlayHT2.0";
+      console.log(`Auto-detected cloned voice, using PlayHT2.0 engine`);
+    } else {
+      // Standard voices work with PlayHT1.0
+      this.voiceEngine = "PlayHT1.0";
+      console.log(`Auto-detected standard voice, using PlayHT1.0 engine`);
     }
   }
 
@@ -558,6 +580,58 @@ export class PlayHTTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Synthesize text to audio and save it to a file
+   * @param text Text or SSML to synthesize
+   * @param filename Filename to save as
+   * @param format Audio format (mp3 or wav)
+   * @param options Synthesis options
+   */
+  async synthToFile(
+    text: string,
+    filename: string,
+    format: "mp3" | "wav" = "mp3", // Default to MP3 for PlayHT
+    options?: PlayHTTTSOptions
+  ): Promise<void> {
+    // PlayHT works best with MP3, so we'll always use MP3 internally
+    // and warn if a different format is requested
+    if (format !== "mp3") {
+      console.warn(`PlayHT TTS works best with MP3 format. Converting ${format} request to MP3.`);
+    }
+
+    // Use MP3 as the native format
+    const audioBytes = await this.synthToBytes(text, { ...options, format: 'mp3' });
+
+    // Handle file saving (use requested filename but MP3 content)
+    if (typeof window !== "undefined") {
+      // Browser environment
+      const mimeType = "audio/mpeg";
+      const blob = new Blob([audioBytes], { type: mimeType });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      // Use the requested filename as-is (even if it has .wav extension)
+      a.download = filename.endsWith(`.${format}`) ? filename : `${filename}.${format}`;
+
+      document.body.appendChild(a);
+      a.click();
+
+      requestAnimationFrame(() => {
+        if (document?.body?.contains(a)) {
+          document.body.removeChild(a);
+        }
+        URL.revokeObjectURL(url);
+      });
+    } else {
+      // Node.js environment
+      const fs = await import("node:fs");
+      // Use the requested filename as-is (even if it has .wav extension)
+      const outputPath = filename.endsWith(`.${format}`) ? filename : `${filename}.${format}`;
+      fs.writeFileSync(outputPath, Buffer.from(audioBytes));
+    }
+  }
+
+  /**
    * Synthesize text to audio bytes
    * @param text Text to synthesize
    * @param options Synthesis options
@@ -566,6 +640,8 @@ export class PlayHTTTSClient extends AbstractTTSClient {
   async synthToBytes(text: string, options?: PlayHTTTSOptions): Promise<Buffer> {
     try {
       console.debug('PlayHT synthToBytes: Calling synthToBytestream internally...');
+
+      // For PlayHT, we'll always use MP3 as the native format for better compatibility
       const audioStream = await this.synthToBytestream(text, options);
 
       if (!audioStream) {
@@ -609,13 +685,10 @@ export class PlayHTTTSClient extends AbstractTTSClient {
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
     try {
-      // Determine the correct Accept header based on the output format
-      let acceptHeader = 'audio/mpeg'; // Default to mp3
-      if (this.outputFormat === 'wav') {
-        acceptHeader = 'audio/wav';
-      } else if (this.outputFormat === 'ogg') {
-        acceptHeader = 'audio/ogg';
-      } // Add other formats if needed
+      // PlayHT works best with MP3 format, especially for cloned voices
+      // Use MP3 as the native format regardless of what's requested
+      const nativeFormat = 'mp3';
+      const acceptHeader = 'audio/mpeg';
 
       const response = await fetch("https://api.play.ht/api/v2/tts/stream", {
         method: "POST",
@@ -628,7 +701,7 @@ export class PlayHTTTSClient extends AbstractTTSClient {
         body: JSON.stringify({
           text: text, // Parameter is string, no need for conditional
           voice: this.voice,
-          output_format: this.outputFormat,
+          output_format: nativeFormat,
           voice_engine: this.voiceEngine, // Ensure this is set appropriately
           // Add other relevant options like speed, sample_rate if needed
         }),

@@ -36,6 +36,7 @@ export async function getEngineConfigs() {
     SherpaOnnxTTSClient,
     SherpaOnnxWasmTTSClient,
     EspeakTTSClient,
+    WatsonTTSClient,
     WitAITTSClient
   } = await import("../../dist/esm/index.js");
 
@@ -114,6 +115,14 @@ export async function getEngineConfigs() {
       description: "eSpeak TTS"
     },
     {
+      name: "watson",
+      factory: () => new WatsonTTSClient({
+        apikey: process.env.WATSON_API_KEY || '',
+        url: process.env.WATSON_URL || '',
+      }),
+      description: "IBM Watson TTS"
+    },
+    {
       name: "witai",
       factory: () => new WitAITTSClient({
         token: process.env.WITAI_TOKEN || '',
@@ -138,6 +147,7 @@ export function getEngineConfigsCJS() {
     PollyTTSClient,
     SherpaOnnxTTSClient,
     EspeakTTSClient,
+    WatsonTTSClient,
     WitAITTSClient
   } = require('../../dist/cjs/index.js');
 
@@ -208,6 +218,14 @@ export function getEngineConfigsCJS() {
       name: "espeak",
       factory: () => new EspeakTTSClient(),
       description: "eSpeak TTS"
+    },
+    {
+      name: "watson",
+      factory: () => new WatsonTTSClient({
+        apikey: process.env.WATSON_API_KEY || '',
+        url: process.env.WATSON_URL || '',
+      }),
+      description: "IBM Watson TTS"
     },
     {
       name: "witai",

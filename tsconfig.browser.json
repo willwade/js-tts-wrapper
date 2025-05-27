@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "dist",
+    "outDir": "dist/browser-temp",
     "declaration": true,
     "target": "es2020",
     "module": "es2020",
@@ -9,6 +9,6 @@
     "esModuleInterop": true,
     "lib": ["es2020", "dom"]
   },
-  "include": ["src/browser.ts"],
-  "exclude": ["node_modules", "dist", "test", "examples"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "test", "examples", "src/engines/sherpaonnx.ts", "src/utils/sherpaonnx-loader.ts"]
 }
