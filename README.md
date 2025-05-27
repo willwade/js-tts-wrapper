@@ -759,18 +759,45 @@ If the `sound-play` package is not installed, the library will fall back to prov
 
 ## Testing and Troubleshooting
 
+### Unified Test Runner
+
+The library includes a comprehensive unified test runner that supports multiple testing modes and engines:
+
+```bash
+# Basic usage - test all engines
+node examples/unified-test-runner.js
+
+# Test a specific engine
+node examples/unified-test-runner.js [engine-name]
+
+# Test with different modes
+node examples/unified-test-runner.js [engine-name] --mode=[MODE]
+```
+
+### Available Test Modes
+
+| Mode | Description | Usage |
+|------|-------------|-------|
+| `basic` | Basic synthesis tests (default) | `node examples/unified-test-runner.js azure` |
+| `audio` | Audio-only tests with playback | `PLAY_AUDIO=true node examples/unified-test-runner.js azure --mode=audio` |
+| `playback` | Playback control tests (pause/resume/stop) | `node examples/unified-test-runner.js azure --mode=playback` |
+| `features` | Comprehensive feature tests | `node examples/unified-test-runner.js azure --mode=features` |
+| `example` | Full examples with SSML, streaming, word boundaries | `node examples/unified-test-runner.js azure --mode=example` |
+| `debug` | Debug mode for troubleshooting | `node examples/unified-test-runner.js sherpaonnx --mode=debug` |
+| `stream` | Streaming tests with real-time playback | `PLAY_AUDIO=true node examples/unified-test-runner.js playht --mode=stream` |
+
 ### Testing Audio Playback
 
 To test audio playback with any TTS engine, use the `PLAY_AUDIO` environment variable:
 
 ```bash
 # Test a specific engine with audio playback
-PLAY_AUDIO=true node examples/test-engines.js [engine-name]
+PLAY_AUDIO=true node examples/unified-test-runner.js [engine-name] --mode=audio
 
 # Examples:
-PLAY_AUDIO=true node examples/test-engines.js witai
-PLAY_AUDIO=true node examples/test-engines.js azure
-PLAY_AUDIO=true node examples/test-engines.js polly
+PLAY_AUDIO=true node examples/unified-test-runner.js witai --mode=audio
+PLAY_AUDIO=true node examples/unified-test-runner.js azure --mode=audio
+PLAY_AUDIO=true node examples/unified-test-runner.js polly --mode=audio
 ```
 
 ### SherpaOnnx Specific Testing
@@ -779,7 +806,45 @@ SherpaOnnx requires special environment setup. Use the helper script:
 
 ```bash
 # Test SherpaOnnx with audio playback
-PLAY_AUDIO=true node scripts/run-with-sherpaonnx.cjs examples/test-engines.js sherpaonnx
+PLAY_AUDIO=true node scripts/run-with-sherpaonnx.cjs examples/unified-test-runner.js sherpaonnx --mode=audio
+
+# Debug SherpaOnnx issues
+node scripts/run-with-sherpaonnx.cjs examples/unified-test-runner.js sherpaonnx --mode=debug
+
+# Use npm scripts (recommended)
+npm run example:sherpaonnx:mac
+PLAY_AUDIO=true npm run example:sherpaonnx:mac
+```
+
+### Using npm Scripts
+
+The package provides convenient npm scripts for testing specific engines:
+
+```bash
+# Test specific engines using npm scripts
+npm run example:azure
+npm run example:google
+npm run example:polly
+npm run example:openai
+npm run example:elevenlabs
+npm run example:playht
+npm run example:sherpaonnx:mac  # For SherpaOnnx with environment setup
+
+# With audio playback
+PLAY_AUDIO=true npm run example:azure
+PLAY_AUDIO=true npm run example:sherpaonnx:mac
+```
+
+### Getting Help
+
+For detailed help and available options:
+
+```bash
+# Show help and available engines
+node examples/unified-test-runner.js --help
+
+# Show available test modes
+node examples/unified-test-runner.js --mode=help
 ```
 
 ### Common Issues

@@ -1,5 +1,29 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/husky.sh"
 
+# Load NVM if available
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Fallback: try to find node/npm in common locations
+if ! command -v npm >/dev/null 2>&1; then
+  # Try common Node.js installation paths
+  for path in \
+    "$HOME/.nvm/versions/node/*/bin" \
+    "/usr/local/bin" \
+    "/opt/homebrew/bin" \
+    "/usr/bin"; do
+    if [ -d "$path" ] && [ -x "$path/npm" ]; then
+      export PATH="$path:$PATH"
+      break
+    fi
+  done
+fi
+
 # Run lint-staged to check staged files
-npx lint-staged
+if command -v npx >/dev/null 2>&1; then
+  npx lint-staged
+else
+  echo "Warning: npx not found, skipping lint-staged"
+  exit 0
+fi

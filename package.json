@@ -1,6 +1,6 @@
 {
   "name": "js-tts-wrapper",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "description": "A JavaScript/TypeScript library that provides a unified API for working with multiple cloud-based Text-to-Speech (TTS) services",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -58,6 +58,8 @@
     "test:sherpaonnx:mac": "node scripts/run-with-sherpaonnx.cjs run-tts-tests.cjs sherpaonnx",
     "test:sherpaonnx:auto": "node --require ./scripts/sherpaonnx-preload.cjs run-tts-tests.cjs sherpaonnx",
     "sherpaonnx:find-path": "node scripts/find-sherpaonnx-path.js",
+    "sherpaonnx:env-check": "node scripts/sherpaonnx-env-setup.cjs check",
+    "sherpaonnx:env-setup": "node scripts/sherpaonnx-env-setup.cjs setup",
     "test:sherpaonnx-wasm": "node run-tts-tests.cjs sherpaonnx-wasm",
     "example": "node examples/unified-test-runner.js",
     "example:azure": "node examples/unified-test-runner.js azure",
@@ -89,7 +91,8 @@
     "install:playht": "npm install node-fetch@2",
     "install:node-audio": "npm install sound-play",
     "install:node-speaker": "npm install pcm-convert",
-    "install:sherpaonnx": "npm install sherpa-onnx-node@^1.12.0 decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream",
+    "install:sherpaonnx": "node scripts/install-sherpaonnx-platform.cjs",
+    "install:sherpaonnx-manual": "npm install sherpa-onnx-node@^1.12.0 decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream",
     "install:espeak": "npm install text2wav",
     "install:espeak-wasm": "npm install mespeak",
     "install:all-dev": "npm install openai @google-cloud/text-to-speech @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly @elevenlabs/elevenlabs-js node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream text2wav mespeak sound-play pcm-convert"

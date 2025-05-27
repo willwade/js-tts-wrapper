@@ -1,5 +1,29 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/husky.sh"
 
+# Load NVM if available
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Fallback: try to find node/npm in common locations
+if ! command -v npm >/dev/null 2>&1; then
+  # Try common Node.js installation paths
+  for path in \
+    "$HOME/.nvm/versions/node/*/bin" \
+    "/usr/local/bin" \
+    "/opt/homebrew/bin" \
+    "/usr/bin"; do
+    if [ -d "$path" ] && [ -x "$path/npm" ]; then
+      export PATH="$path:$PATH"
+      break
+    fi
+  done
+fi
+
 # Run lint before pushing
-npm run lint
+if command -v npm >/dev/null 2>&1; then
+  npm run lint
+else
+  echo "Warning: npm not found, skipping lint check"
+  exit 0
+fi
