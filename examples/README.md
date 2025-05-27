@@ -135,15 +135,15 @@ If you see module import errors:
 # Rebuild the project
 npm run build
 
-# Test imports
-node examples/test-browser-imports.mjs
+# Test imports in browser
+# Open http://localhost:3000/examples/test-browser-import.html
 ```
 
 ### CORS Errors
-If APIs fail with CORS errors:
-- Check if the API supports browser requests
-- Consider using a CORS proxy
-- Implement server-side proxy
+The library now uses dynamic imports to avoid Node.js module CORS issues in browsers. If you still encounter CORS errors:
+- **TTS API CORS**: Some TTS APIs may have CORS restrictions for direct browser calls
+- **Solutions**: Use a CORS proxy service or implement server-side API proxy
+- **Import Errors**: Should be resolved - if you see `node:fs` errors, rebuild with `npm run build`
 
 ### Audio Issues
 If audio doesn't play:

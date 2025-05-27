@@ -13,7 +13,6 @@ import { LanguageNormalizer } from "./language-utils";
 import * as SSMLUtils from "./ssml-utils";
 import { isBrowser, isNode } from "../utils/environment";
 import { isNodeAudioAvailable, playAudioInNode } from "../utils/node-audio";
-import * as fs from 'node:fs';
 
 /**
  * Abstract base class for all TTS clients
@@ -460,6 +459,7 @@ export abstract class AbstractTTSClient {
     } else if (isNode) {
       // In Node.js, use the file system
       const outputPath = filename.endsWith(`.${format}`) ? filename : `${filename}.${format}`;
+      const fs = await import('node:fs');
       fs.writeFileSync(outputPath, Buffer.from(audioBytes));
     } else {
       console.warn("File saving not implemented for this environment.");

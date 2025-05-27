@@ -1,4 +1,4 @@
-import { SpeechMarkdown } from "speechmarkdown-js";
+import { isNode } from "../utils/environment";
 
 /**
  * Speech Markdown converter using the official speechmarkdown-js library
@@ -7,17 +7,48 @@ import { SpeechMarkdown } from "speechmarkdown-js";
  * using the speechmarkdown-js library (https://github.com/speechmarkdown/speechmarkdown-js)
  */
 
+// Dynamic import for speechmarkdown-js
+let SpeechMarkdown: any = null;
+let speechMarkdownLoaded = false;
+
+async function loadSpeechMarkdown() {
+  if (speechMarkdownLoaded) return SpeechMarkdown;
+
+  try {
+    if (isNode) {
+      // In Node.js, try to import speechmarkdown-js
+      const module = await import("speechmarkdown-js");
+      SpeechMarkdown = module.SpeechMarkdown;
+      speechMarkdownLoaded = true;
+      return SpeechMarkdown;
+    }
+    // In browser, speechmarkdown-js is not available
+    console.warn(
+      "speechmarkdown-js is not available in browser environments. Speech Markdown features will be limited."
+    );
+    return null;
+  } catch (_error) {
+    console.warn(
+      "speechmarkdown-js not found. Speech Markdown features will be limited. Install with: npm install speechmarkdown-js"
+    );
+    return null;
+  }
+}
+
 /**
  * SpeechMarkdownConverter class for converting Speech Markdown to SSML
  */
 export class SpeechMarkdownConverter {
-  private speechMarkdownInstance: SpeechMarkdown;
+  private speechMarkdownInstance: any = null;
 
-  /**
-   * Create a new SpeechMarkdownConverter
-   */
-  constructor() {
-    this.speechMarkdownInstance = new SpeechMarkdown();
+  private async ensureInitialized() {
+    if (!this.speechMarkdownInstance) {
+      const SpeechMarkdownClass = await loadSpeechMarkdown();
+      if (SpeechMarkdownClass) {
+        this.speechMarkdownInstance = new SpeechMarkdownClass();
+      }
+    }
+    return this.speechMarkdownInstance;
   }
 
   /**
@@ -27,8 +58,13 @@ export class SpeechMarkdownConverter {
    * @param platform Target platform (amazon-alexa, google-assistant, microsoft-azure, etc.)
    * @returns SSML text
    */
-  toSSML(markdown: string, platform = "amazon-alexa"): string {
-    return this.speechMarkdownInstance.toSSML(markdown, { platform });
+  async toSSML(markdown: string, platform = "amazon-alexa"): Promise<string> {
+    const instance = await this.ensureInitialized();
+    if (!instance) {
+      // Fallback: return the text wrapped in basic SSML
+      return `<speak>${markdown}</speak>`;
+    }
+    return instance.toSSML(markdown, { platform });
   }
 
   /**
@@ -51,8 +87,8 @@ export class SpeechMarkdownConverter {
   }
 }
 
-// Create a SpeechMarkdown instance with default options
-const speechMarkdownInstance = new SpeechMarkdown();
+// Create a default converter instance
+const defaultConverter = new SpeechMarkdownConverter();
 
 /**
  * Convert Speech Markdown to SSML
@@ -68,8 +104,8 @@ const speechMarkdownInstance = new SpeechMarkdown();
  * @param platform Target platform (amazon-alexa, google-assistant, microsoft-azure, etc.)
  * @returns SSML text
  */
-export function toSSML(markdown: string, platform = "amazon-alexa"): string {
-  return speechMarkdownInstance.toSSML(markdown, { platform });
+export async function toSSML(markdown: string, platform = "amazon-alexa"): Promise<string> {
+  return await defaultConverter.toSSML(markdown, platform);
 }
 
 /**

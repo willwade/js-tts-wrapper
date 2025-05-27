@@ -2,7 +2,9 @@ import { AbstractTTSClient } from "../core/abstract-tts";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
 import * as SSMLUtils from "../core/ssml-utils";
 import * as SpeechMarkdown from "../markdown/converter";
-import { TextToSpeechClient } from "@google-cloud/text-to-speech"; // Assuming v1 library structure
+
+// Dynamic import for Google Cloud Text-to-Speech (Node.js only)
+// This avoids browser import errors for Node.js-only packages
 
 /**
  * Google TTS credentials
@@ -38,7 +40,7 @@ export class GoogleTTSClient extends AbstractTTSClient {
   /**
    * Google Cloud Text-to-Speech client
    */
-  private client: TextToSpeechClient | null;
+  private client: any | null;
 
   /**
    * Whether to use the beta API for word timings
@@ -77,6 +79,9 @@ export class GoogleTTSClient extends AbstractTTSClient {
   private async initializeClient(credentials: GoogleTTSCredentials): Promise<void> {
     try {
       // Try to load the Google Cloud Text-to-Speech client (Node.js only)
+      const ttsModule = await import("@google-cloud/text-to-speech");
+      const { TextToSpeechClient } = ttsModule;
+
       this.client = new TextToSpeechClient({
         projectId: credentials.projectId,
         credentials: credentials.credentials,
@@ -85,8 +90,6 @@ export class GoogleTTSClient extends AbstractTTSClient {
 
       // Try to load the beta client for word timings
       try {
-        // Use dynamic import for ESM compatibility
-        const ttsModule = await import("@google-cloud/text-to-speech");
         if (ttsModule.v1beta1) {
           this.useBetaApi = true;
         }
@@ -146,7 +149,7 @@ export class GoogleTTSClient extends AbstractTTSClient {
 
     try {
       // Prepare SSML if needed
-      const ssml = this.prepareSSML(text, options);
+      const ssml = await this.prepareSSML(text, options);
 
       // Determine if we should use the beta API for word timings
       const useWordTimings = options?.useWordBoundary && this.useBetaApi;
@@ -328,10 +331,10 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns SSML ready for synthesis
    */
-  private prepareSSML(text: string, options?: GoogleTTSOptions): string {
+  private async prepareSSML(text: string, options?: GoogleTTSOptions): Promise<string> {
     // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
-      text = SpeechMarkdown.toSSML(text, "google");
+      text = await SpeechMarkdown.toSSML(text, "google");
     }
 
     // If text is already SSML, return it

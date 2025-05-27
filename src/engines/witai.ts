@@ -111,13 +111,13 @@ export class WitAITTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Prepared text
    */
-  private prepareText(text: string, options?: SpeakOptions): string {
+  private async prepareText(text: string, options?: SpeakOptions): Promise<string> {
     let processedText = text;
 
     // Check if the input is SpeechMarkdown and useSpeechMarkdown is enabled, convert it to plain text
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
       // Convert SpeechMarkdown to SSML first, then strip SSML tags
-      const ssml = SpeechMarkdown.toSSML(processedText);
+      const ssml = await SpeechMarkdown.toSSML(processedText);
       processedText = SSMLUtils.stripSSML(ssml);
     }
 
@@ -153,7 +153,7 @@ export class WitAITTSClient extends AbstractTTSClient {
   async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
     try {
       // Prepare text for synthesis (strip SSML/Markdown if present)
-      const preparedText = this.prepareText(text, options);
+      const preparedText = await this.prepareText(text, options);
 
       // Use provided voice or the one set with setVoice
       let voice = options?.voice || this.voiceId;
@@ -232,7 +232,7 @@ export class WitAITTSClient extends AbstractTTSClient {
   }> {
     try {
       // Prepare text for synthesis
-      const preparedText = this.prepareText(text, options);
+      const preparedText = await this.prepareText(text, options);
 
       // Use provided voice or the one set with setVoice
       let voice = options?.voice || this.voiceId;

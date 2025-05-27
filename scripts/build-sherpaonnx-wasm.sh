@@ -8,7 +8,7 @@ set -e
 # Check if emscripten is installed
 if ! command -v emcc &> /dev/null; then
     echo "Error: emscripten is not installed or not in PATH"
-    echo "Please install emscripten first: https://emscripten.org/docs/getting_started/downloads.html"
+ho "Please install emscripten first: https://emscripten.org/docs/getting_started/downloads.html"
     exit 1
 fi
 

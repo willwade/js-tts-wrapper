@@ -101,13 +101,13 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Prepared text
    */
-  private prepareText(text: string, options?: SpeakOptions): string {
+  private async prepareText(text: string, options?: SpeakOptions): Promise<string> {
     let processedText = text;
 
     // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
       // Convert to SSML first, then strip SSML tags
-      const ssml = SpeechMarkdown.toSSML(processedText);
+      const ssml = await SpeechMarkdown.toSSML(processedText);
       processedText = this._stripSSML(ssml);
     }
 
@@ -132,7 +132,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       const voiceId = options?.voice || this.voiceId || "21m00Tcm4TlvDq8ikWAM"; // Default voice (Rachel)
 
       // Prepare text for synthesis (strip SSML tags)
-      const preparedText = this.prepareText(text, options);
+      const preparedText = await this.prepareText(text, options);
 
       // Prepare request options
       const requestOptions = {
@@ -193,7 +193,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       const voiceId = options?.voice || this.voiceId || "21m00Tcm4TlvDq8ikWAM"; // Default voice (Rachel)
 
       // Prepare text for synthesis (strip SSML tags)
-      const preparedText = this.prepareText(text, options);
+      const preparedText = await this.prepareText(text, options);
 
       // Prepare request options
       const requestOptions = {

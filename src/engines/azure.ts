@@ -92,7 +92,7 @@ export class AzureTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to audio bytes
    */
   async synthToBytes(text: string, options?: AzureTTSOptions): Promise<Uint8Array> {
-    const ssml = this.prepareSSML(text, options);
+    const ssml = await this.prepareSSML(text, options);
 
     try {
       const response = await fetch(
@@ -137,7 +137,7 @@ export class AzureTTSClient extends AbstractTTSClient {
     audioStream: ReadableStream<Uint8Array>;
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
-    const ssml = this.prepareSSML(text, options);
+    const ssml = await this.prepareSSML(text, options);
     const useWordBoundary = options?.useWordBoundary !== false; // Default to true
 
     // Attempt to load SDK if needed for word boundaries in Node.js
@@ -388,7 +388,7 @@ export class AzureTTSClient extends AbstractTTSClient {
     callback: WordBoundaryCallback,
     options?: AzureTTSOptions
   ): Promise<void> {
-    const ssml = this.prepareSSML(text, options);
+    const ssml = await this.prepareSSML(text, options);
 
     try {
       // Create a speech config
@@ -458,10 +458,10 @@ export class AzureTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns SSML ready for synthesis
    */
-  private prepareSSML(text: string, options?: AzureTTSOptions): string {
+  private async prepareSSML(text: string, options?: AzureTTSOptions): Promise<string> {
     // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
-      const ssmlText = SpeechMarkdown.toSSML(text, "microsoft-azure");
+      const ssmlText = await SpeechMarkdown.toSSML(text, "microsoft-azure");
       text = ssmlText;
     }
 

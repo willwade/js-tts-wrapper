@@ -176,7 +176,7 @@ export class PollyTTSClient extends AbstractTTSClient {
 
     // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
-      const ssmlText = SpeechMarkdown.toSSML(text, "amazon-polly");
+      const ssmlText = await SpeechMarkdown.toSSML(text, "amazon-polly");
       text = ssmlText;
     }
 

@@ -130,7 +130,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns SSML string ready for synthesis
    */
-  private prepareSSML(text: string, options?: SpeakOptions): string {
+  private async prepareSSML(text: string, options?: SpeakOptions): Promise<string> {
     // Use the provided voice or the one set with setVoice
     const voice = options?.voice || this.voiceId;
 
@@ -141,7 +141,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
 
     // If the input is SpeechMarkdown and useSpeechMarkdown is enabled, convert it to SSML
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
-      processedText = SpeechMarkdown.toSSML(processedText);
+      processedText = await SpeechMarkdown.toSSML(processedText);
     }
 
     // If the input is already SSML, use it directly
@@ -186,7 +186,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
       await this._refreshIAMToken();
 
       // Prepare SSML for synthesis
-      const ssml = this.prepareSSML(text, options);
+      const ssml = await this.prepareSSML(text, options);
 
       // Use provided voice_id or the one set with setVoice
       const voice = options?.voice || this.voiceId || "en-US_AllisonV3Voice";
@@ -237,7 +237,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
     await this._refreshIAMToken();
 
     // Prepare SSML for synthesis
-    const ssml = this.prepareSSML(text, options);
+    const ssml = await this.prepareSSML(text, options);
 
     // Use provided voice_id or the one set with setVoice
     const voice = options?.voice || this.voiceId || "en-US_AllisonV3Voice";
