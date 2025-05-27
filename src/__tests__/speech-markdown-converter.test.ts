@@ -2,34 +2,34 @@ import * as SpeechMarkdown from "../markdown/converter";
 
 describe("SpeechMarkdown", () => {
   describe("toSSML", () => {
-    it("should convert breaks", () => {
+    it("should convert breaks", async () => {
       const markdown = "Hello [500ms] world";
       // The exact output format depends on the speechmarkdown-js library
       // We're just checking that it converts to valid SSML
-      const result = SpeechMarkdown.toSSML(markdown, "amazon-alexa");
+      const result = await SpeechMarkdown.toSSML(markdown, "amazon-alexa");
       expect(result).toContain("<break");
       expect(result).toContain('time="500ms"');
     });
 
-    it("should convert breaks with quotes", () => {
+    it("should convert breaks with quotes", async () => {
       const markdown = 'Hello [break:"500ms"] world';
-      const result = SpeechMarkdown.toSSML(markdown, "amazon-alexa");
+      const result = await SpeechMarkdown.toSSML(markdown, "amazon-alexa");
       expect(result).toContain("<break");
       expect(result).toContain('time="500ms"');
     });
 
-    it("should wrap text in speak tags", () => {
+    it("should wrap text in speak tags", async () => {
       const markdown = "Hello world";
-      const result = SpeechMarkdown.toSSML(markdown, "amazon-alexa");
+      const result = await SpeechMarkdown.toSSML(markdown, "amazon-alexa");
       expect(result).toContain("<speak>");
       expect(result).toContain("</speak>");
     });
 
-    it("should support different platforms", () => {
+    it("should support different platforms", async () => {
       const markdown = "Hello [500ms] world";
-      const amazonResult = SpeechMarkdown.toSSML(markdown, "amazon-alexa");
-      const googleResult = SpeechMarkdown.toSSML(markdown, "google-assistant");
-      const microsoftResult = SpeechMarkdown.toSSML(markdown, "microsoft-azure");
+      const amazonResult = await SpeechMarkdown.toSSML(markdown, "amazon-alexa");
+      const googleResult = await SpeechMarkdown.toSSML(markdown, "google-assistant");
+      const microsoftResult = await SpeechMarkdown.toSSML(markdown, "microsoft-azure");
 
       expect(amazonResult).toContain("<break");
       expect(googleResult).toContain("<break");
