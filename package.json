@@ -261,7 +261,7 @@
     }
   },
   "lint-staged": {
-    "./src/**/*.{js,ts}": [
+    "./src/**/!(*.test).{js,ts}": [
       "biome lint --write",
       "biome format --write"
     ],
