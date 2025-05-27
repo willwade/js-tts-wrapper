@@ -288,6 +288,168 @@ export function canRunSherpaOnnxSimple(): boolean {
 }
 
 /**
+ * Attempt to create platform package symlink/copy for sherpa-onnx-node compatibility
+ * @returns True if workaround was applied successfully
+ */
+export function applyPlatformPackageWorkaround(): boolean {
+  try {
+    const expectedPackage = getExpectedPlatformPackage();
+    if (!expectedPackage) {
+      return false;
+    }
+
+    const sourcePath = path.join(process.cwd(), "node_modules", expectedPackage);
+    const targetPath = path.join(
+      process.cwd(),
+      "node_modules",
+      "sherpa-onnx-node",
+      "node_modules",
+      expectedPackage
+    );
+
+    // Check if source exists and target doesn't
+    if (fs.existsSync(sourcePath) && !fs.existsSync(targetPath)) {
+      console.log("🔧 Creating platform package symlink for sherpa-onnx-node compatibility");
+
+      // Create the directory structure
+      const targetDir = path.dirname(targetPath);
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+
+      try {
+        // Try to create symlink first
+        fs.symlinkSync(path.relative(targetDir, sourcePath), targetPath);
+        console.log(`✅ Created symlink: ${targetPath} -> ${sourcePath}`);
+        return true;
+      } catch (_symlinkError) {
+        // Fallback to copying if symlinks not supported
+        try {
+          copyDirectorySync(sourcePath, targetPath);
+          console.log(`✅ Copied platform package: ${sourcePath} -> ${targetPath}`);
+          return true;
+        } catch (copyError) {
+          console.warn(`⚠️ Failed to copy platform package: ${copyError}`);
+          return false;
+        }
+      }
+    }
+
+    return false;
+  } catch (error) {
+    console.warn("⚠️ Platform package workaround failed:", error);
+    return false;
+  }
+}
+
+/**
+ * Recursively copy directory (fallback for when symlinks aren't supported)
+ * @param src Source directory
+ * @param dest Destination directory
+ */
+function copyDirectorySync(src: string, dest: string): void {
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(dest, { recursive: true });
+  }
+
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      copyDirectorySync(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+/**
+ * Get comprehensive diagnostics for SherpaOnnx setup
+ * @returns Detailed diagnostic information
+ */
+export function getSherpaOnnxDiagnostics(): {
+  platform: string;
+  expectedPackage: string | null;
+  hasMainPackage: boolean;
+  hasPlatformPackage: boolean;
+  hasNativeModule: boolean;
+  environmentVariables: Record<string, string | undefined>;
+  recommendations: string[];
+  canRun: boolean;
+} {
+  const platformKey = getCurrentPlatformKey();
+  const expectedPackage = getExpectedPlatformPackage();
+
+  const diagnostics = {
+    platform: platformKey,
+    expectedPackage,
+    hasMainPackage: false,
+    hasPlatformPackage: false,
+    hasNativeModule: false,
+    environmentVariables: {} as Record<string, string | undefined>,
+    recommendations: [] as string[],
+    canRun: false,
+  };
+
+  // Check main package
+  const mainPackagePath = path.join(process.cwd(), "node_modules", "sherpa-onnx-node");
+  diagnostics.hasMainPackage = fs.existsSync(mainPackagePath);
+
+  // Check platform package
+  const libraryPath = findSherpaOnnxLibraryPath();
+  diagnostics.hasPlatformPackage = !!libraryPath;
+
+  // Check native module
+  if (libraryPath) {
+    const nativeModulePath = path.join(libraryPath, "sherpa-onnx.node");
+    diagnostics.hasNativeModule = fs.existsSync(nativeModulePath);
+  }
+
+  // Check environment variables
+  if (process.platform === "darwin") {
+    diagnostics.environmentVariables.DYLD_LIBRARY_PATH = process.env.DYLD_LIBRARY_PATH;
+  } else if (process.platform === "linux") {
+    diagnostics.environmentVariables.LD_LIBRARY_PATH = process.env.LD_LIBRARY_PATH;
+  } else if (process.platform === "win32") {
+    diagnostics.environmentVariables.PATH = process.env.PATH;
+  }
+
+  // Generate recommendations
+  if (!diagnostics.hasMainPackage) {
+    diagnostics.recommendations.push(
+      "Install sherpa-onnx-node: npm install sherpa-onnx-node@^1.12.0"
+    );
+  }
+  if (!diagnostics.hasPlatformPackage) {
+    diagnostics.recommendations.push(
+      `Install platform package: npm install ${expectedPackage || "sherpa-onnx-<platform>"}@^1.12.0`
+    );
+  }
+  if (!diagnostics.hasNativeModule && diagnostics.hasPlatformPackage) {
+    diagnostics.recommendations.push(
+      "Platform package exists but native module missing - try reinstalling"
+    );
+  }
+  if (
+    diagnostics.hasMainPackage &&
+    diagnostics.hasPlatformPackage &&
+    !diagnostics.hasNativeModule
+  ) {
+    diagnostics.recommendations.push(
+      "Try the platform package workaround: applyPlatformPackageWorkaround()"
+    );
+  }
+
+  diagnostics.canRun =
+    diagnostics.hasMainPackage && diagnostics.hasPlatformPackage && diagnostics.hasNativeModule;
+
+  return diagnostics;
+}
+
+/**
  * Create a graceful fallback loader that doesn't throw errors
  * @returns Object with loaded module or null, plus error information
  */
@@ -300,6 +462,34 @@ export async function loadSherpaOnnxNodeSafe(): Promise<{
   const environmentCheck = canRunSherpaOnnx();
 
   if (!environmentCheck.canRun) {
+    // Try the platform package workaround before giving up
+    console.log("🔧 Attempting platform package workaround...");
+    const workaroundApplied = applyPlatformPackageWorkaround();
+
+    if (workaroundApplied) {
+      // Re-check environment after workaround
+      const recheckEnvironment = canRunSherpaOnnx();
+      if (recheckEnvironment.canRun) {
+        console.log("✅ Platform package workaround successful, retrying load...");
+        try {
+          const module = await loadSherpaOnnxNode();
+          return {
+            module,
+            success: true,
+            error: null,
+            environmentCheck: recheckEnvironment,
+          };
+        } catch (error: unknown) {
+          return {
+            module: null,
+            success: false,
+            error: error instanceof Error ? error : new Error(String(error)),
+            environmentCheck: recheckEnvironment,
+          };
+        }
+      }
+    }
+
     return {
       module: null,
       success: false,

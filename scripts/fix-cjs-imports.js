@@ -37,17 +37,40 @@ function findJsFiles(dir) {
  */
 function fixImportMetaInCjs(filePath) {
   let content = fs.readFileSync(filePath, 'utf8');
+  let hasChanges = false;
 
   // Replace the condition checking for import.meta
   const importMetaConditionPattern = /typeof\s+import\.meta\s+!==\s+'undefined'\s+&&\s+import\.meta\.url/g;
-  content = content.replace(importMetaConditionPattern, 'false /* import.meta not available in CJS */');
+  if (importMetaConditionPattern.test(content)) {
+    content = content.replace(importMetaConditionPattern, 'false /* import.meta not available in CJS */');
+    hasChanges = true;
+  }
 
   // Replace direct import.meta.url usage
   const importMetaUrlPattern = /import\.meta\.url/g;
-  content = content.replace(importMetaUrlPattern, '"file://" + __filename');
+  if (importMetaUrlPattern.test(content)) {
+    content = content.replace(importMetaUrlPattern, '"file://" + __filename');
+    hasChanges = true;
+  }
 
-  fs.writeFileSync(filePath, content, 'utf8');
-  console.log(`Fixed import.meta usage in ${filePath}`);
+  // Fix the specific pattern found in espeak-wasm.js: "file://" + __filename condition
+  const importMetaConditionPattern2 = /typeof\s+import\.meta\s+!==\s+'undefined'\s+&&\s+"file:\/\/"\s+\+\s+__filename/g;
+  if (importMetaConditionPattern2.test(content)) {
+    content = content.replace(importMetaConditionPattern2, 'false /* import.meta not available in CJS */');
+    hasChanges = true;
+  }
+
+  // Fix any remaining import.meta references
+  const importMetaPattern = /import\.meta/g;
+  if (importMetaPattern.test(content)) {
+    content = content.replace(importMetaPattern, '({ url: "file://" + __filename }) /* import.meta polyfill for CJS */');
+    hasChanges = true;
+  }
+
+  if (hasChanges) {
+    fs.writeFileSync(filePath, content, 'utf8');
+    console.log(`Fixed import.meta usage in ${filePath}`);
+  }
 }
 
 // Find all JS files in the CJS directory

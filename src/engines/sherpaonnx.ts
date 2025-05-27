@@ -36,6 +36,12 @@ try {
     console.warn(
       "SherpaOnnx will use mock implementation. Install required packages to enable native TTS."
     );
+
+    // Provide specific installation guidance
+    if (sherpaOnnxLoader.getInstallationInstructions) {
+      console.warn("Installation instructions:");
+      console.warn(sherpaOnnxLoader.getInstallationInstructions());
+    }
   }
 } catch (error) {
   console.warn("Could not load sherpaonnx-loader:", error);
@@ -93,6 +99,25 @@ interface SherpaOnnxAudio {
  * SherpaOnnx TTS client
  */
 export class SherpaOnnxTTSClient extends AbstractTTSClient {
+  /**
+   * Get comprehensive diagnostics for SherpaOnnx setup
+   * @returns Detailed diagnostic information
+   */
+  static getDiagnostics() {
+    if (sherpaOnnxLoader?.getSherpaOnnxDiagnostics) {
+      return sherpaOnnxLoader.getSherpaOnnxDiagnostics();
+    }
+    return {
+      platform: "unknown",
+      expectedPackage: null,
+      hasMainPackage: false,
+      hasPlatformPackage: false,
+      hasNativeModule: false,
+      environmentVariables: {},
+      recommendations: ["SherpaOnnx loader not available"],
+      canRun: false,
+    };
+  }
   /**
    * Path to the model file
    */
