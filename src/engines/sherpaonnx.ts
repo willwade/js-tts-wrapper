@@ -85,6 +85,7 @@ interface ModelConfig {
   gender?: "Male" | "Female" | "Unknown";
   description?: string;
   compression?: boolean;
+  developer?: string;
 }
 
 /**
@@ -295,9 +296,10 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    * Check if model and token files exist
    * @param modelPath Path to model file
    * @param tokensPath Path to tokens file
-   * @returns True if both files exist and are not empty
+   * @param modelId Optional model ID to determine voice type requirements
+   * @returns True if all required files exist and are not empty
    */
-  private checkFilesExist(modelPath: string, tokensPath: string): boolean {
+  private checkFilesExist(modelPath: string, tokensPath: string, modelId?: string): boolean {
     try {
       // Check that both files exist
       if (!fs.existsSync(modelPath) || !fs.existsSync(tokensPath)) {
@@ -308,10 +310,85 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       const modelStats = fs.statSync(modelPath);
       const tokensStats = fs.statSync(tokensPath);
 
-      return modelStats.size > 0 && tokensStats.size > 0;
+      if (modelStats.size === 0 || tokensStats.size === 0) {
+        return false;
+      }
+
+      // For Piper voices, check for espeak-ng-data directory
+      if (modelId && this.isPiperVoice(modelId)) {
+        const voiceDir = path.dirname(modelPath);
+        const espeakDataDir = path.join(voiceDir, "espeak-ng-data");
+
+        // Check if espeak-ng-data directory exists and has content
+        if (!fs.existsSync(espeakDataDir) || !fs.statSync(espeakDataDir).isDirectory()) {
+          console.log(
+            `Piper voice ${modelId} missing espeak-ng-data directory at ${espeakDataDir}`
+          );
+          return false;
+        }
+
+        // Check if espeak-ng-data directory has content
+        try {
+          const espeakFiles = fs.readdirSync(espeakDataDir);
+          if (espeakFiles.length === 0) {
+            console.log(`Piper voice ${modelId} has empty espeak-ng-data directory`);
+            return false;
+          }
+        } catch (error) {
+          console.log(`Piper voice ${modelId} cannot read espeak-ng-data directory: ${error}`);
+          return false;
+        }
+      }
+
+      return true;
     } catch (error) {
       console.error("Error checking files:", error);
       return false;
+    }
+  }
+
+  /**
+   * Check if a voice is a Piper voice based on its ID
+   * @param modelId Voice model ID
+   * @returns True if this is a Piper voice
+   */
+  private isPiperVoice(modelId: string): boolean {
+    return (
+      modelId.startsWith("piper-") ||
+      (this.jsonModels[modelId] && this.jsonModels[modelId].developer === "piper")
+    );
+  }
+
+  /**
+   * Recursively copy a directory and all its contents
+   * @param src Source directory path
+   * @param dest Destination directory path
+   */
+  private copyDirectoryRecursive(src: string, dest: string): void {
+    try {
+      // Create destination directory if it doesn't exist
+      if (!fs.existsSync(dest)) {
+        fs.mkdirSync(dest, { recursive: true });
+      }
+
+      // Read the source directory
+      const entries = fs.readdirSync(src, { withFileTypes: true });
+
+      for (const entry of entries) {
+        const srcPath = path.join(src, entry.name);
+        const destPath = path.join(dest, entry.name);
+
+        if (entry.isDirectory()) {
+          // Recursively copy subdirectory
+          this.copyDirectoryRecursive(srcPath, destPath);
+        } else {
+          // Copy file
+          fs.copyFileSync(srcPath, destPath);
+        }
+      }
+    } catch (error) {
+      console.error(`Error copying directory from ${src} to ${dest}:`, error);
+      throw error;
     }
   }
 
@@ -401,27 +478,49 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         // Find the model and tokens files in the extracted files
         let modelFile = "";
         let tokensFile = "";
+        let espeakDataDir = "";
 
-        // Look for model.onnx and tokens.txt in the extracted files
+        // Look for model.onnx, tokens.txt, and espeak-ng-data in the extracted files
         for (const [fileName, filePath] of extractedFiles.entries()) {
           if (fileName.endsWith(".onnx")) {
             modelFile = filePath;
           } else if (fileName.endsWith("tokens.txt")) {
             tokensFile = filePath;
+          } else if (fileName.includes("espeak-ng-data/") && !espeakDataDir) {
+            // Find the espeak-ng-data directory (take the parent directory of any file in espeak-ng-data)
+            const parts = fileName.split("/");
+            const espeakIndex = parts.findIndex((part) => part === "espeak-ng-data");
+            if (espeakIndex >= 0) {
+              const espeakRelativePath = parts.slice(0, espeakIndex + 1).join("/");
+              espeakDataDir = path.join(destinationDir, espeakRelativePath);
+            }
           }
         }
 
-        // If we found the files, update the paths
+        // If we found the required files, update the paths
         if (modelFile && tokensFile) {
           console.log(`Found model file: ${modelFile}`);
           console.log(`Found tokens file: ${tokensFile}`);
 
-          // Update the paths
+          // Copy the basic files
           fs.copyFileSync(modelFile, modelPath);
           fs.copyFileSync(tokensFile, tokensPath);
 
           console.log(`Copied model file to ${modelPath}`);
           console.log(`Copied tokens file to ${tokensPath}`);
+
+          // For Piper voices, copy espeak-ng-data directory
+          if (this.isPiperVoice(safeModelId)) {
+            if (espeakDataDir && fs.existsSync(espeakDataDir)) {
+              const espeakDestDir = path.join(destinationDir, "espeak-ng-data");
+              this.copyDirectoryRecursive(espeakDataDir, espeakDestDir);
+              console.log(`Copied espeak-ng-data directory to ${espeakDestDir}`);
+            } else {
+              console.warn(
+                `Piper voice ${safeModelId} missing espeak-ng-data directory in archive`
+              );
+            }
+          }
         } else {
           throw new Error("Could not find model.onnx and tokens.txt in the extracted files");
         }
@@ -496,7 +595,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
     const tokensPath = path.join(voiceDir, "tokens.txt");
 
     // Check if files exist in voice directory
-    if (this.checkFilesExist(modelPath, tokensPath)) {
+    if (this.checkFilesExist(modelPath, tokensPath, modelId)) {
       const lexiconPath = path.join(voiceDir, "lexicon.txt");
       const dictDir = this.getDictDir(voiceDir);
 
@@ -512,7 +611,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
     );
 
     // Verify files were downloaded correctly
-    if (!this.checkFilesExist(modelPath, tokensPath)) {
+    if (!this.checkFilesExist(modelPath, tokensPath, modelId)) {
       throw new Error(`Failed to download model files for ${modelId}`);
     }
 
@@ -655,12 +754,25 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       }
 
       // Create the TTS configuration
+      const vitsConfig: any = {
+        model: modelPath,
+        tokens: tokensPath,
+      };
+
+      // For Piper voices, add the espeak-ng-data directory
+      if (this.modelId && this.isPiperVoice(this.modelId)) {
+        const voiceDir = path.dirname(modelPath);
+        const espeakDataDir = path.join(voiceDir, "espeak-ng-data");
+
+        if (fs.existsSync(espeakDataDir)) {
+          vitsConfig.dataDir = espeakDataDir;
+          console.log(`Using espeak-ng-data directory: ${espeakDataDir}`);
+        }
+      }
+
       const config = {
         model: {
-          vits: {
-            model: modelPath,
-            tokens: tokensPath,
-          },
+          vits: vitsConfig,
           debug: false,
           numThreads: 1,
           provider: "cpu",
@@ -1161,7 +1273,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
           const modelPath = path.join(voiceDir, "model.onnx");
           const tokensPath = path.join(voiceDir, "tokens.txt");
 
-          if (this.checkFilesExist(modelPath, tokensPath)) {
+          if (this.checkFilesExist(modelPath, tokensPath, this.modelId)) {
             // Try to initialize the engine
             await this.initializeTTS(modelPath, tokensPath);
             return !!this.tts;
