@@ -1,6 +1,6 @@
 {
   "name": "js-tts-wrapper",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "description": "A JavaScript/TypeScript library that provides a unified API for working with multiple cloud-based Text-to-Speech (TTS) services",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -85,14 +85,14 @@
     "install:google": "npm install @google-cloud/text-to-speech",
     "install:polly": "npm install @aws-sdk/client-polly",
     "install:openai": "npm install openai",
-    "install:elevenlabs": "npm install node-fetch@2",
+    "install:elevenlabs": "npm install @elevenlabs/elevenlabs-js",
     "install:playht": "npm install node-fetch@2",
     "install:node-audio": "npm install sound-play",
     "install:node-speaker": "npm install pcm-convert",
     "install:sherpaonnx": "npm install sherpa-onnx-node@^1.12.0 decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream",
     "install:espeak": "npm install text2wav",
     "install:espeak-wasm": "npm install mespeak",
-    "install:all-dev": "npm install openai @google-cloud/text-to-speech @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream text2wav mespeak sound-play pcm-convert"
+    "install:all-dev": "npm install openai @google-cloud/text-to-speech @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly @elevenlabs/elevenlabs-js node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream text2wav mespeak sound-play pcm-convert"
   },
   "keywords": [
     "tts",
@@ -140,6 +140,7 @@
   },
   "peerDependencies": {
     "@aws-sdk/client-polly": "^3.817.0",
+    "@elevenlabs/elevenlabs-js": "^2.1.0",
     "@google-cloud/text-to-speech": "^6.1.0",
     "decompress": "^4.2.1",
     "decompress-bzip2": "^4.0.0",
@@ -156,6 +157,9 @@
   },
   "peerDependenciesMeta": {
     "@aws-sdk/client-polly": {
+      "optional": true
+    },
+    "@elevenlabs/elevenlabs-js": {
       "optional": true
     },
     "@google-cloud/text-to-speech": {
@@ -206,7 +210,7 @@
       "@google-cloud/text-to-speech": "^6.0.1"
     },
     "elevenlabs": {
-      "node-fetch": "^2.0.0"
+      "@elevenlabs/elevenlabs-js": "^2.1.0"
     },
     "playht": {
       "node-fetch": "^2.0.0"
@@ -247,6 +251,7 @@
       "@google-cloud/text-to-speech": "^6.0.1",
       "@aws-sdk/client-polly": "^3.782.0",
       "openai": "^4.93.0",
+      "@elevenlabs/elevenlabs-js": "^2.1.0",
       "node-fetch": "^2.0.0",
       "sherpa-onnx-node": "^1.12.0",
       "decompress": "^4.2.1",
@@ -271,9 +276,9 @@
     ]
   },
   "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.1.0",
     "@local/espeakng": "file:./wasm/espeakng",
     "aws-sdk": "^2.1638.0",
-    "elevenlabs": "^0.6.0",
     "sherpa-onnx-node": "^1.12.0",
     "text2wav": "^0.0.14"
   }
