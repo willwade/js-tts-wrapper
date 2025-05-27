@@ -1,63 +1,200 @@
-# js-tts-wrapper Browser Examples
+# Browser Testing for JS TTS Wrapper
 
-This directory contains examples of using the js-tts-wrapper library in a browser environment.
+This directory contains comprehensive browser testing tools for the js-tts-wrapper library, enabling you to test TTS engines in both server-side (Node.js) and client-side (browser) environments.
 
-## SherpaOnnx WebAssembly Examples
+## 🎯 Overview
 
-These examples demonstrate how to use the SherpaOnnx WebAssembly TTS engine in a browser environment.
+We've cleaned up and organized the browser testing infrastructure to provide:
 
-### Prerequisites
+1. **Simple Mock Testing** - Quick verification that audio playback works
+2. **Real Engine Testing** - Test actual cloud TTS services in the browser
+3. **Unified Testing** - Comprehensive test runner for all engines
+4. **Server-side Testing** - Node.js unified test runner for comparison
 
-Before running the examples, you need to build the SherpaOnnx WebAssembly module:
+## 📁 Files
 
-1. Make sure you have Emscripten installed: https://emscripten.org/docs/getting_started/downloads.html
-2. Run the build script:
-   ```bash
-   ./scripts/build-sherpaonnx-wasm.sh
-   ```
-   This will build the WebAssembly module and place it in the `public/sherpaonnx-wasm` directory.
+### Browser Test Files
 
-### Running the Examples
+- **`browser-test.html`** - Simple demo with mock TTS engine
+  - No credentials required
+  - Generates beep sound to test audio playback
+  - Good for verifying browser audio functionality
 
-1. Start the example server:
-   ```bash
-   cd examples
-   node serve.js
-   ```
+- **`browser-real-engine-test.html`** - Real TTS engine testing
+  - Tests ElevenLabs and OpenAI TTS engines
+  - Requires valid API keys
+  - Demonstrates actual speech synthesis in browser
 
-2. Open one of the following URLs in your browser:
-   - http://localhost:3000/sherpaonnx-wasm-demo.html - Full-featured demo
-   - http://localhost:3000/sherpaonnx-wasm-simple.html - Simple example
+- **`browser-unified-test.html`** - Comprehensive test runner
+  - Tests all browser-compatible engines
+  - Unified interface similar to server-side testing
+  - Supports credentials for multiple engines
 
-## Examples
+### Server-side Test Files
 
-### 1. SherpaOnnx WebAssembly Demo (sherpaonnx-wasm-demo.html)
+- **`unified-test-runner.js`** - Server-side unified test runner
+  - Tests all engines including server-only ones (SherpaOnnx)
+  - Multiple test modes (basic, playback, features, etc.)
+  - Command-line interface
 
-A full-featured demo of the SherpaOnnx WebAssembly TTS engine with the following features:
-- Voice selection
-- Text input
-- Rate, pitch, and volume controls
-- Speak, stop, and download buttons
-- Status and log display
+### Utility Files
 
-### 2. SherpaOnnx WebAssembly Simple (sherpaonnx-wasm-simple.html)
+- **`test-browser-imports.mjs`** - Import verification script
+  - Tests that browser builds work correctly
+  - Verifies engine instantiation
+  - Useful for debugging build issues
 
-A simple example of the SherpaOnnx WebAssembly TTS engine with the following features:
-- Text input
-- Speak and stop buttons
-- Log display
+## 🚀 Getting Started
 
-## How It Works
+### 1. Start HTTP Server
 
-The examples use the browser-compatible version of the js-tts-wrapper library, which is built using Rollup and TypeScript. The library provides a unified API for working with multiple TTS engines, including the SherpaOnnx WebAssembly engine.
+The browser tests need to be served over HTTP (not file://) to work properly:
 
-The SherpaOnnx WebAssembly engine runs entirely in the browser, without sending any data to external servers. It uses the WebAssembly version of the SherpaOnnx library, which is built using Emscripten.
+```bash
+# From the project root
+python3 -m http.server 8080
+# or
+npx serve .
+```
 
-## Troubleshooting
+### 2. Open Browser Tests
 
-If you encounter issues with the examples, check the following:
+Navigate to:
+- http://localhost:8080/examples/browser-test.html (Simple mock test)
+- http://localhost:8080/examples/browser-real-engine-test.html (Real engines)
+- http://localhost:8080/examples/browser-unified-test.html (All engines)
 
-1. Make sure you have built the SherpaOnnx WebAssembly module using the build script.
-2. Check the browser console for errors.
-3. Make sure the path to the WebAssembly module is correct in the examples.
-4. If you're using a different voice model, make sure it's compatible with the SherpaOnnx WebAssembly engine.
+### 3. Test Server-side
+
+```bash
+# Test all engines
+node examples/unified-test-runner.js
+
+# Test specific engine
+node examples/unified-test-runner.js mock --mode=basic
+node examples/unified-test-runner.js azure --mode=features
+
+# Test with audio playback
+PLAY_AUDIO=true node examples/unified-test-runner.js mock --mode=audio
+```
+
+## 🔧 Browser-Compatible Engines
+
+The following engines work in browser environments:
+
+### ✅ Fully Supported
+- **Mock TTS** - No credentials required, generates test audio
+- **ElevenLabs** - Requires API key, excellent voice quality
+- **OpenAI TTS** - Requires API key, natural voices
+- **Azure TTS** - Requires subscription key + region
+- **Google Cloud TTS** - Requires service account JSON
+- **AWS Polly** - Requires access key + secret + region
+- **Wit.ai TTS** - Requires API token
+- **Watson TTS** - Requires API key + URL
+
+### ⚠️ Browser Limitations
+- **SherpaOnnx** - Server-only (Node.js native modules)
+- **SherpaOnnx WASM** - Browser-compatible but requires WASM files
+- **eSpeak NG** - Browser-compatible with included WASM
+
+## 🔐 Security Considerations
+
+### API Key Safety
+- **Never expose production API keys** in client-side code
+- Use test/development keys only for browser testing
+- Consider implementing a server-side proxy for production
+
+### CORS Issues
+Some TTS APIs may have CORS restrictions. Solutions:
+- Use a CORS proxy service
+- Implement server-side API proxy
+- Use browser extensions to disable CORS (development only)
+
+### Rate Limiting
+- Be mindful of API rate limits during testing
+- Implement delays between requests if needed
+- Use test accounts with appropriate limits
+
+## 🎵 Audio Playback
+
+### Browser Audio Context
+- Modern browsers require user interaction before playing audio
+- Tests handle auto-play restrictions gracefully
+- Audio controls are provided for manual playback
+
+### Supported Formats
+- **WAV** - Uncompressed, works everywhere
+- **MP3** - Compressed, smaller files
+- **OGG** - Open format, good compression
+
+## 🐛 Troubleshooting
+
+### Import Errors
+If you see module import errors:
+```bash
+# Rebuild the project
+npm run build
+
+# Test imports
+node examples/test-browser-imports.mjs
+```
+
+### CORS Errors
+If APIs fail with CORS errors:
+- Check if the API supports browser requests
+- Consider using a CORS proxy
+- Implement server-side proxy
+
+### Audio Issues
+If audio doesn't play:
+- Check browser console for errors
+- Ensure user has interacted with page
+- Try different audio formats
+- Check browser audio permissions
+
+## 📊 Test Results
+
+### Expected Behavior
+- **Mock Engine**: Always works, generates beep sound
+- **Cloud Engines**: Require valid credentials, produce speech
+- **Audio Playback**: Should work in all modern browsers
+- **Error Handling**: Graceful fallbacks and clear error messages
+
+### Performance Notes
+- First synthesis may be slower (engine initialization)
+- Subsequent requests should be faster
+- Network latency affects cloud engines
+- Local engines (WASM) have consistent performance
+
+## 🔄 Development Workflow
+
+1. **Make Changes** to TTS engine code
+2. **Rebuild** with `npm run build`
+3. **Test Server-side** with unified test runner
+4. **Test Browser** with browser test files
+5. **Verify** both environments work correctly
+
+This dual-environment testing ensures your TTS wrapper works reliably across all deployment scenarios.
+
+## 🧹 Cleanup Completed
+
+As part of implementing browser compatibility, we've cleaned up redundant files:
+
+### Removed Files:
+- `examples/test-engines.js` & `examples/test-engines.cjs` - Replaced by unified test runner
+- `examples/check-credentials.js` - Functionality integrated into unified test runner
+- `examples/cli-highlight-all-engines.mjs` - Redundant with unified test runner
+- `examples/test-browser-imports.mjs` - Development utility no longer needed
+- `public/sherpaonnx-wasm/` - Standalone demo replaced by unified browser tests
+- `sherpa-onnx/`, `wasm/`, `emsdk/` - Source directories not needed (using npm packages)
+- `espeak-ng-standalone-test.mjs`, `espeakng-inspect.mjs` - Development debugging files
+- `scripts/package.js` - Replaced by more comprehensive `scripts/package.cjs`
+- `scripts/run-with-sherpaonnx.js` - Duplicate of `.cjs` version
+
+### Consolidated Structure:
+- **Single unified test runner** for server-side testing
+- **Comprehensive browser test suite** with multiple test files
+- **Clean examples directory** with focused, non-redundant files
+- **Streamlined scripts directory** with no duplicates
+
+The codebase is now much cleaner and easier to maintain! 🎉
