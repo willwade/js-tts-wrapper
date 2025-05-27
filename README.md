@@ -57,7 +57,7 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 
 The library uses a modular approach where TTS engine-specific dependencies are optional. You can install the package and its dependencies as follows:
 
-### Installation
+### npm install (longer route but more explicit)
 
 ```bash
 # Install the base package
