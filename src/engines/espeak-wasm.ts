@@ -4,7 +4,7 @@ import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 // Dynamic require/import for meSpeak
 let meSpeak: any = null;
 
-// Function to load meSpeak module
+// Function to load meSpeak module with enhanced ESM compatibility for Next.js and other environments
 async function loadMeSpeak() {
   if (meSpeak) return meSpeak;
 
@@ -19,17 +19,40 @@ async function loadMeSpeak() {
         "meSpeak is not loaded. Please include meSpeak.js in your HTML or install the mespeak package."
       );
     }
-    // Node.js environment - use dynamic import for ESM compatibility
-    meSpeak = await import("mespeak" as any);
 
-    // Handle both default and named exports
-    if (meSpeak.default) {
-      meSpeak = meSpeak.default;
+    // Detect Next.js environment
+    const isNextJS =
+      typeof process !== "undefined" &&
+      (process.env.NEXT_RUNTIME || process.env.__NEXT_PRIVATE_ORIGIN);
+
+    // Enhanced dynamic import for better ESM compatibility
+    try {
+      meSpeak = await import("mespeak" as any);
+
+      // Handle both default and named exports
+      if (meSpeak.default) {
+        meSpeak = meSpeak.default;
+      }
+
+      return meSpeak;
+    } catch (importError) {
+      // Fallback for environments where dynamic import might fail
+      if (isNextJS) {
+        throw new Error(
+          "mespeak package not found in Next.js environment. " +
+            "This may be due to Next.js bundling restrictions. " +
+            "For browser environments, include meSpeak.js in your HTML. " +
+            "For Node.js environments, ensure mespeak is properly installed: npm install mespeak"
+        );
+      }
+      throw importError;
     }
-    return meSpeak;
   } catch (err) {
     console.error("Error loading meSpeak:", err);
-    throw new Error("meSpeak package not found. Please install it with: npm install mespeak");
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `meSpeak package not found. ${errorMessage}. Please install it with: npm install mespeak`
+    );
   }
 }
 

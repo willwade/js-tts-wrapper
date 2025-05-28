@@ -4,7 +4,7 @@ import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 // Dynamic text2wav module - will be loaded when needed
 let text2wav: any = null;
 
-// Function to load text2wav module using dynamic import for ESM compatibility
+// Function to load text2wav module with enhanced ESM compatibility for Next.js and other environments
 async function loadText2Wav() {
   if (text2wav) return text2wav;
 
@@ -14,18 +14,39 @@ async function loadText2Wav() {
       throw new Error("EspeakNodeTTSClient is only supported in Node.js environments");
     }
 
-    // Use dynamic import instead of createRequire for ESM compatibility
-    text2wav = await import("text2wav" as any);
+    // Detect Next.js environment
+    const isNextJS =
+      typeof process !== "undefined" &&
+      (process.env.NEXT_RUNTIME || process.env.__NEXT_PRIVATE_ORIGIN);
 
-    // Handle both default and named exports
-    if (text2wav.default) {
-      text2wav = text2wav.default;
+    // Enhanced dynamic import for better ESM compatibility
+    try {
+      text2wav = await import("text2wav" as any);
+
+      // Handle both default and named exports
+      if (text2wav.default) {
+        text2wav = text2wav.default;
+      }
+
+      return text2wav;
+    } catch (importError) {
+      // Fallback for environments where dynamic import might fail
+      if (isNextJS) {
+        throw new Error(
+          "text2wav package not found in Next.js environment. " +
+            "This may be due to Next.js bundling restrictions. " +
+            "Consider using EspeakBrowserTTSClient for browser environments or " +
+            "ensure text2wav is properly installed: npm install text2wav"
+        );
+      }
+      throw importError;
     }
-
-    return text2wav;
   } catch (err) {
     console.error("Error loading text2wav:", err);
-    throw new Error("text2wav package not found. Please install it with: npm install text2wav");
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `text2wav package not found. ${errorMessage}. Please install it with: npm install text2wav`
+    );
   }
 }
 
