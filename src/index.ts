@@ -25,8 +25,8 @@ export { PlayHTTTSClient } from "./engines/playht";
 export { PollyTTSClient } from "./engines/polly";
 export { SherpaOnnxTTSClient } from "./engines/sherpaonnx";
 export { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm";
-export { EspeakTTSClient } from "./engines/espeak";
-export { EspeakWasmTTSClient } from "./engines/espeak-wasm";
+export { EspeakNodeTTSClient, EspeakTTSClient } from "./engines/espeak";
+export { EspeakBrowserTTSClient, EspeakWasmTTSClient } from "./engines/espeak-wasm";
 export { WatsonTTSClient } from "./engines/watson";
 export { WitAITTSClient } from "./engines/witai";
 

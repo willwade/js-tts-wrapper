@@ -35,8 +35,8 @@ export async function getEngineConfigs() {
     PollyTTSClient,
     SherpaOnnxTTSClient,
     SherpaOnnxWasmTTSClient,
-    EspeakTTSClient,
-    EspeakWasmTTSClient,
+    EspeakNodeTTSClient,
+    EspeakBrowserTTSClient,
     WatsonTTSClient,
     WitAITTSClient
   } = await import("../../dist/esm/index.js");
@@ -112,12 +112,12 @@ export async function getEngineConfigs() {
     },
     {
       name: "espeak",
-      factory: () => new EspeakTTSClient(),
+      factory: () => new EspeakNodeTTSClient(),
       description: "eSpeak TTS (Node.js)"
     },
     {
       name: "espeak-wasm",
-      factory: () => new EspeakWasmTTSClient(),
+      factory: () => new EspeakBrowserTTSClient(),
       description: "eSpeak TTS (WebAssembly/Browser)"
     },
     {
@@ -152,8 +152,8 @@ export function getEngineConfigsCJS() {
     PlayHTTTSClient,
     PollyTTSClient,
     SherpaOnnxTTSClient,
-    EspeakTTSClient,
-    EspeakWasmTTSClient,
+    EspeakNodeTTSClient,
+    EspeakBrowserTTSClient,
     WatsonTTSClient,
     WitAITTSClient
   } = require('../../dist/cjs/index.js');
@@ -223,12 +223,12 @@ export function getEngineConfigsCJS() {
     },
     {
       name: "espeak",
-      factory: () => new EspeakTTSClient(),
+      factory: () => new EspeakNodeTTSClient(),
       description: "eSpeak TTS (Node.js)"
     },
     {
       name: "espeak-wasm",
-      factory: () => new EspeakWasmTTSClient(),
+      factory: () => new EspeakBrowserTTSClient(),
       description: "eSpeak TTS (WebAssembly/Browser)"
     },
     {

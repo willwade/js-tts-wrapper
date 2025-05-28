@@ -49,8 +49,8 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 | AWS Polly | Amazon Web Services | `@aws-sdk/client-polly` |
 | SherpaOnnx | k2-fsa/sherpa-onnx | `sherpa-onnx-node`, `decompress`, `decompress-bzip2`, `decompress-tarbz2`, `decompress-targz`, `tar-stream` (Node.js only) |
 | SherpaOnnx-WASM | k2-fsa/sherpa-onnx | None (WASM included, browser only) |
-| eSpeak NG | eSpeak NG | `text2wav` (Node.js only) |
-| eSpeak NG-WASM | eSpeak NG | `mespeak` (Node.js) or meSpeak.js (browser) |
+| eSpeak NG (Node.js) | eSpeak NG | `text2wav` (Node.js only) |
+| eSpeak NG (Browser) | eSpeak NG | `mespeak` (Node.js) or meSpeak.js (browser) |
 | WitAI | Wit.ai | None (uses fetch API) |
 
 ## Installation
@@ -559,47 +559,55 @@ await tts.speak('Hello from SherpaOnnx!');
 
 #### ESM
 ```javascript
-import { EspeakTTSClient } from 'js-tts-wrapper';
+import { EspeakNodeTTSClient } from 'js-tts-wrapper';
 
-const tts = new EspeakTTSClient();
+const tts = new EspeakNodeTTSClient();
 
 await tts.speak('Hello from eSpeak NG!');
 ```
 
 #### CommonJS
 ```javascript
-const { EspeakTTSClient } = require('js-tts-wrapper');
+const { EspeakNodeTTSClient } = require('js-tts-wrapper');
 
-const tts = new EspeakTTSClient();
+const tts = new EspeakNodeTTSClient();
 
 // Inside an async function
 await tts.speak('Hello from eSpeak NG!');
 ```
 
-> **Note**: This engine uses the `text2wav` package and is designed for Node.js environments only. For browser environments, use the eSpeak NG-WASM engine instead.
+> **Note**: This engine uses the `text2wav` package and is designed for Node.js environments only. For browser environments, use the eSpeak NG Browser engine instead.
 
-### eSpeak NG-WASM (Cross-platform)
+### eSpeak NG (Browser)
 
 #### ESM
 ```javascript
-import { EspeakWasmTTSClient } from 'js-tts-wrapper';
+import { EspeakBrowserTTSClient } from 'js-tts-wrapper';
 
-const tts = new EspeakWasmTTSClient();
+const tts = new EspeakBrowserTTSClient();
 
-await tts.speak('Hello from eSpeak NG WASM!');
+await tts.speak('Hello from eSpeak NG Browser!');
 ```
 
 #### CommonJS
 ```javascript
-const { EspeakWasmTTSClient } = require('js-tts-wrapper');
+const { EspeakBrowserTTSClient } = require('js-tts-wrapper');
 
-const tts = new EspeakWasmTTSClient();
+const tts = new EspeakBrowserTTSClient();
 
 // Inside an async function
-await tts.speak('Hello from eSpeak NG WASM!');
+await tts.speak('Hello from eSpeak NG Browser!');
 ```
 
 > **Note**: This engine works in both Node.js (using the `mespeak` package) and browser environments (using meSpeak.js). For browser use, include meSpeak.js in your HTML before using this engine.
+
+#### Backward Compatibility
+
+For backward compatibility, the old class names are still available:
+- `EspeakTTSClient` (alias for `EspeakNodeTTSClient`)
+- `EspeakWasmTTSClient` (alias for `EspeakBrowserTTSClient`)
+
+However, we recommend using the new, clearer names in new code.
 
 ## API Reference
 

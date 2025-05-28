@@ -19,25 +19,13 @@ async function loadMeSpeak() {
         "meSpeak is not loaded. Please include meSpeak.js in your HTML or install the mespeak package."
       );
     }
-    // Node.js environment - try to require mespeak package
-    const { createRequire } = await import("node:module");
-    let base_path: string;
+    // Node.js environment - use dynamic import for ESM compatibility
+    meSpeak = await import("mespeak" as any);
 
-    // @ts-ignore - __filename is defined in CJS module scope
-    if (typeof __filename !== "undefined") {
-      // @ts-ignore - __filename is defined in CJS module scope
-      base_path = __filename;
+    // Handle both default and named exports
+    if (meSpeak.default) {
+      meSpeak = meSpeak.default;
     }
-    // @ts-ignore - TS might complain about import.meta in CJS build target
-    else if (typeof import.meta !== "undefined" && import.meta.url) {
-      // @ts-ignore - TS might complain about import.meta in CJS build target
-      base_path = import.meta.url;
-    } else {
-      base_path = ".";
-    }
-
-    const customRequire = createRequire(base_path);
-    meSpeak = customRequire("mespeak");
     return meSpeak;
   } catch (err) {
     console.error("Error loading meSpeak:", err);
@@ -59,9 +47,10 @@ interface MeSpeakOptions {
 
 /**
  * eSpeak TTS client for browser environments using meSpeak.js
- * This provides eSpeak functionality in browsers via WebAssembly
+ * This provides eSpeak functionality in browsers and Node.js via WebAssembly
+ * For Node.js-only environments with better performance, use EspeakNodeTTSClient instead.
  */
-export class EspeakWasmTTSClient extends AbstractTTSClient {
+export class EspeakBrowserTTSClient extends AbstractTTSClient {
   constructor(credentials: TTSCredentials = {}) {
     super(credentials);
 
@@ -243,3 +232,6 @@ export class EspeakWasmTTSClient extends AbstractTTSClient {
     }
   }
 }
+
+// Backward compatibility export
+export { EspeakBrowserTTSClient as EspeakWasmTTSClient };

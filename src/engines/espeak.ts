@@ -1,60 +1,27 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 
-// Dynamic require function - will be set up when needed in Node.js environment
-let customRequire: any = null;
+// Dynamic text2wav module - will be loaded when needed
 let text2wav: any = null;
 
-// Function to set up require in Node.js environment only
-async function setupRequire() {
-  if (customRequire) return customRequire;
-
-  // Only set up require in Node.js environment
-  if (typeof window === "undefined") {
-    const { createRequire } = await import("node:module");
-
-    // Determine the base path differently for ESM vs CJS contexts
-    let base_path: string;
-
-    // Check if __filename is defined (indicates CJS context)
-    // @ts-ignore - __filename is defined in CJS module scope
-    if (typeof __filename !== "undefined") {
-      // CJS context
-      // @ts-ignore - __filename is defined in CJS module scope
-      base_path = __filename;
-    }
-    // Check if import.meta is defined (indicates ESM context)
-    // Use 'else if' to prioritize __filename if both are somehow present
-    // @ts-ignore - TS might complain about import.meta in CJS build target
-    else if (typeof import.meta !== "undefined" && import.meta.url) {
-      // ESM context
-      // @ts-ignore - TS might complain about import.meta in CJS build target
-      base_path = import.meta.url;
-    } else {
-      // Final fallback if neither context is easily determined
-      console.warn("Could not determine module context (ESM/CJS), falling back to '.'.");
-      base_path = ".";
-    }
-
-    // Create a require function using the determined base path
-    customRequire = createRequire(base_path);
-  } else {
-    // Browser environment - we'll need meSpeak.js for browser support
-    throw new Error(
-      "eSpeak TTS in browsers requires meSpeak.js. Please use a different TTS engine for browser environments or implement meSpeak.js integration."
-    );
-  }
-
-  return customRequire;
-}
-
-// Function to load text2wav module
+// Function to load text2wav module using dynamic import for ESM compatibility
 async function loadText2Wav() {
   if (text2wav) return text2wav;
 
   try {
-    const requireFn = await setupRequire();
-    text2wav = requireFn("text2wav");
+    // Check if we're in a Node.js environment
+    if (typeof process === "undefined" || !process.versions || !process.versions.node) {
+      throw new Error("EspeakNodeTTSClient is only supported in Node.js environments");
+    }
+
+    // Use dynamic import instead of createRequire for ESM compatibility
+    text2wav = await import("text2wav" as any);
+
+    // Handle both default and named exports
+    if (text2wav.default) {
+      text2wav = text2wav.default;
+    }
+
     return text2wav;
   } catch (err) {
     console.error("Error loading text2wav:", err);
@@ -78,12 +45,12 @@ interface Text2WavOptions {
 }
 
 /**
- * eSpeak TTS Client (uses custom single-file espeak-ng build)
+ * eSpeak TTS Client for Node.js environments
  *
- * TODO: Implement browser-side using speak.js WASM/asm.js
- * TODO: Implement Node.js using either child_process (native espeak) or speak.js
+ * This client uses the text2wav package for server-side eSpeak TTS synthesis.
+ * For browser environments, use EspeakBrowserTTSClient instead.
  */
-export class EspeakTTSClient extends AbstractTTSClient {
+export class EspeakNodeTTSClient extends AbstractTTSClient {
   constructor(credentials: TTSCredentials = {}) {
     super(credentials);
 
@@ -228,3 +195,6 @@ export class EspeakTTSClient extends AbstractTTSClient {
     return voices;
   }
 }
+
+// Backward compatibility export
+export { EspeakNodeTTSClient as EspeakTTSClient };
