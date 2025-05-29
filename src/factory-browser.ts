@@ -1,8 +1,7 @@
 // Browser-compatible factory for TTS clients
 import { AzureTTSClient } from "./engines/azure.js";
 import { ElevenLabsTTSClient } from "./engines/elevenlabs.js";
-import { EspeakWasmTTSClient } from "./engines/espeak-wasm.js";
-import { EspeakTTSClient } from "./engines/espeak.js";
+import { EspeakBrowserTTSClient } from "./engines/espeak-wasm.js";
 import { GoogleTTSClient } from "./engines/google.js";
 import { OpenAITTSClient } from "./engines/openai.js";
 import { PlayHTTTSClient } from "./engines/playht.js";
@@ -37,7 +36,6 @@ export type SupportedBrowserTTS =
   | "watson"
   | "witai"
   | "sherpaonnx-wasm"
-  | "espeak"
   | "espeak-wasm"
   | "mock";
 
@@ -63,10 +61,8 @@ export function createBrowserTTSClient(engine: SupportedBrowserTTS, credentials?
       return new WitAITTSClient(credentials as import("./engines/witai").WitAITTSCredentials);
     case "sherpaonnx-wasm":
       return new SherpaOnnxWasmTTSClient(credentials as any);
-    case "espeak":
-      return new EspeakTTSClient(credentials as any);
     case "espeak-wasm":
-      return new EspeakWasmTTSClient(credentials as any);
+      return new EspeakBrowserTTSClient(credentials as any);
     case "mock":
       if (MockTTSClient) {
         return new MockTTSClient();
