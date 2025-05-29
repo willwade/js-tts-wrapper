@@ -38,20 +38,24 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 
 ## Supported TTS Engines
 
-| Engine | Provider | Dependencies |
-|--------|----------|-------------|
-| Azure | Microsoft Azure Cognitive Services | `@azure/cognitiveservices-speechservices`, `microsoft-cognitiveservices-speech-sdk` |
-| Google Cloud | Google Cloud Text-to-Speech | `@google-cloud/text-to-speech` |
-| ElevenLabs | ElevenLabs | `node-fetch@2` (Node.js only) |
-| IBM Watson | IBM Watson | None (uses fetch API) |
-| OpenAI | OpenAI | `openai` |
-| PlayHT | PlayHT | `node-fetch@2` (Node.js only) |
-| AWS Polly | Amazon Web Services | `@aws-sdk/client-polly` |
-| SherpaOnnx | k2-fsa/sherpa-onnx | `sherpa-onnx-node`, `decompress`, `decompress-bzip2`, `decompress-tarbz2`, `decompress-targz`, `tar-stream` (Node.js only) |
-| SherpaOnnx-WASM | k2-fsa/sherpa-onnx | None (WASM included, browser only) |
-| eSpeak NG (Node.js) | eSpeak NG | `text2wav` (Node.js only) |
-| eSpeak NG (Browser) | eSpeak NG | `mespeak` (Node.js) or meSpeak.js (browser) |
-| WitAI | Wit.ai | None (uses fetch API) |
+| Factory Name | Class Name | Environment | Provider | Dependencies |
+|--------------|------------|-------------|----------|-------------|
+| `azure` | `AzureTTSClient` | Both | Microsoft Azure Cognitive Services | `@azure/cognitiveservices-speechservices`, `microsoft-cognitiveservices-speech-sdk` |
+| `google` | `GoogleTTSClient` | Both | Google Cloud Text-to-Speech | `@google-cloud/text-to-speech` |
+| `elevenlabs` | `ElevenLabsTTSClient` | Both | ElevenLabs | `node-fetch@2` (Node.js only) |
+| `watson` | `WatsonTTSClient` | Both | IBM Watson | None (uses fetch API) |
+| `openai` | `OpenAITTSClient` | Both | OpenAI | `openai` |
+| `playht` | `PlayHTTTSClient` | Both | PlayHT | `node-fetch@2` (Node.js only) |
+| `polly` | `PollyTTSClient` | Both | Amazon Web Services | `@aws-sdk/client-polly` |
+| `sherpaonnx` | `SherpaOnnxTTSClient` | Node.js | k2-fsa/sherpa-onnx | `sherpa-onnx-node`, `decompress`, `decompress-bzip2`, `decompress-tarbz2`, `decompress-targz`, `tar-stream` |
+| `sherpaonnx-wasm` | `SherpaOnnxWasmTTSClient` | Browser | k2-fsa/sherpa-onnx | None (WASM included) |
+| `espeak` | `EspeakNodeTTSClient` | Node.js | eSpeak NG | `text2wav` |
+| `espeak-wasm` | `EspeakBrowserTTSClient` | Both | eSpeak NG | `mespeak` (Node.js) or meSpeak.js (browser) |
+| `witai` | `WitAITTSClient` | Both | Wit.ai | None (uses fetch API) |
+
+**Factory Name**: Use with `createTTSClient('factory-name', credentials)`
+**Class Name**: Use with direct import `import { ClassName } from 'js-tts-wrapper'`
+**Environment**: Node.js = server-side only, Browser = browser-compatible, Both = works in both environments
 
 ## Installation
 
