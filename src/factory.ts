@@ -11,6 +11,7 @@ import { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm.js";
 import { SherpaOnnxTTSClient } from "./engines/sherpaonnx.js";
 import { WatsonTTSClient } from "./engines/watson.js";
 import { WitAITTSClient } from "./engines/witai.js";
+import { SAPITTSClient } from "./engines/sapi.js";
 import type { TTSCredentials } from "./types";
 
 // Import MockTTSClient for testing
@@ -41,6 +42,7 @@ export type SupportedTTS =
   | "sherpaonnx-wasm"
   | "espeak"
   | "espeak-wasm"
+  | "sapi"
   | "mock";
 
 export function createTTSClient(engine: SupportedTTS, credentials?: TTSCredentials) {
@@ -71,6 +73,8 @@ export function createTTSClient(engine: SupportedTTS, credentials?: TTSCredentia
       return new EspeakTTSClient(credentials as any);
     case "espeak-wasm":
       return new EspeakWasmTTSClient(credentials as any);
+    case "sapi":
+      return new SAPITTSClient(credentials as import("./engines/sapi").SAPITTSCredentials);
     case "mock":
       if (MockTTSClient) {
         return new MockTTSClient();

@@ -77,7 +77,8 @@ export type UnifiedVoice = {
     | "sherpa"
     | "sherpaonnx"
     | "sherpaonnx-wasm"
-    | "espeak-ng";
+    | "espeak-ng"
+    | "sapi";
 
   /**
    * Language codes supported by this voice

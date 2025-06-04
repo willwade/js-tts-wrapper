@@ -61,6 +61,7 @@
     "sherpaonnx:env-check": "node scripts/sherpaonnx-env-setup.cjs check",
     "sherpaonnx:env-setup": "node scripts/sherpaonnx-env-setup.cjs setup",
     "test:sherpaonnx-wasm": "node run-tts-tests.cjs sherpaonnx-wasm",
+    "test:sapi": "node run-tts-tests.cjs sapi",
     "example": "node examples/unified-test-runner.js",
     "example:azure": "node examples/unified-test-runner.js azure",
     "example:elevenlabs": "node examples/unified-test-runner.js elevenlabs",
@@ -70,6 +71,7 @@
     "example:sherpaonnx:mac": "node scripts/run-with-sherpaonnx.cjs examples/unified-test-runner.js sherpaonnx",
     "example:sherpaonnx:auto": "node --require ./scripts/sherpaonnx-preload.cjs examples/unified-test-runner.js sherpaonnx",
     "example:sherpaonnx-wasm": "node examples/unified-test-runner.js sherpaonnx-wasm",
+    "example:system": "node examples/unified-test-runner.js system",
     "example:openai": "node examples/unified-test-runner.js openai",
     "example:playht": "node examples/unified-test-runner.js playht",
     "lint": "biome lint --log-level=error ./src/utils ./src/ssml ./src/markdown",
@@ -95,7 +97,8 @@
     "install:sherpaonnx-manual": "npm install sherpa-onnx-node@^1.12.0 decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream",
     "install:espeak": "npm install text2wav",
     "install:espeak-wasm": "npm install mespeak",
-    "install:all-dev": "npm install openai @google-cloud/text-to-speech @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly @elevenlabs/elevenlabs-js node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream text2wav mespeak sound-play pcm-convert"
+    "install:system": "npm install say",
+    "install:all-dev": "npm install openai @google-cloud/text-to-speech @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly @elevenlabs/elevenlabs-js node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream text2wav mespeak say sound-play pcm-convert"
   },
   "keywords": [
     "tts",
@@ -111,7 +114,11 @@
     "webassembly",
     "wasm",
     "offline-tts",
-    "espeak"
+    "espeak",
+    "system-tts",
+    "sapi",
+    "festival",
+    "cross-platform"
   ],
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -153,6 +160,7 @@
     "microsoft-cognitiveservices-speech-sdk": "^1.44.0",
     "openai": "^4.103.0",
     "pcm-convert": "^1.6.5",
+    "say": "^0.16.0",
     "sherpa-onnx-node": "^1.12.0",
     "sound-play": "^1.1.0",
     "tar-stream": "^3.1.7",
@@ -203,6 +211,9 @@
     },
     "text2wav": {
       "optional": true
+    },
+    "say": {
+      "optional": true
     }
   },
   "dependencyGroups": {
@@ -230,6 +241,9 @@
     },
     "espeak-wasm": {
       "mespeak": "^2.0.2"
+    },
+    "system": {
+      "say": "^0.16.0"
     },
     "node-audio": {
       "sound-play": "^1.1.0",
@@ -264,6 +278,7 @@
       "tar-stream": "^3.1.7",
       "text2wav": "^0.0.14",
       "mespeak": "^2.0.2",
+      "say": "^0.16.0",
       "sound-play": "^1.1.0",
       "pcm-convert": "^1.6.5"
     }

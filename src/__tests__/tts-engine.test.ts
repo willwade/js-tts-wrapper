@@ -13,6 +13,7 @@ import { OpenAITTSClient } from "../engines/openai";
 import { PlayHTTTSClient } from "../engines/playht";
 import { WatsonTTSClient } from "../engines/watson";
 import { WitAITTSClient } from "../engines/witai";
+import { SAPITTSClient } from "../engines/sapi";
 import { MockTTSClient } from "./mock-tts-client.helper";
 
 // Use mocks for tests to avoid API calls
@@ -123,6 +124,11 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
         });
         break;
 
+      case "sapi":
+        // SAPI doesn't require credentials, but only works on Windows
+        client = new SAPITTSClient({});
+        break;
+
       default:
         console.log(`Unknown engine: ${engine}`);
         return null;
@@ -145,7 +151,7 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
 }
 
 // Define the engines to test
-const engines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "sherpaonnx", "watson", "witai"];
+const engines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "sherpaonnx", "watson", "witai", "sapi"];
 
 // Run tests for each engine
 engines.forEach((engineName) => {

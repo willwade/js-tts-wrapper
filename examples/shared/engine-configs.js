@@ -38,7 +38,9 @@ export async function getEngineConfigs() {
     EspeakNodeTTSClient,
     EspeakBrowserTTSClient,
     WatsonTTSClient,
-    WitAITTSClient
+    WitAITTSClient,
+    SAPITTSClient,
+
   } = await import("../../dist/esm/index.js");
 
   const { MockTTSClient } = await import("../../dist/esm/__tests__/mock-tts-client.helper.js");
@@ -134,7 +136,13 @@ export async function getEngineConfigs() {
         token: process.env.WITAI_TOKEN || '',
       }),
       description: "Wit.ai TTS"
-    }
+    },
+    {
+      name: "sapi",
+      factory: () => new SAPITTSClient({}),
+      description: "Windows Speech API (SAPI) - Windows only"
+    },
+
   ];
 }
 
@@ -155,7 +163,8 @@ export function getEngineConfigsCJS() {
     EspeakNodeTTSClient,
     EspeakBrowserTTSClient,
     WatsonTTSClient,
-    WitAITTSClient
+    WitAITTSClient,
+    SAPITTSClient
   } = require('../../dist/cjs/index.js');
 
   const { MockTTSClient } = require('../../dist/cjs/__tests__/mock-tts-client.helper.js');
@@ -245,7 +254,13 @@ export function getEngineConfigsCJS() {
         token: process.env.WITAI_TOKEN || '',
       }),
       description: "Wit.ai TTS"
-    }
+    },
+    {
+      name: "sapi",
+      factory: () => new SAPITTSClient({}),
+      description: "Windows Speech API (SAPI) - Windows only"
+    },
+
   ];
 }
 

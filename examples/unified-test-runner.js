@@ -21,6 +21,7 @@
  * Examples:
  *   node examples/unified-test-runner.js                    # Test all engines (basic mode)
  *   node examples/unified-test-runner.js azure             # Test Azure engine only
+ *   node examples/unified-test-runner.js sapi              # Test Windows SAPI engine only
  *   node examples/unified-test-runner.js --mode=playback   # Test playback controls for all engines
  *   node examples/unified-test-runner.js --mode=example    # Comprehensive examples (replaces tts-example.js)
  *   node examples/unified-test-runner.js sherpaonnx --mode=debug  # Debug SherpaOnnx issues
@@ -87,6 +88,7 @@ async function showHelpInfo() {
   console.log('Examples:');
   console.log('  node examples/unified-test-runner.js                    # Test all engines (basic mode)');
   console.log('  node examples/unified-test-runner.js azure             # Test Azure engine only');
+  console.log('  node examples/unified-test-runner.js sapi              # Test Windows SAPI engine only');
   console.log('  node examples/unified-test-runner.js --mode=playback   # Test playback controls for all engines');
   console.log('  PLAY_AUDIO=true node examples/unified-test-runner.js mock --mode=audio');
 }

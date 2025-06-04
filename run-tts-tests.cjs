@@ -2,7 +2,7 @@ console.log("Running TTS engine tests...");
 
 // Get engine name from command line arguments
 const engineName = process.argv[2]?.toLowerCase() || "all";
-const validEngines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "sherpaonnx", "all"];
+const validEngines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "sherpaonnx", "sapi", "all"];
 
 if (!validEngines.includes(engineName)) {
   console.error(`Error: Invalid engine name. Valid options are: ${validEngines.join(", ")}`);

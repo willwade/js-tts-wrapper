@@ -29,6 +29,7 @@ export { EspeakNodeTTSClient, EspeakTTSClient } from "./engines/espeak";
 export { EspeakBrowserTTSClient, EspeakWasmTTSClient } from "./engines/espeak-wasm";
 export { WatsonTTSClient } from "./engines/watson";
 export { WitAITTSClient } from "./engines/witai";
+export { SAPITTSClient } from "./engines/sapi";
 
 // Type exports
 export type {

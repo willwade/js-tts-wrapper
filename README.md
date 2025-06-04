@@ -51,6 +51,7 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 | `sherpaonnx-wasm` | `SherpaOnnxWasmTTSClient` | Browser | k2-fsa/sherpa-onnx | None (WASM included) |
 | `espeak` | `EspeakNodeTTSClient` | Node.js | eSpeak NG | `text2wav` |
 | `espeak-wasm` | `EspeakBrowserTTSClient` | Both | eSpeak NG | `mespeak` (Node.js) or meSpeak.js (browser) |
+| `sapi` | `SAPITTSClient` | Node.js | Windows Speech API (SAPI) | None (uses PowerShell) |
 | `witai` | `WitAITTSClient` | Both | Wit.ai | None (uses fetch API) |
 
 **Factory Name**: Use with `createTTSClient('factory-name', credentials)`
@@ -76,6 +77,7 @@ npm install openai  # For OpenAI
 npm install sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream  # For SherpaOnnx
 npm install text2wav  # For eSpeak NG (Node.js)
 npm install mespeak  # For eSpeak NG-WASM (Node.js)
+npm install say  # For System TTS (Node.js)
 npm install sound-play pcm-convert  # For Node.js audio playback
 ```
 
@@ -98,6 +100,9 @@ npx js-tts-wrapper@latest run install:espeak
 
 # Install eSpeak NG-WASM dependencies (Node.js)
 npx js-tts-wrapper@latest run install:espeak-wasm
+
+# Install System TTS dependencies (Node.js)
+npx js-tts-wrapper@latest run install:system
 
 # Install Node.js audio playback dependencies
 npx js-tts-wrapper@latest run install:node-audio
@@ -205,7 +210,7 @@ async function runExample() {
 runExample().catch(console.error);
 ```
 
-The factory supports all engines: `'azure'`, `'google'`, `'polly'`, `'elevenlabs'`, `'openai'`, `'playht'`, `'watson'`, `'witai'`, `'sherpaonnx'`, `'sherpaonnx-wasm'`, `'espeak'`, `'espeak-wasm'`, etc.
+The factory supports all engines: `'azure'`, `'google'`, `'polly'`, `'elevenlabs'`, `'openai'`, `'playht'`, `'watson'`, `'witai'`, `'sherpaonnx'`, `'sherpaonnx-wasm'`, `'espeak'`, `'espeak-wasm'`, `'sapi'`, etc.
 
 ## Core Functionality
 
@@ -613,6 +618,36 @@ For backward compatibility, the old class names are still available:
 
 However, we recommend using the new, clearer names in new code.
 
+### Windows SAPI (Windows-only)
+
+#### ESM
+```javascript
+import { SAPITTSClient } from 'js-tts-wrapper';
+
+const tts = new SAPITTSClient();
+
+await tts.speak('Hello from Windows SAPI!');
+```
+
+#### CommonJS
+```javascript
+const { SAPITTSClient } = require('js-tts-wrapper');
+
+const tts = new SAPITTSClient();
+
+// Inside an async function
+await tts.speak('Hello from Windows SAPI!');
+```
+
+> **Note**: This engine provides direct access to Windows Speech API (SAPI) with enhanced features:
+> - **Windows-only**: Only works on Windows systems
+> - **SSML Support**: Full SSML support through SAPI's native capabilities
+> - **Rich Voice Metadata**: Detailed voice information including gender, age, and language
+> - **No Dependencies**: Uses PowerShell directly, no additional packages required
+> - **High Quality**: Native Windows TTS with all installed voices
+>
+> This engine is recommended over the generic `system` engine for Windows-specific applications that need SSML support and rich voice data.
+
 ## API Reference
 
 ### Factory Function
@@ -733,6 +768,7 @@ npx js-tts-wrapper@latest run install:openai
 npx js-tts-wrapper@latest run install:sherpaonnx
 npx js-tts-wrapper@latest run install:espeak
 npx js-tts-wrapper@latest run install:espeak-wasm
+npx js-tts-wrapper@latest run install:system
 
 # Install Node.js audio playback dependencies
 npx js-tts-wrapper@latest run install:node-audio
@@ -810,6 +846,7 @@ PLAY_AUDIO=true node examples/unified-test-runner.js [engine-name] --mode=audio
 PLAY_AUDIO=true node examples/unified-test-runner.js witai --mode=audio
 PLAY_AUDIO=true node examples/unified-test-runner.js azure --mode=audio
 PLAY_AUDIO=true node examples/unified-test-runner.js polly --mode=audio
+PLAY_AUDIO=true node examples/unified-test-runner.js system --mode=audio
 ```
 
 ### SherpaOnnx Specific Testing
@@ -840,10 +877,12 @@ npm run example:polly
 npm run example:openai
 npm run example:elevenlabs
 npm run example:playht
+npm run example:system
 npm run example:sherpaonnx:mac  # For SherpaOnnx with environment setup
 
 # With audio playback
 PLAY_AUDIO=true npm run example:azure
+PLAY_AUDIO=true npm run example:system
 PLAY_AUDIO=true npm run example:sherpaonnx:mac
 ```
 
