@@ -639,14 +639,7 @@ const tts = new SAPITTSClient();
 await tts.speak('Hello from Windows SAPI!');
 ```
 
-> **Note**: This engine provides direct access to Windows Speech API (SAPI) with enhanced features:
-> - **Windows-only**: Only works on Windows systems
-> - **SSML Support**: Full SSML support through SAPI's native capabilities
-> - **Rich Voice Metadata**: Detailed voice information including gender, age, and language
-> - **No Dependencies**: Uses PowerShell directly, no additional packages required
-> - **High Quality**: Native Windows TTS with all installed voices
->
-> This engine is recommended over the generic `system` engine for Windows-specific applications that need SSML support and rich voice data.
+> **Note**: This engine is **Windows-only**
 
 ## API Reference
 
