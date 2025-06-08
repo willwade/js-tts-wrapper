@@ -491,6 +491,73 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Check if a model is from GitHub (archive-based)
+   * @param modelId Voice model ID
+   * @returns True if this is a GitHub model
+   */
+  private isGitHubModel(modelId: string): boolean {
+    const githubPrefixes = [
+      "piper-", "coqui-", "icefall-", "mimic3-", "melo-",
+      "vctk-", "zh-", "ljs-", "cantonese-", "kokoro-"
+    ];
+    return githubPrefixes.some(prefix => modelId.startsWith(prefix));
+  }
+
+  /**
+   * Get dict directory from voice directory
+   * @param voiceDir Voice directory path
+   * @returns Dict directory path or empty string
+   */
+  private getDictDir(voiceDir: string): string {
+    try {
+      const items = fs.readdirSync(voiceDir);
+      for (const item of items) {
+        const itemPath = path.join(voiceDir, item);
+        const stat = fs.statSync(itemPath);
+
+        if (stat.isDirectory()) {
+          // Check if this directory contains .txt files (dict files)
+          const subItems = fs.readdirSync(itemPath);
+          if (subItems.some(subItem => subItem.endsWith('.txt'))) {
+            return itemPath;
+          }
+        }
+      }
+    } catch (error) {
+      // Ignore errors and return empty string
+    }
+    return "";
+  }
+
+  /**
+   * Ensure vocoder is downloaded for Matcha models
+   * @returns Path to vocoder file
+   */
+  private async ensureVocoderDownloaded(): Promise<string> {
+    const vocoderFilename = "vocos-22khz-univ.onnx";
+    const vocoderPath = path.join(this.baseDir, vocoderFilename);
+
+    if (fs.existsSync(vocoderPath)) {
+      console.log(`Vocoder already exists: ${vocoderPath}`);
+      return vocoderPath;
+    }
+
+    // Download vocoder from sherpa-onnx releases
+    const vocoderUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx";
+    console.log(`Downloading vocoder from ${vocoderUrl}`);
+
+    try {
+      await this.downloadFile(vocoderUrl, vocoderPath);
+      console.log(`Vocoder downloaded to ${vocoderPath}`);
+      return vocoderPath;
+    } catch (error) {
+      console.error(`Failed to download vocoder: ${error}`);
+      // Return empty string if download fails - let sherpa-onnx handle the error
+      return "";
+    }
+  }
+
+  /**
    * Recursively copy a directory and all its contents
    * @param src Source directory path
    * @param dest Destination directory path
@@ -523,44 +590,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
     }
   }
 
-  /**
-   * Get dict_dir from extracted model
-   * @param destinationDir Destination directory
-   * @returns Path to dict_dir
-   */
-  private getDictDir(destinationDir: string): string {
-    try {
-      // Walk through directory tree
-      const walkSync = (dir: string): string => {
-        const files = fs.readdirSync(dir);
 
-        // Check if any file ends with .txt
-        if (files.some((file) => file.endsWith(".txt"))) {
-          return dir;
-        }
-
-        // Check subdirectories
-        for (const file of files) {
-          const filePath = path.join(dir, file);
-          const stats = fs.statSync(filePath);
-
-          if (stats.isDirectory()) {
-            const result = walkSync(filePath);
-            if (result) {
-              return result;
-            }
-          }
-        }
-
-        return "";
-      };
-
-      return walkSync(destinationDir);
-    } catch (error) {
-      console.error("Error getting dict_dir:", error);
-      return "";
-    }
-  }
 
   /**
    * Download model and token files to voice-specific directory
@@ -948,54 +978,56 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       let modelConfig: any = {};
 
       if (modelType === "kokoro") {
-        // Kokoro model configuration
+        // Kokoro model configuration - matches Python implementation
         const voicesPath = path.join(voiceDir, "voices.bin");
         const espeakDataDir = path.join(voiceDir, "espeak-ng-data");
-        const dictDir = path.join(voiceDir, "dict");
 
         modelConfig = {
           model: modelPath,
-          tokens: tokensPath,
           voices: voicesPath,
-          dataDir: espeakDataDir,
+          tokens: tokensPath,
+          dataDir: fs.existsSync(espeakDataDir) ? espeakDataDir : "",
         };
-
-        // Add dict directory if it exists
-        if (fs.existsSync(dictDir)) {
-          modelConfig.dictDir = dictDir;
-        }
-
-        // Add lexicon files if they exist
-        const lexiconFiles = this.findFilesInDirectory(voiceDir, /lexicon.*\.txt$/);
-        if (lexiconFiles.length > 0) {
-          modelConfig.lexicon = lexiconFiles.join(",");
-        }
 
         console.log(`Using Kokoro model configuration with voices: ${voicesPath}`);
       } else if (modelType === "matcha") {
-        // Matcha model configuration
+        // Matcha model configuration - matches Python implementation
+        const espeakDataDir = path.join(voiceDir, "espeak-ng-data");
+        const vocoderPath = await this.ensureVocoderDownloaded();
+
         modelConfig = {
           acousticModel: modelPath,
-          vocoder: "", // Matcha models may need a separate vocoder
+          vocoder: vocoderPath,
+          lexicon: "", // Matcha models typically don't use lexicon
           tokens: tokensPath,
+          dataDir: fs.existsSync(espeakDataDir) ? espeakDataDir : "",
         };
 
-        console.log(`Using Matcha model configuration`);
+        console.log(`Using Matcha model configuration with vocoder: ${vocoderPath}`);
       } else {
-        // VITS model configuration (default)
+        // VITS model configuration (default) - matches Python implementation
+        const lexiconPath = path.join(voiceDir, "lexicon.txt");
+        const dictDir = this.getDictDir(voiceDir);
+
         modelConfig = {
           model: modelPath,
+          lexicon: fs.existsSync(lexiconPath) ? lexiconPath : "",
           tokens: tokensPath,
+          dataDir: "",
+          dictDir: "",
         };
 
-        // For Piper voices, add the espeak-ng-data directory
-        if (this.modelId && this.isPiperVoice(this.modelId)) {
+        // For Piper voices and GitHub models, use dataDir instead of dictDir
+        if (this.modelId && (this.isPiperVoice(this.modelId) || this.isGitHubModel(this.modelId))) {
           const espeakDataDir = path.join(voiceDir, "espeak-ng-data");
-
           if (fs.existsSync(espeakDataDir)) {
             modelConfig.dataDir = espeakDataDir;
+            modelConfig.dictDir = ""; // Avoid jieba warnings
             console.log(`Using espeak-ng-data directory: ${espeakDataDir}`);
           }
+        } else if (dictDir) {
+          // For other models, use dictDir
+          modelConfig.dictDir = dictDir;
         }
       }
 
