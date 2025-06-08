@@ -121,7 +121,6 @@ export interface SherpaOnnxWasmTTSOptions extends SpeakOptions {
 export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
   private wasmModule: SherpaOnnxWasmModule | null = null;
   private tts: any = null;
-  private baseDir = "";
   private wasmPath = "";
   private wasmLoaded = false;
 
@@ -142,8 +141,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
     // Set default sample rate for the Piper model
     this.sampleRate = 22050;
 
-    // Set default base directory for models
-    this.baseDir = (credentials.baseDir as string) || this._getDefaultModelsDir();
+    // Note: baseDir from credentials is accepted for backward compatibility but not used
 
     // Set default WebAssembly path
     this.wasmPath = (credentials.wasmPath as string) || "";
@@ -161,20 +159,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
     }
   }
 
-  /**
-   * Get the default models directory
-   * @returns Path to the default models directory
-   */
-  private _getDefaultModelsDir(): string {
-    // In browser environments, use a relative path
-    if (isBrowser) {
-      return "./models";
-    }
 
-    // In Node.js, use the home directory
-    const homeDir = process.env.HOME || process.env.USERPROFILE || ".";
-    return pathUtils.join(homeDir, ".js-tts-wrapper", "models");
-  }
 
   /**
    * Check if the credentials are valid
@@ -432,10 +417,12 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
               await this.modelRepository.loadModelsIndex();
 
               // Initialize model manager
-              this.modelManager = new WasmModelManager(
-                this.wasmModule,
-                this.enhancedOptions.maxCachedModels!
-              );
+              if (this.wasmModule) {
+                this.modelManager = new WasmModelManager(
+                  this.wasmModule,
+                  this.enhancedOptions.maxCachedModels!
+                );
+              }
 
               console.log("Enhanced multi-model support initialized successfully");
             } catch (error) {
@@ -1078,7 +1065,6 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
  * Uses existing merged_models.json infrastructure for multi-model support
  */
 class ModelRepository {
-  private cache: Map<string, ArrayBuffer> = new Map();
   private modelsIndex: ModelConfig[] = [];
 
   constructor() {
