@@ -86,6 +86,7 @@ interface ModelConfig {
   description?: string;
   compression?: boolean;
   developer?: string;
+  model_type?: string; // Added to support different model types (vits, kokoro, matcha)
 }
 
 /**
@@ -340,6 +341,27 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         }
       }
 
+      // For Kokoro voices, check for additional required files
+      if (modelId && this.isKokoroVoice(modelId)) {
+        const voiceDir = path.dirname(modelPath);
+        const voicesPath = path.join(voiceDir, "voices.bin");
+        const espeakDataDir = path.join(voiceDir, "espeak-ng-data");
+
+        // Check for voices.bin file
+        if (!fs.existsSync(voicesPath) || fs.statSync(voicesPath).size === 0) {
+          console.log(`Kokoro voice ${modelId} missing or empty voices.bin file at ${voicesPath}`);
+          return false;
+        }
+
+        // Check for espeak-ng-data directory
+        if (!fs.existsSync(espeakDataDir) || !fs.statSync(espeakDataDir).isDirectory()) {
+          console.log(
+            `Kokoro voice ${modelId} missing espeak-ng-data directory at ${espeakDataDir}`
+          );
+          return false;
+        }
+      }
+
       return true;
     } catch (error) {
       console.error("Error checking files:", error);
@@ -357,6 +379,115 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       modelId.startsWith("piper-") ||
       (this.jsonModels[modelId] && this.jsonModels[modelId].developer === "piper")
     );
+  }
+
+  /**
+   * Check if a voice is a Kokoro voice based on its ID
+   * @param modelId Voice model ID
+   * @returns True if this is a Kokoro voice
+   */
+  private isKokoroVoice(modelId: string): boolean {
+    return (
+      modelId.startsWith("kokoro-") ||
+      (this.jsonModels[modelId] && this.jsonModels[modelId].model_type === "kokoro")
+    );
+  }
+
+  /**
+   * Check if a voice is a Matcha voice based on its ID
+   * @param modelId Voice model ID
+   * @returns True if this is a Matcha voice
+   */
+  private isMatchaVoice(modelId: string): boolean {
+    return (
+      this.jsonModels[modelId] && this.jsonModels[modelId].model_type === "matcha"
+    );
+  }
+
+  /**
+   * Get the model type for a given model ID
+   * @param modelId Voice model ID
+   * @returns Model type (vits, kokoro, matcha)
+   */
+  private getModelType(modelId: string): string {
+    if (this.isKokoroVoice(modelId)) return "kokoro";
+    if (this.isMatchaVoice(modelId)) return "matcha";
+    return "vits"; // Default to vits for backward compatibility
+  }
+
+  /**
+   * Find files matching a pattern in a directory recursively
+   * @param dir Directory to search
+   * @param pattern Regex pattern to match
+   * @returns Array of matching file paths
+   */
+  private findFilesInDirectory(dir: string, pattern: RegExp): string[] {
+    const results: string[] = [];
+
+    const searchRecursive = (currentDir: string) => {
+      try {
+        const items = fs.readdirSync(currentDir);
+        for (const item of items) {
+          const itemPath = path.join(currentDir, item);
+          const stat = fs.statSync(itemPath);
+
+          if (stat.isDirectory()) {
+            searchRecursive(itemPath);
+          } else if (pattern.test(item)) {
+            results.push(itemPath);
+          }
+        }
+      } catch (error) {
+        // Ignore errors and continue
+      }
+    };
+
+    searchRecursive(dir);
+    return results;
+  }
+
+  /**
+   * Find a specific file in a directory recursively
+   * @param dir Directory to search
+   * @param filename Filename to find
+   * @returns Path to the file or null if not found
+   */
+  private findFileInDirectory(dir: string, filename: string): string | null {
+    const files = this.findFilesInDirectory(dir, new RegExp(`^${filename}$`));
+    return files.length > 0 ? files[0] : null;
+  }
+
+  /**
+   * Find a specific directory in a directory recursively
+   * @param dir Directory to search
+   * @param dirname Directory name to find
+   * @returns Path to the directory or null if not found
+   */
+  private findDirectoryInDestination(dir: string, dirname: string): string | null {
+    const searchRecursive = (currentDir: string): string | null => {
+      try {
+        const items = fs.readdirSync(currentDir);
+        for (const item of items) {
+          const itemPath = path.join(currentDir, item);
+          const stat = fs.statSync(itemPath);
+
+          if (stat.isDirectory()) {
+            if (item === dirname) {
+              return itemPath;
+            }
+            const result = searchRecursive(itemPath);
+            if (result) {
+              return result;
+            }
+          }
+        }
+      } catch (error) {
+        // Ignore errors and continue
+      }
+      return null;
+    };
+
+    return searchRecursive(dir);
   }
 
   /**
@@ -520,6 +651,63 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
                 `Piper voice ${safeModelId} missing espeak-ng-data directory in archive`
               );
             }
+          }
+
+          // For Kokoro voices, copy additional required files
+          if (this.isKokoroVoice(safeModelId)) {
+            // Copy voices.bin file
+            const voicesFile = this.findFileInDirectory(destinationDir, "voices.bin");
+            if (voicesFile) {
+              const voicesDestPath = path.join(destinationDir, "voices.bin");
+              if (voicesFile !== voicesDestPath) {
+                fs.copyFileSync(voicesFile, voicesDestPath);
+                console.log(`Copied voices.bin file to ${voicesDestPath}`);
+              }
+            } else {
+              console.warn(`Kokoro voice ${safeModelId} missing voices.bin file in archive`);
+            }
+
+            // Copy espeak-ng-data directory
+            if (espeakDataDir && fs.existsSync(espeakDataDir)) {
+              const espeakDestDir = path.join(destinationDir, "espeak-ng-data");
+              this.copyDirectoryRecursive(espeakDataDir, espeakDestDir);
+              console.log(`Copied espeak-ng-data directory to ${espeakDestDir}`);
+            } else {
+              console.warn(
+                `Kokoro voice ${safeModelId} missing espeak-ng-data directory in archive`
+              );
+            }
+
+            // Copy lexicon files if they exist
+            const lexiconFiles = this.findFilesInDirectory(destinationDir, /lexicon.*\.txt$/);
+            lexiconFiles.forEach((lexiconFile) => {
+              const lexiconName = path.basename(lexiconFile);
+              const lexiconDestPath = path.join(destinationDir, lexiconName);
+              if (lexiconFile !== lexiconDestPath) {
+                fs.copyFileSync(lexiconFile, lexiconDestPath);
+                console.log(`Copied lexicon file to ${lexiconDestPath}`);
+              }
+            });
+
+            // Copy other potential files (dict directory, fst files, etc.)
+            const dictDir = this.findDirectoryInDestination(destinationDir, "dict");
+            if (dictDir) {
+              const dictDestDir = path.join(destinationDir, "dict");
+              if (dictDir !== dictDestDir) {
+                this.copyDirectoryRecursive(dictDir, dictDestDir);
+                console.log(`Copied dict directory to ${dictDestDir}`);
+              }
+            }
+
+            const fstFiles = this.findFilesInDirectory(destinationDir, /\.fst$/);
+            fstFiles.forEach((fstFile) => {
+              const fstName = path.basename(fstFile);
+              const fstDestPath = path.join(destinationDir, fstName);
+              if (fstFile !== fstDestPath) {
+                fs.copyFileSync(fstFile, fstDestPath);
+                console.log(`Copied FST file to ${fstDestPath}`);
+              }
+            });
           }
         } else {
           throw new Error("Could not find model.onnx and tokens.txt in the extracted files");
@@ -753,26 +941,67 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         }
       }
 
-      // Create the TTS configuration
-      const vitsConfig: any = {
-        model: modelPath,
-        tokens: tokensPath,
-      };
+      // Create the TTS configuration based on model type
+      const modelType = this.modelId ? this.getModelType(this.modelId) : "vits";
+      const voiceDir = path.dirname(modelPath);
 
-      // For Piper voices, add the espeak-ng-data directory
-      if (this.modelId && this.isPiperVoice(this.modelId)) {
-        const voiceDir = path.dirname(modelPath);
+      let modelConfig: any = {};
+
+      if (modelType === "kokoro") {
+        // Kokoro model configuration
+        const voicesPath = path.join(voiceDir, "voices.bin");
         const espeakDataDir = path.join(voiceDir, "espeak-ng-data");
+        const dictDir = path.join(voiceDir, "dict");
 
-        if (fs.existsSync(espeakDataDir)) {
-          vitsConfig.dataDir = espeakDataDir;
-          console.log(`Using espeak-ng-data directory: ${espeakDataDir}`);
+        modelConfig = {
+          model: modelPath,
+          tokens: tokensPath,
+          voices: voicesPath,
+          dataDir: espeakDataDir,
+        };
+
+        // Add dict directory if it exists
+        if (fs.existsSync(dictDir)) {
+          modelConfig.dictDir = dictDir;
+        }
+
+        // Add lexicon files if they exist
+        const lexiconFiles = this.findFilesInDirectory(voiceDir, /lexicon.*\.txt$/);
+        if (lexiconFiles.length > 0) {
+          modelConfig.lexicon = lexiconFiles.join(",");
+        }
+
+        console.log(`Using Kokoro model configuration with voices: ${voicesPath}`);
+      } else if (modelType === "matcha") {
+        // Matcha model configuration
+        modelConfig = {
+          acousticModel: modelPath,
+          vocoder: "", // Matcha models may need a separate vocoder
+          tokens: tokensPath,
+        };
+
+        console.log(`Using Matcha model configuration`);
+      } else {
+        // VITS model configuration (default)
+        modelConfig = {
+          model: modelPath,
+          tokens: tokensPath,
+        };
+
+        // For Piper voices, add the espeak-ng-data directory
+        if (this.modelId && this.isPiperVoice(this.modelId)) {
+          const espeakDataDir = path.join(voiceDir, "espeak-ng-data");
+
+          if (fs.existsSync(espeakDataDir)) {
+            modelConfig.dataDir = espeakDataDir;
+            console.log(`Using espeak-ng-data directory: ${espeakDataDir}`);
+          }
         }
       }
 
       const config = {
         model: {
-          vits: vitsConfig,
+          [modelType]: modelConfig,
           debug: false,
           numThreads: 1,
           provider: "cpu",
@@ -1324,3 +1553,6 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
     }
   }
 }
+
+// Export alias for backward compatibility
+export { SherpaOnnxTTSClient as SherpaOnnxTTS };
