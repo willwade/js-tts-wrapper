@@ -34,8 +34,7 @@ module.exports = {
     "lcov"
   ],
   moduleNameMapper: {
-    "^(\\.{1,2}/.*)\\.js$": "$1", 
-    "sherpa-onnx-node": "<rootDir>/src/__tests__/sherpaonnx.mock.ts",
+    "^(\\.{1,2}/.*)\\.js$": "$1",
   },
   moduleFileExtensions: [ 
     "ts",

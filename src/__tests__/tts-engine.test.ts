@@ -8,7 +8,7 @@ import { AzureTTSClient } from "../engines/azure";
 import { ElevenLabsTTSClient } from "../engines/elevenlabs";
 import { GoogleTTSClient } from "../engines/google";
 import { PollyTTSClient } from "../engines/polly";
-import { SherpaOnnxTTSClient } from "../engines/sherpaonnx";
+
 import { OpenAITTSClient } from "../engines/openai";
 import { PlayHTTTSClient } from "../engines/playht";
 import { WatsonTTSClient } from "../engines/watson";
@@ -73,13 +73,7 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
         });
         break;
 
-      case "sherpaonnx":
-        // SherpaOnnx doesn't require credentials, but we'll create a mock client for testing
-        client = new SherpaOnnxTTSClient({
-          // Use test mode to avoid downloading models
-          noDefaultDownload: true,
-        });
-        break;
+
 
       case "openai":
         if (!process.env.OPENAI_API_KEY) {
@@ -150,8 +144,8 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
   }
 }
 
-// Define the engines to test
-const engines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "sherpaonnx", "watson", "witai", "sapi"];
+// Define the engines to test (excluding sherpaonnx which has its own dedicated test files)
+const engines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "watson", "witai", "sapi"];
 
 // Run tests for each engine
 engines.forEach((engineName) => {
