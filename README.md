@@ -248,8 +248,23 @@ const { audioStream, wordBoundaries } = await tts.synthToBytestream('Hello, worl
 ### Audio Playback
 
 ```typescript
-// Synthesize and play audio
+// Traditional text synthesis and playback
 await tts.speak('Hello, world!');
+
+// NEW: Play audio from different sources without re-synthesizing
+// Play from file
+await tts.speak({ filename: 'path/to/audio.mp3' });
+
+// Play from audio bytes
+const audioBytes = await tts.synthToBytes('Hello, world!');
+await tts.speak({ audioBytes: audioBytes });
+
+// Play from audio stream
+const { audioStream } = await tts.synthToBytestream('Hello, world!');
+await tts.speak({ audioStream: audioStream });
+
+// All input types work with speakStreamed too
+await tts.speakStreamed({ filename: 'path/to/audio.mp3' });
 
 // Playback control
 tts.pause();  // Pause playback
@@ -261,6 +276,13 @@ await tts.startPlaybackWithCallbacks('Hello world', (word, start, end) => {
   console.log(`Word: ${word}, Start: ${start}s, End: ${end}s`);
 });
 ```
+
+#### Benefits of Multi-Source Audio Playback
+
+- **Avoid Double Synthesis**: Use `synthToFile()` to save audio, then play the same file with `speak({ filename })` without re-synthesizing
+- **Platform Independent**: Works consistently across browser and Node.js environments
+- **Efficient Reuse**: Play the same audio bytes or stream multiple times without regenerating
+- **Flexible Input**: Choose the most convenient input source for your use case
 
 > **Note**: Audio playback with `speak()` and `speakStreamed()` methods is supported in both browser environments and Node.js environments with the optional `sound-play` package installed. To enable Node.js audio playback, install the required packages with `npm install sound-play pcm-convert` or use the npm script `npx js-tts-wrapper@latest run install:node-audio`.
 

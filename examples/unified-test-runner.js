@@ -17,6 +17,7 @@
  *   example     - Comprehensive example with SSML, streaming, word boundaries
  *   debug       - Debug mode for troubleshooting engines
  *   stream      - Streaming tests with real-time playback
+ *   audioinput  - Test new audio input features (file, bytes, stream playback)
  *
  * Examples:
  *   node examples/unified-test-runner.js                    # Test all engines (basic mode)
@@ -80,6 +81,7 @@ async function showHelpInfo() {
   console.log('  example     Comprehensive example with SSML, streaming, word boundaries');
   console.log('  debug       Debug mode for troubleshooting engines');
   console.log('  stream      Streaming tests with real-time playback');
+  console.log('  audioinput  Test new audio input features (file, bytes, stream playback)');
   console.log('');
 
   const configs = await getEngineConfigs();
@@ -540,6 +542,80 @@ async function runStreamMode(engineConfigs, targetEngine = null) {
 }
 
 /**
+ * Run audio input tests (new feature)
+ */
+async function runAudioInputTests(engineConfigs, targetEngine = null) {
+  console.log('Testing new audio input features (file, bytes, stream playback)...\n');
+
+  const configsToTest = targetEngine
+    ? [getEngineConfig(targetEngine, engineConfigs)].filter(Boolean)
+    : engineConfigs.slice(0, 2); // Limit to first 2 engines for audio input tests
+
+  for (const config of configsToTest) {
+    let client = null;
+    try {
+      console.log(`\n=== Audio Input Testing: ${config.name} ===`);
+      client = config.factory();
+
+      // Check credentials
+      const credentialsValid = await client.checkCredentials();
+      if (!credentialsValid) {
+        console.log(`Skipping ${config.name} - invalid credentials`);
+        continue;
+      }
+
+      // Test 1: Traditional text synthesis and playback
+      console.log('\n--- Test 1: Traditional Text Synthesis ---');
+      const testText = `Hello, this demonstrates the new audio input features with ${config.name}.`;
+      await client.speak(testText);
+      console.log('✓ Traditional text synthesis completed');
+
+      // Test 2: Synthesize to file, then play from file
+      console.log('\n--- Test 2: Synthesize to File, then Play File ---');
+      const filename = path.join(OUTPUT_DIR, `${config.name}-audio-input-test.mp3`);
+
+      // First, synthesize and save to file
+      await client.synthToFile('This audio was saved to a file first, then played back.', filename, 'mp3');
+      console.log(`✓ Audio saved to ${filename}`);
+
+      // Now play the file using the new filename parameter
+      await client.speak({ filename: filename });
+      console.log('✓ File playback completed');
+
+      // Test 3: Get audio bytes and play them directly
+      console.log('\n--- Test 3: Audio Bytes Playback ---');
+      const audioBytes = await client.synthToBytes('These are raw audio bytes being played directly.');
+
+      // Play the audio bytes directly
+      await client.speak({ audioBytes: audioBytes });
+      console.log('✓ Audio bytes playback completed');
+
+      // Test 4: Use streaming synthesis and play the stream
+      console.log('\n--- Test 4: Audio Stream Playback ---');
+      const streamResult = await client.synthToBytestream('This is streamed audio being played directly.');
+
+      // Play the audio stream directly
+      await client.speak({ audioStream: streamResult.audioStream });
+      console.log('✓ Audio stream playback completed');
+
+      // Test 5: Test speakStreamed with different inputs
+      console.log('\n--- Test 5: SpeakStreamed with Audio File ---');
+      await client.speakStreamed({ filename: filename });
+      console.log('✓ Streamed file playback completed');
+
+      console.log(`\n${config.name.toUpperCase()} audio input tests completed!`);
+      console.log('Benefits demonstrated:');
+      console.log('- No need to synthesize twice (once for file, once for playback)');
+      console.log('- Platform-independent audio playback');
+      console.log('- Efficient reuse of already synthesized audio');
+
+    } catch (error) {
+      console.error(`Error in audio input testing for ${config.name}:`, error.message);
+    }
+  }
+}
+
+/**
  * Main function
  */
 async function main() {
@@ -589,9 +665,12 @@ async function main() {
     case 'stream':
       await runStreamMode(engineConfigs, engine);
       break;
+    case 'audioinput':
+      await runAudioInputTests(engineConfigs, engine);
+      break;
     default:
       console.error(`Unknown mode: ${mode}`);
-      console.log('Available modes: basic, playback, features, audio, example, debug, stream');
+      console.log('Available modes: basic, playback, features, audio, example, debug, stream, audioinput');
       process.exit(1);
   }
 

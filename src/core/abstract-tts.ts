@@ -3,6 +3,7 @@ import type {
   CredentialsCheckResult,
   PropertyType,
   SimpleCallback,
+  SpeakInput,
   SpeakOptions,
   TTSCredentials,
   TTSEventType,
@@ -165,29 +166,41 @@ export abstract class AbstractTTSClient {
   }
 
   /**
-   * Speak text using the default audio output
-   * @param text Text or SSML to speak
+   * Speak text using the default audio output, or play audio from file/bytes/stream
+   * @param input Text to speak, or audio input (filename, audioBytes, or audioStream)
    * @param options Synthesis options
    * @returns Promise resolving when audio playback starts
    */
-  async speak(text: string, options?: SpeakOptions): Promise<void> {
+  async speak(input: string | SpeakInput, options?: SpeakOptions): Promise<void> {
     // Trigger onStart callback
     this.emit("start");
 
     try {
-      // Convert text to audio bytes
-      const audioBytes = await this.synthToBytes(text, options);
+      let audioBytes: Uint8Array;
+      let mimeType: string;
 
-      // Check if we're in a browser environment
-      if (isBrowser) {
-        // Determine the correct MIME type based on the options or engine default
-        let mimeType = "audio/wav"; // default to WAV
+      // Handle different input types
+      if (typeof input === "string") {
+        // Traditional text input
+        audioBytes = await this.synthToBytes(input, options);
 
+        // Determine MIME type based on options or engine default
+        mimeType = "audio/wav"; // default to WAV
         if (options?.format === "mp3") {
           mimeType = "audio/mpeg";
         } else if (options?.format === "ogg") {
           mimeType = "audio/ogg";
         }
+      } else {
+        // Audio input (file, bytes, or stream)
+        const { processAudioInput } = await import("../utils/audio-input");
+        const result = await processAudioInput(input);
+        audioBytes = result.audioBytes;
+        mimeType = result.mimeType;
+      }
+
+      // Check if we're in a browser environment
+      if (isBrowser) {
 
         // Create audio blob and URL with the correct MIME type
         const blob = new Blob([audioBytes], { type: mimeType });
@@ -203,8 +216,10 @@ export abstract class AbstractTTSClient {
             this.audio.isPlaying = true;
             this.audio.isPaused = false;
 
-            // Create estimated word timings if needed
-            this._createEstimatedWordTimings(text);
+            // Create estimated word timings if needed (only for text input)
+            if (typeof input === "string") {
+              this._createEstimatedWordTimings(input);
+            }
 
             // Play the audio
             await audio.play();
@@ -268,41 +283,70 @@ export abstract class AbstractTTSClient {
   }
 
   /**
-   * Speak text using streaming synthesis
-   * @param text Text or SSML to speak
+   * Speak text using streaming synthesis, or play audio from file/bytes/stream
+   * @param input Text to speak, or audio input (filename, audioBytes, or audioStream)
    * @param options Synthesis options
    * @returns Promise resolving when audio playback starts
    */
-  async speakStreamed(text: string, options?: SpeakOptions): Promise<void> {
+  async speakStreamed(input: string | SpeakInput, options?: SpeakOptions): Promise<void> {
     // Trigger onStart callback
     this.emit("start");
 
     try {
-      // Get streaming audio data
-      const streamResult = await this.synthToBytestream(text, options);
+      let audioBytes: Uint8Array;
+      let mimeType: string;
+      let wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
+      let text: string = "";
 
-      // Get audio stream and word boundaries
-      const audioStream = streamResult.audioStream;
-      const wordBoundaries = streamResult.wordBoundaries;
+      // Handle different input types
+      if (typeof input === "string") {
+        // Traditional text input - use streaming synthesis
+        text = input;
+        const streamResult = await this.synthToBytestream(text, options);
 
-      const reader = audioStream.getReader();
-      const chunks: Uint8Array[] = [];
+        // Get audio stream and word boundaries
+        const audioStream = streamResult.audioStream;
+        wordBoundaries = streamResult.wordBoundaries;
 
-      // Read all chunks from the stream
-      let result = await reader.read();
-      while (!result.done) {
-        chunks.push(result.value);
-        result = await reader.read();
+        const reader = audioStream.getReader();
+        const chunks: Uint8Array[] = [];
+
+        // Read all chunks from the stream
+        let result = await reader.read();
+        while (!result.done) {
+          chunks.push(result.value);
+          result = await reader.read();
+        }
+
+        // Combine chunks into a single audio buffer
+        const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+        audioBytes = new Uint8Array(totalLength);
+        let offset = 0;
+        for (const chunk of chunks) {
+          audioBytes.set(chunk, offset);
+          offset += chunk.length;
+        }
+
+        // Determine MIME type based on options or engine default
+        mimeType = "audio/wav"; // default to WAV
+        if (options?.format === "mp3") {
+          mimeType = "audio/mpeg";
+        } else if (options?.format === "ogg") {
+          mimeType = "audio/ogg";
+        }
+      } else {
+        // Audio input (file, bytes, or stream)
+        const { processAudioInput } = await import("../utils/audio-input");
+        const result = await processAudioInput(input);
+        audioBytes = result.audioBytes;
+        mimeType = result.mimeType;
+
+        // For audio input, we don't have word boundaries or text
+        // We'll create estimated timings if needed
+        text = ""; // No text available for audio input
       }
 
-      // Combine chunks into a single audio buffer
-      const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-      const audioBytes = new Uint8Array(totalLength);
-      let offset = 0;
-      for (const chunk of chunks) {
-        audioBytes.set(chunk, offset);
-        offset += chunk.length;
-      }
+
 
       // Use actual word boundaries if available, otherwise create estimated ones
       if (wordBoundaries.length > 0) {
@@ -312,21 +356,16 @@ export abstract class AbstractTTSClient {
           (wb.offset + wb.duration) / 10000,
           wb.text,
         ]);
-      } else {
-        // Create estimated word timings
+      } else if (text) {
+        // Create estimated word timings only if we have text
         this._createEstimatedWordTimings(text);
+      } else {
+        // No text available (audio input), clear timings
+        this.timings = [];
       }
 
       // Check if we're in a browser environment
       if (isBrowser) {
-        // Determine the correct MIME type based on the options or engine default
-        let mimeType = "audio/wav"; // default to WAV
-
-        if (options?.format === "mp3") {
-          mimeType = "audio/mpeg";
-        } else if (options?.format === "ogg") {
-          mimeType = "audio/ogg";
-        }
 
         // Create audio blob and URL with the correct MIME type
         const blob = new Blob([audioBytes], { type: mimeType });
@@ -370,8 +409,10 @@ export abstract class AbstractTTSClient {
           // Check if Node.js audio playback is available
           const audioAvailable = await isNodeAudioAvailable();
 
-          // Create estimated word timings if needed
-          this._createEstimatedWordTimings(text);
+          // Create estimated word timings if needed and we have text
+          if (text) {
+            this._createEstimatedWordTimings(text);
+          }
 
           if (audioAvailable) {
             // Schedule word boundary callbacks
@@ -402,8 +443,10 @@ export abstract class AbstractTTSClient {
         console.log("Audio playback is not supported in this environment.");
         console.log("Use synthToFile() to save audio to a file and play it with an external player.");
 
-        // Create estimated word timings if needed
-        this._createEstimatedWordTimings(text);
+        // Create estimated word timings if needed and we have text
+        if (text) {
+          this._createEstimatedWordTimings(text);
+        }
 
         // Fire word boundary callbacks immediately
         setTimeout(() => {

@@ -44,6 +44,32 @@ export interface SpeakOptions {
 }
 
 /**
+ * Input source for speak methods - can be text, file, bytes, or stream
+ * Only one of these should be provided
+ */
+export interface SpeakInput {
+  /**
+   * Text or SSML to synthesize and speak
+   */
+  text?: string;
+
+  /**
+   * Path to an audio file to play
+   */
+  filename?: string;
+
+  /**
+   * Raw audio bytes to play
+   */
+  audioBytes?: Uint8Array;
+
+  /**
+   * Audio stream to play
+   */
+  audioStream?: ReadableStream<Uint8Array>;
+}
+
+/**
  * Unified voice format across all providers
  */
 export type UnifiedVoice = {
