@@ -34,6 +34,15 @@ import { getEngineConfigs, getEngineConfig, printEngineHelp } from './shared/eng
 import { testEngine, testPlaybackControl, parseEngineArg, TEST_TEXTS } from './shared/test-utils.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+
+// Load environment variables from .env file
+const require = createRequire(import.meta.url);
+try {
+  require('./load-env.cjs');
+} catch (error) {
+  console.warn('Warning: Could not load environment variables from .env file:', error.message);
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

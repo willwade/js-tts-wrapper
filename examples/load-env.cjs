@@ -2,8 +2,8 @@
 const fs = require("fs");
 const path = require("path");
 
-// Read the .env file
-const envFile = path.join(__dirname, ".env");
+// Read the .env file from the project root
+const envFile = path.join(__dirname, "..", ".env");
 if (fs.existsSync(envFile)) {
   const envContent = fs.readFileSync(envFile, "utf8");
 
