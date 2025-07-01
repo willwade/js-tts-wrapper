@@ -497,20 +497,23 @@ export class SAPITTSClient extends AbstractTTSClient {
    * @returns Properly formatted SSML
    */
   private ensureProperSSML(text: string): string {
+    // Trim whitespace for proper parsing
+    const trimmedText = text.trim();
+
     // Check if the SSML already has version attribute
-    if (text.includes('version=')) {
-      return text;
+    if (trimmedText.includes('version=')) {
+      return text; // Return original text to preserve formatting
     }
 
     // If it's a simple <speak> tag, add the version attribute
     // Note: SAPI requires xml:lang="en" (not "en-US") for SSML to work properly
-    if (text.startsWith('<speak>')) {
+    if (trimmedText.startsWith('<speak>')) {
       return text.replace('<speak>', '<speak version="1.0" xml:lang="en">');
     }
 
     // If it doesn't start with <speak>, wrap it properly
     // Note: SAPI requires xml:lang="en" (not "en-US") for SSML to work properly
-    if (!text.startsWith('<speak')) {
+    if (!trimmedText.startsWith('<speak')) {
       return `<speak version="1.0" xml:lang="en">${text}</speak>`;
     }
 

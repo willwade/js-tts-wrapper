@@ -63,13 +63,10 @@ export class GoogleTTSClient extends AbstractTTSClient {
     this.googleCredentials = credentials;
     this.client = null;
 
-    // Initialize the client if we're in a Node.js environment
-    if (typeof window === "undefined") {
-      this.initializeClient(credentials);
-    } else {
-      // In browser: use REST API (to be implemented as needed)
-      this.client = null;
-    }
+
+
+    // Don't initialize the client here - do it lazily on first use
+    // This follows the same pattern as Polly and Azure engines
   }
 
   /**
@@ -99,13 +96,15 @@ export class GoogleTTSClient extends AbstractTTSClient {
         );
       }
     } catch (error) {
+      // Always log the actual error for debugging
+      console.error("Error initializing Google TTS client:", error);
+
       // In test mode, we'll just log a warning instead of an error
       if (process.env.NODE_ENV === "test") {
         console.warn(
           "Google TTS client not initialized in test mode. Some tests may be skipped."
         );
       } else {
-        console.error("Error initializing Google TTS client:", error);
         console.warn(
           "Google TTS will not be available. Install @google-cloud/text-to-speech to use this engine."
         );
@@ -119,12 +118,18 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to an array of voice objects
    */
   protected async _getVoices(): Promise<any[]> {
-    // If the client is not available, return an empty array
-    if (!this.client) {
-      return [];
-    }
-
     try {
+      // Lazy initialization - initialize client on first use
+      if (!this.client) {
+        await this.initializeClient(this.googleCredentials);
+      }
+
+      // If client is still null after initialization, return empty array
+      if (!this.client) {
+        console.log("Google TTS: Client initialization failed, returning empty array");
+        return [];
+      }
+
       const [response] = await this.client.listVoices({});
       return response.voices || [];
     } catch (error) {
@@ -140,7 +145,12 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to audio bytes
    */
   async synthToBytes(text: string, options?: GoogleTTSOptions): Promise<Uint8Array> {
-    // If the client is not available, throw an error
+    // Lazy initialization - initialize client on first use
+    if (!this.client) {
+      await this.initializeClient(this.googleCredentials);
+    }
+
+    // If the client is still not available after initialization, throw an error
     if (!this.client) {
       throw new Error(
         "Google TTS client is not available. Install @google-cloud/text-to-speech to use this engine."
@@ -246,7 +256,12 @@ export class GoogleTTSClient extends AbstractTTSClient {
     audioStream: ReadableStream<Uint8Array>;
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
-    // If the client is not available, throw an error
+    // Lazy initialization - initialize client on first use
+    if (!this.client) {
+      await this.initializeClient(this.googleCredentials);
+    }
+
+    // If the client is still not available after initialization, throw an error
     if (!this.client) {
       throw new Error(
         "Google TTS client is not available. Install @google-cloud/text-to-speech to use this engine."

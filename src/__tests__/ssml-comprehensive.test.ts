@@ -2,7 +2,27 @@ import { describe, it, expect, beforeAll } from "@jest/globals";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { TTSClient } from "../index";
+import { createTTSClient } from "../factory";
+import type { AbstractTTSClient } from "../core/abstract-tts";
+
+// Load environment variables from .env file
+const envFile = path.join(process.cwd(), '.env');
+if (fs.existsSync(envFile)) {
+  const envContent = fs.readFileSync(envFile, 'utf8');
+  const envLines = envContent.split('\n');
+  for (const line of envLines) {
+    if (line.trim() && !line.startsWith('#')) {
+      const match = line.match(/^export\s+([A-Za-z0-9_]+)="(.*)"/);
+      if (match) {
+        const [, key, value] = match;
+        process.env[key] = value;
+      }
+    }
+  }
+  console.log('Environment variables loaded from .env file for Jest');
+} else {
+  console.log('No .env file found for Jest');
+}
 
 /**
  * Comprehensive SSML Testing Suite
@@ -24,28 +44,108 @@ const TEST_ENGINES = process.env.TEST_ENGINES?.split(",") || [
   "google", "azure", "polly", "witai", "elevenlabs", "openai", "sapi", "espeak-wasm"
 ];
 
+/**
+ * Get credentials for testing engines (real if available, mock otherwise)
+ */
+function getMockCredentials(engineName: string): any {
+  switch (engineName) {
+    case "google":
+      // Use real credentials if available, otherwise fake
+      if (process.env.GOOGLE_SA_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+        const keyFilename = process.env.GOOGLE_SA_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS;
+        return { keyFilename };
+      }
+      return { keyFilename: "fake-key.json" };
+    case "azure":
+      // Use real credentials if available, otherwise fake
+      if (process.env.MICROSOFT_TOKEN && process.env.MICROSOFT_REGION) {
+        return { subscriptionKey: process.env.MICROSOFT_TOKEN, region: process.env.MICROSOFT_REGION };
+      }
+      return { subscriptionKey: "fake-key", region: "westus" };
+    case "polly":
+      // Use real credentials if available, otherwise fake
+      if (process.env.POLLY_AWS_KEY_ID && process.env.POLLY_AWS_ACCESS_KEY && process.env.POLLY_REGION) {
+        return {
+          region: process.env.POLLY_REGION,
+          accessKeyId: process.env.POLLY_AWS_KEY_ID,
+          secretAccessKey: process.env.POLLY_AWS_ACCESS_KEY
+        };
+      }
+      return { region: "us-east-1", accessKeyId: "fake-key", secretAccessKey: "fake-secret" };
+    case "witai":
+      // Use real credentials if available, otherwise fake
+      if (process.env.WITAI_TOKEN) {
+        return { token: process.env.WITAI_TOKEN };
+      }
+      return { token: "fake-token" };
+    case "elevenlabs":
+      // Use real credentials if available, otherwise fake
+      if (process.env.ELEVENLABS_API_KEY) {
+        return { apiKey: process.env.ELEVENLABS_API_KEY };
+      }
+      return { apiKey: "fake-key" };
+    case "openai":
+      // Use real credentials if available, otherwise fake
+      if (process.env.OPENAI_API_KEY) {
+        return { apiKey: process.env.OPENAI_API_KEY };
+      }
+      return { apiKey: "fake-key" };
+    case "watson":
+      // Use real credentials if available, otherwise fake
+      if (process.env.WATSON_API_KEY && process.env.WATSON_API_URL) {
+        return { apikey: process.env.WATSON_API_KEY, url: process.env.WATSON_API_URL };
+      }
+      return { apikey: "fake-key", url: "https://fake-url.com" };
+    case "playht":
+      // Use real credentials if available, otherwise fake
+      if (process.env.PLAYHT_API_KEY && process.env.PLAYHT_USER_ID) {
+        return { apiKey: process.env.PLAYHT_API_KEY, userId: process.env.PLAYHT_USER_ID };
+      }
+      return { apiKey: "fake-key", userId: "fake-user" };
+    default:
+      return {};
+  }
+}
+
 describe("Comprehensive SSML Testing", () => {
   TEST_ENGINES.forEach((engineName) => {
     describe(`${engineName.toUpperCase()} Engine`, () => {
-      let client: TTSClient | null = null;
+      let client: AbstractTTSClient | null = null;
       let runTests = false;
 
       beforeAll(async () => {
         try {
-          client = new TTSClient(engineName as any);
-
-          // For credential-free engines, skip credential check
+          // Create client with appropriate credentials or empty object for credential-free engines
           if (CREDENTIAL_FREE_ENGINES.includes(engineName)) {
+            client = createTTSClient(engineName as any, {});
             runTests = true;
             console.log(`${engineName}: Credential-free engine, running SSML tests`);
           } else {
-            // Test if credentials are available by trying to get voices
-            await client.getVoices();
-            runTests = true;
-            console.log(`${engineName}: Credentials available, running SSML tests`);
+            // For engines that need credentials, provide mock/test credentials
+            const mockCredentials = getMockCredentials(engineName);
+            client = createTTSClient(engineName as any, mockCredentials);
+
+            // Test if the engine is available by trying to get voices
+            const voices = await client.getVoices();
+
+            // Only run tests if we actually get voices back
+            if (voices.length > 0) {
+              runTests = true;
+              console.log(`${engineName}: Engine available, running SSML tests`);
+            } else {
+              runTests = false;
+              console.log(`${engineName}: No voices available, skipping SSML tests`);
+            }
           }
         } catch (error) {
-          console.log(`${engineName}: Credentials not available or invalid, skipping SSML tests`);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+
+          // Check if it's a missing package error
+          if (errorMessage.includes("Install") || errorMessage.includes("not available")) {
+            console.log(`${engineName}: Package not installed, skipping SSML tests`);
+          } else {
+            console.log(`${engineName}: Credentials not available or invalid, skipping SSML tests`);
+          }
           runTests = false;
         }
       });
