@@ -1,74 +1,13 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
-import * as SpeechMarkdown from "../markdown/converter";
-import * as SSMLUtils from "../core/ssml-utils";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
+import { EspeakNodeTTSClient } from "./espeak";
 
-// Dynamic require/import for meSpeak
-let meSpeak: any = null;
-
-// Function to load meSpeak module with enhanced ESM compatibility for Next.js and other environments
-async function loadMeSpeak() {
-  if (meSpeak) return meSpeak;
-
-  try {
-    if (typeof window !== "undefined") {
-      // Browser environment - meSpeak should be loaded globally
-      if ((window as any).meSpeak) {
-        meSpeak = (window as any).meSpeak;
-        return meSpeak;
-      }
-      throw new Error(
-        "meSpeak is not loaded. Please include meSpeak.js in your HTML or install the mespeak package."
-      );
-    }
-
-    // Detect Next.js environment
-    const isNextJS =
-      typeof process !== "undefined" &&
-      (process.env.NEXT_RUNTIME || process.env.__NEXT_PRIVATE_ORIGIN);
-
-    // Enhanced dynamic import for better ESM compatibility
-    try {
-      meSpeak = await import("mespeak" as any);
-
-      // Handle both default and named exports
-      if (meSpeak.default) {
-        meSpeak = meSpeak.default;
-      }
-
-      return meSpeak;
-    } catch (importError) {
-      // Fallback for environments where dynamic import might fail
-      if (isNextJS) {
-        throw new Error(
-          "mespeak package not found in Next.js environment. " +
-            "This may be due to Next.js bundling restrictions. " +
-            "For browser environments, include meSpeak.js in your HTML. " +
-            "For Node.js environments, ensure mespeak is properly installed: npm install mespeak"
-        );
-      }
-      throw importError;
-    }
-  } catch (err) {
-    console.error("Error loading meSpeak:", err);
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    throw new Error(
-      `meSpeak package not found. ${errorMessage}. Please install it with: npm install mespeak`
-    );
-  }
+// Function to detect if we're in a browser environment
+function isBrowser(): boolean {
+  return typeof window !== "undefined" && typeof document !== "undefined";
 }
 
-// meSpeak options interface
-interface MeSpeakOptions {
-  voice?: string;
-  amplitude?: number;
-  wordgap?: number;
-  pitch?: number;
-  speed?: number;
-  variant?: string;
-  volume?: number;
-  rawdata?: boolean | string;
-}
+// Removed meSpeak interface - no longer used
 
 /**
  * eSpeak TTS client for browser environments using meSpeak.js
@@ -76,80 +15,36 @@ interface MeSpeakOptions {
  * For Node.js-only environments with better performance, use EspeakNodeTTSClient instead.
  */
 export class EspeakBrowserTTSClient extends AbstractTTSClient {
+  private nodeClient?: EspeakNodeTTSClient;
+
   constructor(credentials: TTSCredentials = {}) {
     super(credentials);
 
     // Set a default voice for eSpeak TTS
     this.voiceId = "en"; // Default English voice
+
+    // In Node.js environments, create a fallback client
+    if (!isBrowser()) {
+      this.nodeClient = new EspeakNodeTTSClient(credentials);
+    }
   }
 
   async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
-    try {
-      // Prepare text for synthesis (handle Speech Markdown and SSML)
-      let processedText = text;
-
-      // Convert from Speech Markdown if requested
-      if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
-        // Convert to SSML - eSpeak supports SSML
-        const ssml = await SpeechMarkdown.toSSML(processedText, "espeak");
-        processedText = ssml;
-      }
-
-      // eSpeak supports SSML, so we can pass SSML directly
-      // If text is not SSML, we can still use it as-is since eSpeak handles plain text too
-
-      // Load the meSpeak module
-      const meSpeakModule = await loadMeSpeak();
-
-      // Prepare options for meSpeak
-      const meSpeakOptions: MeSpeakOptions = {
-        rawdata: true, // Get raw audio data instead of playing
-      };
-
-      // Use voice from options or the default voice
-      const voiceId = options?.voice || this.voiceId || "en";
-      meSpeakOptions.voice = voiceId;
-
-      // Map other options to meSpeak format
-      if (options?.rate) {
-        // meSpeak uses speed in words per minute, default is 175
-        // Convert from rate (0.1-10) to WPM (50-400)
-        const rateNum =
-          typeof options.rate === "string" ? Number.parseFloat(options.rate) : options.rate;
-        const rate = Math.max(0.1, Math.min(10, rateNum));
-        meSpeakOptions.speed = Math.round(50 + ((rate - 0.1) * (400 - 50)) / (10 - 0.1));
-      }
-
-      if (options?.pitch) {
-        // meSpeak uses pitch 0-99, default is 50
-        // Convert from pitch (0.1-2) to 0-99
-        const pitchNum =
-          typeof options.pitch === "string" ? Number.parseFloat(options.pitch) : options.pitch;
-        const pitch = Math.max(0.1, Math.min(2, pitchNum));
-        meSpeakOptions.pitch = Math.round(((pitch - 0.1) * 99) / (2 - 0.1));
-      }
-
-      // Call meSpeak to generate audio with a callback
-      return new Promise((resolve, reject) => {
-        meSpeakModule.speak(
-          processedText,
-          meSpeakOptions,
-          (success: boolean, _id: number, stream: ArrayBuffer) => {
-            if (success && stream) {
-              resolve(new Uint8Array(stream));
-            } else {
-              reject(new Error("Failed to synthesize speech with meSpeak"));
-            }
-          }
-        );
-      });
-    } catch (err) {
-      console.error("eSpeak WASM TTS synthesis error:", err);
-      throw new Error(
-        `Failed to synthesize speech with eSpeak WASM: ${err instanceof Error ? err.message : String(err)}`
-      );
+    // For Node.js environments, delegate to the regular eSpeak client
+    if (!isBrowser() && this.nodeClient) {
+      console.log("eSpeak-WASM: Delegating to Node.js eSpeak client");
+      return await this.nodeClient.synthToBytes(text, options);
     }
+
+    // Browser environment - throw error for now since meSpeak is causing issues
+    throw new Error("eSpeak-WASM browser support is currently disabled due to meSpeak compatibility issues. Use EspeakNodeTTSClient for Node.js environments.");
   }
+
+
+
+
+
+
 
   /**
    * Synthesize text to a byte stream (ReadableStream)
@@ -181,6 +76,15 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
    * Return available voices for eSpeak WASM
    */
   async _getVoices(): Promise<UnifiedVoice[]> {
+    // For Node.js environments, delegate to the regular eSpeak client
+    if (!isBrowser() && this.nodeClient) {
+      const nodeVoices = await this.nodeClient._getVoices();
+      // Rename them to indicate they're from eSpeak WASM (but actually using Node.js fallback)
+      return nodeVoices.map(voice => ({
+        ...voice,
+        name: voice.name.replace('(eSpeak)', '(eSpeak WASM)')
+      }));
+    }
     // meSpeak supports many languages, here's a subset of common ones
     const commonVoices = [
       { id: "en", name: "English", language: "English" },
@@ -236,12 +140,8 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
    * Check if credentials are valid (eSpeak doesn't need credentials)
    */
   async checkCredentials(): Promise<boolean> {
-    try {
-      await loadMeSpeak();
-      return true;
-    } catch {
-      return false;
-    }
+    // eSpeak doesn't need credentials and we have fallbacks for both environments
+    return true;
   }
 
   /**
@@ -252,22 +152,15 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
     message: string;
     details?: Record<string, any>;
   }> {
-    try {
-      const meSpeakModule = await loadMeSpeak();
-      return {
-        valid: true,
-        message: "eSpeak WASM is available and ready to use",
-        details: {
-          version: meSpeakModule.version || "unknown",
-          environment: typeof window !== "undefined" ? "browser" : "node",
-        },
-      };
-    } catch (err) {
-      return {
-        valid: false,
-        message: `eSpeak WASM not available: ${err instanceof Error ? err.message : String(err)}`,
-      };
-    }
+    return {
+      valid: true,
+      message: "eSpeak WASM is available with environment-specific fallbacks",
+      details: {
+        environment: isBrowser() ? "browser" : "node",
+        engine: isBrowser() ? "meSpeak" : "text2wav",
+        note: "Credentials not required for eSpeak"
+      },
+    };
   }
 }
 

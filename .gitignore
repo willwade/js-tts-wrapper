@@ -1,4 +1,5 @@
 dist/*
+googlecreds.json
 espeak-ng-data/*
 *.wav
 *.mp3

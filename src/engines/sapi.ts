@@ -503,13 +503,15 @@ export class SAPITTSClient extends AbstractTTSClient {
     }
 
     // If it's a simple <speak> tag, add the version attribute
+    // Note: SAPI requires xml:lang="en" (not "en-US") for SSML to work properly
     if (text.startsWith('<speak>')) {
-      return text.replace('<speak>', '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">');
+      return text.replace('<speak>', '<speak version="1.0" xml:lang="en">');
     }
 
     // If it doesn't start with <speak>, wrap it properly
+    // Note: SAPI requires xml:lang="en" (not "en-US") for SSML to work properly
     if (!text.startsWith('<speak')) {
-      return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">${text}</speak>`;
+      return `<speak version="1.0" xml:lang="en">${text}</speak>`;
     }
 
     return text;
