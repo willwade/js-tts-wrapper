@@ -4,7 +4,7 @@
  * Script to fix linting issues
  */
 
-const { execSync } = require('node:child_process');
+import { execSync } from 'node:child_process';
 
 console.log('Fixing linting issues...');
 

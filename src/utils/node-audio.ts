@@ -2,8 +2,8 @@
  * Utility functions for playing audio in Node.js
  */
 
-import { isNode } from "./environment";
 import { detectAudioFormat } from "./audio-input";
+import { isNode } from "./environment";
 
 // Global state for audio playback
 interface AudioState {
