@@ -830,6 +830,63 @@ export abstract class AbstractTTSClient {
   }
 
   /**
+   * Get comprehensive credential validation information
+   * @returns Promise resolving to detailed credential status
+   */
+  async getCredentialStatus(): Promise<{
+    valid: boolean;
+    engine: string;
+    environment: 'browser' | 'node';
+    requiresCredentials: boolean;
+    credentialTypes: string[];
+    message: string;
+    details?: Record<string, any>;
+    error?: string;
+  }> {
+    const isBrowser = typeof window !== 'undefined';
+    const engineName = this.constructor.name.replace('TTSClient', '').toLowerCase();
+
+    try {
+      const isValid = await this.checkCredentials();
+      const voices = isValid ? await this._getVoices() : [];
+
+      return {
+        valid: isValid,
+        engine: engineName,
+        environment: isBrowser ? 'browser' : 'node',
+        requiresCredentials: this.getRequiredCredentials().length > 0,
+        credentialTypes: this.getRequiredCredentials(),
+        message: isValid ?
+          `${engineName} credentials are valid and ${voices.length} voices are available` :
+          `${engineName} credentials are invalid or service is unavailable`,
+        details: {
+          voiceCount: voices.length,
+          hasCredentials: Object.keys(this.credentials || {}).length > 0
+        }
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        engine: engineName,
+        environment: isBrowser ? 'browser' : 'node',
+        requiresCredentials: this.getRequiredCredentials().length > 0,
+        credentialTypes: this.getRequiredCredentials(),
+        message: `Error validating ${engineName} credentials`,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Get the list of required credential types for this engine
+   * Override in subclasses to provide engine-specific requirements
+   * @returns Array of required credential field names
+   */
+  protected getRequiredCredentials(): string[] {
+    return []; // Default: no credentials required
+  }
+
+  /**
    * Get available voices for a specific language
    * @param language Language code (BCP-47 format, e.g., 'en-US')
    * @returns Promise resolving to an array of available voices for the specified language

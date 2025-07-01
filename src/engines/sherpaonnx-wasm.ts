@@ -164,6 +164,14 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
 
 
   /**
+   * Get the list of required credential types for this engine
+   * @returns Array of required credential field names
+   */
+  protected getRequiredCredentials(): string[] {
+    return []; // SherpaOnnx WASM doesn't require credentials, only WASM files
+  }
+
+  /**
    * Check if the credentials are valid
    * @returns Promise resolving to true if credentials are valid
    */

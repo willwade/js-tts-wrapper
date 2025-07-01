@@ -39,6 +39,34 @@ export class WitAITTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Check if credentials are valid
+   * @returns Promise resolving to true if credentials are valid
+   */
+  async checkCredentials(): Promise<boolean> {
+    if (!this.token) {
+      console.error("WitAI token is required");
+      return false;
+    }
+
+    try {
+      // Try to list voices to check if the token is valid
+      const voices = await this._getVoices();
+      return voices.length > 0;
+    } catch (error) {
+      console.error("Error checking WitAI credentials:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Get the list of required credential types for this engine
+   * @returns Array of required credential field names
+   */
+  protected getRequiredCredentials(): string[] {
+    return ['token'];
+  }
+
+  /**
    * Get raw voices from WitAI
    * @returns Promise resolving to an array of unified voice objects
    */

@@ -67,6 +67,14 @@ export class SAPITTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Get the list of required credential types for this engine
+   * @returns Array of required credential field names
+   */
+  protected getRequiredCredentials(): string[] {
+    return []; // SAPI doesn't require credentials, only environment validation
+  }
+
+  /**
    * SAPI does not require credentials but we validate the environment
    */
   async checkCredentials(): Promise<boolean> {

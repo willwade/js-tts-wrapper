@@ -1516,6 +1516,14 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Get the list of required credential types for this engine
+   * @returns Array of required credential field names
+   */
+  protected getRequiredCredentials(): string[] {
+    return []; // SherpaOnnx doesn't require credentials, only model files
+  }
+
+  /**
    * Check if credentials are valid
    * @returns Promise resolving to true if credentials are valid
    */

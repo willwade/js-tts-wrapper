@@ -80,6 +80,14 @@ export class EspeakNodeTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Get the list of required credential types for this engine
+   * @returns Array of required credential field names
+   */
+  protected getRequiredCredentials(): string[] {
+    return []; // eSpeak doesn't require any credentials
+  }
+
+  /**
    * eSpeak does not require credentials in Node.js
    */
   async checkCredentials(): Promise<boolean> {

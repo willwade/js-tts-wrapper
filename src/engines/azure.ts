@@ -37,6 +37,34 @@ export class AzureTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Check if credentials are valid
+   * @returns Promise resolving to true if credentials are valid
+   */
+  async checkCredentials(): Promise<boolean> {
+    if (!this.subscriptionKey || !this.region) {
+      console.error("Azure subscription key and region are required");
+      return false;
+    }
+
+    try {
+      // Try to list voices to check if the credentials are valid
+      const voices = await this._getVoices();
+      return voices.length > 0;
+    } catch (error) {
+      console.error("Error checking Azure credentials:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Get the list of required credential types for this engine
+   * @returns Array of required credential field names
+   */
+  protected getRequiredCredentials(): string[] {
+    return ['subscriptionKey', 'region'];
+  }
+
+  /**
    * Get raw voices from Azure
    * @returns Promise resolving to an array of unified voice objects
    */

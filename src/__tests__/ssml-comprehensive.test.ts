@@ -92,10 +92,14 @@ function getMockCredentials(engineName: string): any {
       return { apiKey: "fake-key" };
     case "watson":
       // Use real credentials if available, otherwise fake
-      if (process.env.WATSON_API_KEY && process.env.WATSON_API_URL) {
-        return { apikey: process.env.WATSON_API_KEY, url: process.env.WATSON_API_URL };
+      if (process.env.WATSON_API_KEY && process.env.WATSON_REGION && process.env.WATSON_INSTANCE_ID) {
+        return {
+          apiKey: process.env.WATSON_API_KEY,
+          region: process.env.WATSON_REGION,
+          instanceId: process.env.WATSON_INSTANCE_ID
+        };
       }
-      return { apikey: "fake-key", url: "https://fake-url.com" };
+      return { apiKey: "fake-key", region: "us-south", instanceId: "fake-instance" };
     case "playht":
       // Use real credentials if available, otherwise fake
       if (process.env.PLAYHT_API_KEY && process.env.PLAYHT_USER_ID) {
@@ -115,27 +119,22 @@ describe("Comprehensive SSML Testing", () => {
 
       beforeAll(async () => {
         try {
-          // Create client with appropriate credentials or empty object for credential-free engines
-          if (CREDENTIAL_FREE_ENGINES.includes(engineName)) {
-            client = createTTSClient(engineName as any, {});
+          // Create client with appropriate credentials
+          const credentials = CREDENTIAL_FREE_ENGINES.includes(engineName)
+            ? {}
+            : getMockCredentials(engineName);
+
+          client = createTTSClient(engineName as any, credentials);
+
+          // Use the standardized credential validation method
+          const credentialsValid = await client.checkCredentials();
+
+          if (credentialsValid) {
             runTests = true;
-            console.log(`${engineName}: Credential-free engine, running SSML tests`);
+            console.log(`${engineName}: Credentials valid, running SSML tests`);
           } else {
-            // For engines that need credentials, provide mock/test credentials
-            const mockCredentials = getMockCredentials(engineName);
-            client = createTTSClient(engineName as any, mockCredentials);
-
-            // Test if the engine is available by trying to get voices
-            const voices = await client.getVoices();
-
-            // Only run tests if we actually get voices back
-            if (voices.length > 0) {
-              runTests = true;
-              console.log(`${engineName}: Engine available, running SSML tests`);
-            } else {
-              runTests = false;
-              console.log(`${engineName}: No voices available, skipping SSML tests`);
-            }
+            runTests = false;
+            console.log(`${engineName}: Credentials invalid, skipping SSML tests`);
           }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
@@ -144,7 +143,7 @@ describe("Comprehensive SSML Testing", () => {
           if (errorMessage.includes("Install") || errorMessage.includes("not available")) {
             console.log(`${engineName}: Package not installed, skipping SSML tests`);
           } else {
-            console.log(`${engineName}: Credentials not available or invalid, skipping SSML tests`);
+            console.log(`${engineName}: Error creating client, skipping SSML tests`);
           }
           runTests = false;
         }
@@ -379,15 +378,24 @@ describe("Comprehensive SSML Testing", () => {
 });
 
 /**
- * Helper function to check if an error is a service-related issue
+ * Helper function to check if an error is a service-related issue during synthesis
+ * Note: Credential validation is now handled by checkCredentials() method in beforeAll
  */
 function isServiceIssue(error: any): boolean {
   const errorMessage = error?.message?.toLowerCase() || "";
-  return errorMessage.includes('credentials') ||
-         errorMessage.includes('unauthorized') ||
-         errorMessage.includes('insufficient') ||
-         errorMessage.includes('quota') ||
+  const errorStatus = error?.status || 0;
+
+  // Check for service issues that can occur during synthesis even with valid credentials
+  return errorMessage.includes('quota') ||
          errorMessage.includes('rate limit') ||
+         errorMessage.includes('ratelimiterror') ||
+         errorMessage.includes('exceeded your current quota') ||
          errorMessage.includes('service unavailable') ||
-         errorMessage.includes('forbidden');
+         errorMessage.includes('temporarily unavailable') ||
+         errorMessage.includes('server error') ||
+         errorStatus === 429 ||  // Rate limit
+         errorStatus === 500 ||  // Server error
+         errorStatus === 502 ||  // Bad gateway
+         errorStatus === 503 ||  // Service unavailable
+         errorStatus === 504;    // Gateway timeout
 }

@@ -67,6 +67,14 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Get the list of required credential types for this engine
+   * @returns Array of required credential field names
+   */
+  protected getRequiredCredentials(): string[] {
+    return ['apiKey'];
+  }
+
+  /**
    * Get available voices from the provider
    * @returns Promise resolving to an array of voice objects
    */

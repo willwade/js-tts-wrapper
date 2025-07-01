@@ -107,6 +107,14 @@ export class PlayHTTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Get the list of required credential types for this engine
+   * @returns Array of required credential field names
+   */
+  protected getRequiredCredentials(): string[] {
+    return ['apiKey', 'userId'];
+  }
+
+  /**
    * Fetch voices from the PlayHT API
    * @returns Promise resolving to an array of PlayHT voice objects
    */

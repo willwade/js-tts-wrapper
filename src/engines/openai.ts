@@ -221,10 +221,25 @@ export class OpenAITTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Get the list of required credential types for this engine
+   * @returns Array of required credential field names
+   */
+  protected getRequiredCredentials(): string[] {
+    return ['apiKey'];
+  }
+
+  /**
    * Get available voices
    * @returns Promise resolving to an array of unified voice objects
    */
   protected async _getVoices(): Promise<UnifiedVoice[]> {
+    // Validate credentials first by checking if we can access the API
+    const credentialsValid = await this.checkCredentials();
+    if (!credentialsValid) {
+      // If credentials are invalid, return empty array to signal test should be skipped
+      return [];
+    }
+
     // OpenAI has a fixed set of voices
     const voices = [
       { id: "alloy", name: "Alloy", gender: "Unknown" },

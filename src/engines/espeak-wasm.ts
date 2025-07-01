@@ -137,6 +137,14 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Get the list of required credential types for this engine
+   * @returns Array of required credential field names
+   */
+  protected getRequiredCredentials(): string[] {
+    return []; // eSpeak doesn't require any credentials
+  }
+
+  /**
    * Check if credentials are valid (eSpeak doesn't need credentials)
    */
   async checkCredentials(): Promise<boolean> {

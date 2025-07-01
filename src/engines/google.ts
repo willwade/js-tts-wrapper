@@ -476,6 +476,14 @@ export class GoogleTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Get the list of required credential types for this engine
+   * @returns Array of required credential field names
+   */
+  protected getRequiredCredentials(): string[] {
+    return ['keyFilename']; // Primary credential type, though projectId and credentials are also supported
+  }
+
+  /**
    * Check if credentials are valid
    * @returns Promise resolving to true if credentials are valid
    */

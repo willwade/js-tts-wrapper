@@ -235,6 +235,39 @@ The library includes a robust [Language Normalization](docs/LANGUAGE_NORMALIZATI
 - Get consistent language information regardless of the TTS engine
 - Filter voices by language using any standard format
 
+### Credential Validation
+
+All TTS engines support standardized credential validation to help you verify your setup before making requests:
+
+```typescript
+// Basic validation - returns boolean
+const isValid = await tts.checkCredentials();
+if (!isValid) {
+  console.error('Invalid credentials!');
+}
+
+// Detailed validation - returns comprehensive status
+const status = await tts.getCredentialStatus();
+console.log(status);
+/*
+{
+  valid: true,
+  engine: 'openai',
+  environment: 'node',
+  requiresCredentials: true,
+  credentialTypes: ['apiKey'],
+  message: 'openai credentials are valid and 10 voices are available'
+}
+*/
+```
+
+**Engine Requirements:**
+- **Cloud engines** (OpenAI, Azure, Google, etc.): Require API keys/credentials
+- **Local engines** (eSpeak, SAPI, SherpaOnnx): No credentials needed
+- **Environment-specific**: Some engines work only in Node.js or browser
+
+See the [Credential Validation Guide](docs/CREDENTIAL_VALIDATION.md) for detailed requirements and troubleshooting.
+
 ### Text Synthesis
 
 ```typescript
