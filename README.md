@@ -314,10 +314,10 @@ The library provides comprehensive SSML (Speech Synthesis Markup Language) suppo
 
 ### SSML-Supported Engines
 
-The following engines **fully support SSML**:
+The following engines **support SSML**:
 - **Google Cloud TTS** - Full SSML support with all elements
 - **Microsoft Azure** - Full SSML support with voice-specific features
-- **Amazon Polly** - SSML support for standard voices (neural voices strip SSML)
+- **Amazon Polly** - Dynamic SSML support based on voice engine type (standard/long-form: full, neural/generative: limited)
 - **WitAI** - Full SSML support
 - **SAPI (Windows)** - Full SSML support
 - **eSpeak/eSpeak-WASM** - SSML support with subset of elements
@@ -357,7 +357,12 @@ await tts.speak(ssmlText);
 
 ### Engine-Specific SSML Notes
 
-- **Amazon Polly**: Neural voices (Joanna, Matthew, etc.) don't support SSML and will automatically strip tags
+- **Amazon Polly**: SSML support varies by voice engine type:
+  - **Standard voices**: Full SSML support including all tags
+  - **Long-form voices**: Full SSML support including all tags
+  - **Neural voices**: Limited SSML support (no emphasis, limited prosody)
+  - **Generative voices**: Limited SSML support (partial tag support)
+  - The library automatically detects voice engine types and handles SSML appropriately
 - **Microsoft Azure**: Supports voice-specific SSML elements and custom voice tags
 - **Google Cloud**: Supports the most comprehensive set of SSML elements
 - **WitAI**: Full SSML support according to W3C specification
@@ -403,7 +408,7 @@ await ttsElevenLabs.speak(markdown, { useSpeechMarkdown: true }); // Converts to
 |--------|------------------------|-------------------|
 | Google Cloud TTS | ✅ Full | → SSML → Native processing |
 | Microsoft Azure | ✅ Full | → SSML → Native processing |
-| Amazon Polly | ✅ Full | → SSML → Native processing (standard voices) |
+| Amazon Polly | ✅ Full | → SSML → Dynamic processing (engine-dependent) |
 | WitAI | ✅ Full | → SSML → Native processing |
 | SAPI | ✅ Full | → SSML → Native processing |
 | eSpeak | ✅ Full | → SSML → Native processing |

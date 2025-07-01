@@ -47,6 +47,11 @@ export class PollyTTSClient extends AbstractTTSClient {
   private _pollyModule: any;
 
   /**
+   * Cache of voice metadata for engine detection
+   */
+  private voiceCache: Map<string, UnifiedVoice> = new Map();
+
+  /**
    * Create a new AWS Polly TTS client
    * @param credentials AWS credentials
    */
@@ -102,6 +107,23 @@ export class PollyTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Get available voices from the provider with caching
+   * @returns Promise resolving to an array of unified voice objects
+   */
+  async getVoices(): Promise<UnifiedVoice[]> {
+    // Get voices using the parent implementation
+    const voices = await super.getVoices();
+
+    // Populate the voice cache for engine detection
+    this.voiceCache.clear();
+    voices.forEach(voice => {
+      this.voiceCache.set(voice.id, voice);
+    });
+
+    return voices;
+  }
+
+  /**
    * Map AWS Polly voice objects to unified format
    * @param rawVoices Array of AWS Polly voice objects
    * @returns Promise resolving to an array of unified voice objects
@@ -132,42 +154,122 @@ export class PollyTTSClient extends AbstractTTSClient {
         gender,
         provider: "polly",
         languageCodes: [languageCode],
+        metadata: {
+          supportedEngines: voice.SupportedEngines || [],
+          additionalLanguageCodes: voice.AdditionalLanguageCodes || [],
+        },
       };
     });
   }
 
   /**
-   * Get the appropriate engine for a voice
+   * Get the appropriate engine for a voice based on supported engines
    * @param voiceId Voice ID to check
-   * @returns "neural" or "standard"
+   * @returns The best engine to use for this voice
    */
-  private getEngineForVoice(voiceId: string): "neural" | "standard" {
-    // Neural voices (these support neural engine but have SSML limitations)
-    const neuralVoices = ['Joanna', 'Matthew', 'Ivy', 'Justin', 'Kendra', 'Kimberly', 'Salli', 'Joey', 'Ruth', 'Stephen', 'Olivia', 'Kevin', 'Amy', 'Emma', 'Brian', 'Arthur', 'Aria', 'Ayanda', 'Arlet', 'Hannah', 'Liam', 'Pedro', 'Kajal', 'Hiujin', 'Laura', 'Elin', 'Ida', 'Suvi', 'Ola', 'Hala', 'Andres', 'Sergio', 'Remi', 'Adriano', 'Thiago', 'Ruth', 'Stephen', 'Kazuha', 'Tomoko', 'Seoyeon', 'Lupe', 'Lucia', 'Lea', 'Vicki', 'Takumi', 'Zhiyu'];
+  private async getEngineForVoice(voiceId: string): Promise<string> {
+    // Get voice metadata from cache
+    let voice = this.voiceCache.get(voiceId);
 
-    return neuralVoices.includes(voiceId) ? "neural" : "standard";
+    // If not in cache, try to populate it
+    if (!voice) {
+      await this.getVoices(); // This will populate the cache
+      voice = this.voiceCache.get(voiceId);
+    }
+
+    // If still not found, fall back to standard
+    if (!voice || !voice.metadata?.supportedEngines) {
+      return "standard";
+    }
+
+    const supportedEngines = voice.metadata.supportedEngines;
+
+    // Prefer engines in order of quality/capability:
+    // 1. neural (best quality for most use cases)
+    // 2. long-form (good for longer texts)
+    // 3. generative (newest, but may have limitations)
+    // 4. standard (fallback)
+    if (supportedEngines.includes("neural")) {
+      return "neural";
+    } else if (supportedEngines.includes("long-form")) {
+      return "long-form";
+    } else if (supportedEngines.includes("generative")) {
+      return "generative";
+    } else {
+      return "standard";
+    }
   }
 
   /**
-   * Check if a voice is a neural voice
+   * Get SSML support level for a voice based on its engine type
    * @param voiceId Voice ID to check
-   * @returns True if the voice is a neural voice
+   * @returns SSML support level: "full", "limited", or "none"
    */
-  private async isNeuralVoice(voiceId?: string): Promise<boolean> {
+  private async getSSMLSupportLevel(voiceId?: string): Promise<"full" | "limited" | "none"> {
     // If no voice ID is provided, use the current voice
     const voice = voiceId || this.voiceId || "";
 
-    // If the voice name includes "Neural", it's definitely a neural voice
-    if (voice.includes("Neural")) {
-      return true;
-    }
+    // Get the engine for this voice
+    const engine = await this.getEngineForVoice(voice);
 
-    // Use the engine detection logic
-    return this.getEngineForVoice(voice) === "neural";
+    // Determine SSML support based on AWS documentation:
+    // https://docs.aws.amazon.com/polly/latest/dg/supportedtags.html
+    switch (engine) {
+      case "standard":
+      case "long-form":
+        // Standard and long-form voices support full SSML
+        return "full";
+      case "neural":
+      case "generative":
+        // Neural and generative voices have limited SSML support
+        // They support some tags but not others (e.g., no emphasis)
+        return "limited";
+      default:
+        return "full"; // Default to full support for unknown engines
+    }
   }
 
   /**
-   * Prepare SSML for AWS Polly
+   * Strip unsupported SSML tags for limited SSML engines
+   * Based on AWS Polly documentation for neural and generative voices
+   * @param ssml SSML text to process
+   * @returns SSML with unsupported tags removed
+   */
+  private stripUnsupportedSSMLTags(ssml: string): string {
+    // For neural and generative voices, remove unsupported tags:
+    // - emphasis (not available)
+    // - prosody with max-duration (not available)
+    // - auto-breaths (not available)
+    // - phonation="soft" (not available)
+    // - vocal-tract-length (not available)
+    // - whispered (not available)
+
+    let processedSSML = ssml;
+
+    // Remove emphasis tags (not supported in neural/generative)
+    processedSSML = processedSSML.replace(/<emphasis[^>]*>(.*?)<\/emphasis>/g, '$1');
+
+    // Remove prosody with max-duration (not supported in neural/generative)
+    processedSSML = processedSSML.replace(/<prosody[^>]*amazon:max-duration[^>]*>(.*?)<\/prosody>/g, '$1');
+
+    // Remove auto-breaths (not supported in neural/generative)
+    processedSSML = processedSSML.replace(/<amazon:auto-breaths[^>]*\/>/g, '');
+    processedSSML = processedSSML.replace(/<amazon:auto-breaths[^>]*>(.*?)<\/amazon:auto-breaths>/g, '$1');
+
+    // Remove phonation="soft" effects (not supported in neural/generative)
+    processedSSML = processedSSML.replace(/<amazon:effect[^>]*phonation="soft"[^>]*>(.*?)<\/amazon:effect>/g, '$1');
+
+    // Remove vocal-tract-length effects (not supported in neural/generative)
+    processedSSML = processedSSML.replace(/<amazon:effect[^>]*vocal-tract-length[^>]*>(.*?)<\/amazon:effect>/g, '$1');
+
+    // Remove whispered effects (not supported in neural/generative)
+    processedSSML = processedSSML.replace(/<amazon:effect[^>]*name="whispered"[^>]*>(.*?)<\/amazon:effect>/g, '$1');
+
+    return processedSSML;
+  }
+
+  /**
+   * Prepare SSML for AWS Polly based on voice engine capabilities
    * @param text Text or SSML to prepare
    * @param options Synthesis options
    * @returns Promise resolving to prepared SSML or plain text
@@ -182,24 +284,33 @@ export class PollyTTSClient extends AbstractTTSClient {
       text = ssmlText;
     }
 
-    // Check if the voice is neural
-    const isNeural = await this.isNeuralVoice(voiceId);
+    // Get SSML support level and engine for this voice
+    const ssmlSupport = await this.getSSMLSupportLevel(voiceId);
+    const engine = await this.getEngineForVoice(voiceId);
 
-    // If using a neural voice and the text is SSML, strip SSML tags
-    // Neural voices don't support SSML
-    if (isNeural && this._isSSML(text)) {
-      console.warn(`Voice ${voiceId} is a neural voice and doesn't support SSML. Stripping SSML tags.`);
-      return this._stripSSML(text);
-    }
-
-    // If text is not SSML, wrap it in speak tags
-    if (!this._isSSML(text)) {
+    // Handle SSML based on support level
+    if (this._isSSML(text)) {
+      switch (ssmlSupport) {
+        case "full":
+          // Standard and long-form voices support full SSML
+          break; // Continue with SSML processing
+        case "limited":
+          // Neural and generative voices have limited SSML support
+          console.warn(`Voice ${voiceId} (${engine} engine) has limited SSML support. Removing unsupported tags.`);
+          text = this.stripUnsupportedSSMLTags(text);
+          break;
+        case "none":
+          // Fallback: strip all SSML
+          console.warn(`Voice ${voiceId} (${engine} engine) doesn't support SSML. Stripping all SSML tags.`);
+          return this._stripSSML(text);
+      }
+    } else {
+      // If text is not SSML, wrap it in speak tags
       text = `<speak>${text}</speak>`;
-      return text;
     }
 
-    // Fix common SSML issues for Polly (only for non-neural voices)
-    if (!isNeural) {
+    // Fix common SSML issues for Polly (for voices that support SSML)
+    if (ssmlSupport === "full") {
       // 1. Make sure the speak tag has the correct xmlns attribute
       // Polly requires the xmlns attribute to be present
       if (!text.includes('xmlns="http://www.w3.org/2001/10/synthesis"')) {
@@ -288,7 +399,11 @@ export class PollyTTSClient extends AbstractTTSClient {
       const isSSML = this._isSSML(preparedText);
 
       // Determine the engine to use based on the voice
-      const engine = this.getEngineForVoice(voiceIdString);
+      const engineString = await this.getEngineForVoice(voiceIdString);
+
+      // Import Engine enum and map string to enum value
+      const { Engine } = pollyModule;
+      const engine = Engine[engineString as keyof typeof Engine] || Engine.standard;
 
       // Create input parameters
       const input: SynthesizeSpeechCommandInput = {
@@ -296,7 +411,7 @@ export class PollyTTSClient extends AbstractTTSClient {
         TextType: isSSML ? "ssml" : "text",
         OutputFormat: outputFormat,
         VoiceId: voiceId,
-        Engine: engine, // Use standard engine for standard voices, neural for neural voices
+        Engine: engine, // Use appropriate engine based on voice capabilities
         // Set sample rate based on format
         // For PCM, always use 16000 Hz to match the Python implementation
         // For MP3 and OGG, use 24000 Hz for better quality
@@ -377,7 +492,11 @@ export class PollyTTSClient extends AbstractTTSClient {
       const textType = this._isSSML(preparedText) ? "ssml" : "text";
 
       // Determine the engine to use based on the voice
-      const engine = this.getEngineForVoice(voiceIdString);
+      const engineString = await this.getEngineForVoice(voiceIdString);
+
+      // Import Engine enum and map string to enum value
+      const { Engine } = pollyModule;
+      const engine = Engine[engineString as keyof typeof Engine] || Engine.standard;
 
       let wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
 

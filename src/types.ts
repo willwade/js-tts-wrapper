@@ -125,6 +125,26 @@ export type UnifiedVoice = {
      */
     display: string;
   }[];
+
+  /**
+   * Provider-specific metadata
+   */
+  metadata?: {
+    /**
+     * AWS Polly supported engines (standard, neural, long-form, generative)
+     */
+    supportedEngines?: string[];
+
+    /**
+     * Additional language codes for bilingual voices
+     */
+    additionalLanguageCodes?: string[];
+
+    /**
+     * Any other provider-specific data
+     */
+    [key: string]: any;
+  };
 };
 
 /**
