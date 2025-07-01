@@ -47,19 +47,19 @@ describe("SpeechMarkdown", () => {
     });
 
     it("should detect emphasis", () => {
-      expect(SpeechMarkdown.isSpeechMarkdown("Hello *emphasized* world")).toBe(true);
+      expect(SpeechMarkdown.isSpeechMarkdown("Hello ++emphasized++ world")).toBe(true);
     });
 
     it("should detect rate", () => {
-      expect(SpeechMarkdown.isSpeechMarkdown("Hello (rate:slow) world")).toBe(true);
+      expect(SpeechMarkdown.isSpeechMarkdown("Hello (slowly)[rate:\"slow\"] world")).toBe(true);
     });
 
     it("should detect pitch", () => {
-      expect(SpeechMarkdown.isSpeechMarkdown("Hello (pitch:high) world")).toBe(true);
+      expect(SpeechMarkdown.isSpeechMarkdown("Hello (high)[pitch:\"high\"] world")).toBe(true);
     });
 
     it("should detect volume", () => {
-      expect(SpeechMarkdown.isSpeechMarkdown("Hello (volume:loud) world")).toBe(true);
+      expect(SpeechMarkdown.isSpeechMarkdown("Hello (loud)[volume:\"loud\"] world")).toBe(true);
     });
 
     it("should return false for plain text", () => {

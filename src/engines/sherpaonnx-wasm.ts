@@ -167,14 +167,26 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    */
   async checkCredentials(): Promise<boolean> {
     try {
-      // In a browser environment, we can't check if the WASM file exists
-      // so we'll just assume it's valid and will be loaded later
-      if (typeof window !== "undefined") {
+      // First check if SherpaOnnx is properly initialized
+      const status = this.getInitializationStatus();
+      if (status.isInitialized) {
         return true;
+      }
+
+      // In a browser environment, we can't check if the WASM file exists
+      // so we'll check if it's likely to be loaded later
+      if (typeof window !== "undefined") {
+        if (status.issues.length > 0) {
+          console.warn("SherpaOnnx not yet initialized:", status.issues.join(', '));
+        }
+        return true; // Assume it will be loaded later in browser
       }
 
       // In Node.js, check if the WASM file exists
       if (isNode && this.wasmPath && fileSystem.existsSync(this.wasmPath)) {
+        if (status.issues.length > 0) {
+          console.warn("SherpaOnnx WASM file exists but not initialized:", status.issues.join(', '));
+        }
         return true;
       }
 
@@ -594,21 +606,12 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       typeof (globalWindow as any).createOfflineTts === "function"
     );
 
-    // If WebAssembly is not loaded or createOfflineTts is not available, return a mock implementation
-    if (
-      !this.wasmLoaded ||
-      !this.wasmModule ||
-      typeof (window as any).createOfflineTts !== "function"
-    ) {
-      console.warn(
-        "SherpaOnnx WebAssembly TTS is not initialized. Using mock implementation for example."
-      );
-      console.warn("Reason for fallback:");
-      if (!this.wasmLoaded) console.warn("- wasmLoaded is false");
-      if (!this.wasmModule) console.warn("- wasmModule is null");
-      if (typeof (globalWindow as any).createOfflineTts !== "function")
-        console.warn("- createOfflineTts is not a function");
-      return this._mockSynthToBytes();
+    // Check if SherpaOnnx is properly initialized
+    const status = this.getInitializationStatus();
+    if (!status.isInitialized) {
+      const errorMessage = this.getInitializationErrorMessage();
+      console.error(errorMessage);
+      throw new Error(errorMessage);
     }
 
     try {
@@ -657,8 +660,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           console.log("TTS instance created successfully");
         } catch (error) {
           console.error("Error creating TTS instance:", error);
-          console.warn("Falling back to mock implementation");
-          return this._mockSynthToBytes();
+          throw new Error(`Failed to create SherpaOnnx TTS instance: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
 
@@ -711,8 +713,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       return audioBytes;
     } catch (error) {
       console.error("Error synthesizing text:", error);
-      console.warn("Falling back to mock implementation");
-      return this._mockSynthToBytes();
+      throw new Error(`SherpaOnnx synthesis failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -801,23 +802,61 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
   }
 
   /**
-   * Mock implementation for synthToBytes
-   * @returns Promise resolving to a byte array of audio data
+   * Check if SherpaOnnx is properly initialized
+   * @returns Object with initialization status and details
    */
-  private _mockSynthToBytes(): Uint8Array {
-    // Generate a simple sine wave as a placeholder
-    const sampleRate = this.sampleRate;
-    const duration = 2; // seconds
-    const numSamples = sampleRate * duration;
-    const samples = new Float32Array(numSamples);
+  public getInitializationStatus(): {
+    isInitialized: boolean;
+    wasmLoaded: boolean;
+    wasmModule: boolean;
+    createOfflineTts: boolean;
+    issues: string[];
+  } {
+    const globalWindow = (typeof window !== 'undefined' ? window : global) as any;
+    const issues: string[] = [];
 
-    // Generate a 440 Hz sine wave
-    for (let i = 0; i < numSamples; i++) {
-      samples[i] = Math.sin((2 * Math.PI * 440 * i) / sampleRate) * 0.5;
+    if (!this.wasmLoaded) {
+      issues.push("WebAssembly module not loaded");
     }
 
-    // Convert to WAV
-    return this._convertAudioFormat(samples);
+    if (!this.wasmModule) {
+      issues.push("WebAssembly module is null");
+    }
+
+    if (typeof globalWindow.createOfflineTts !== "function") {
+      issues.push("createOfflineTts function not available");
+    }
+
+    return {
+      isInitialized: issues.length === 0,
+      wasmLoaded: this.wasmLoaded,
+      wasmModule: !!this.wasmModule,
+      createOfflineTts: typeof globalWindow.createOfflineTts === "function",
+      issues
+    };
+  }
+
+  /**
+   * Get detailed error message for initialization issues
+   * @returns Detailed error message with troubleshooting steps
+   */
+  private getInitializationErrorMessage(): string {
+    const status = this.getInitializationStatus();
+
+    let message = "SherpaOnnx WebAssembly TTS is not properly initialized.\n\n";
+    message += "Issues found:\n";
+    status.issues.forEach(issue => {
+      message += `- ${issue}\n`;
+    });
+
+    message += "\nTroubleshooting steps:\n";
+    message += "1. Ensure the SherpaOnnx WebAssembly files are properly loaded\n";
+    message += "2. Check that the WebAssembly module initialization completed successfully\n";
+    message += "3. Verify that createOfflineTts function is available in the global scope\n";
+    message += "4. Check browser console for WebAssembly loading errors\n";
+    message += "5. Ensure you're running in a supported environment (browser with WebAssembly support)\n";
+
+    return message;
   }
 
   /**
@@ -873,6 +912,9 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       if (onEnd) {
         onEnd();
       }
+
+      // Re-throw the error so it can be caught by the caller
+      throw error;
     }
   }
 

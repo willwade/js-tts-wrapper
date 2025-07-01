@@ -191,9 +191,23 @@ engines.forEach((engineName) => {
         expect(voice).toHaveProperty("gender");
         expect(voice).toHaveProperty("languageCodes");
       } catch (error) {
-        console.log(`Test failed with error:`, error);
-        // Mark the test as passed even if it fails due to API issues
-        expect(true).toBe(true);
+        // Check if this is a known service/credential issue
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isServiceIssue = errorMessage.includes('credentials') ||
+                              errorMessage.includes('unauthorized') ||
+                              errorMessage.includes('quota') ||
+                              errorMessage.includes('rate limit') ||
+                              errorMessage.includes('service unavailable');
+
+        if (isServiceIssue) {
+          console.log(`${engineName}: Skipping test due to service issue:`, errorMessage);
+          // Skip test for known service issues
+          return;
+        } else {
+          // This is a real bug - let the test fail
+          console.error(`${engineName}: Unexpected error in getVoices:`, error);
+          throw error;
+        }
       }
     });
 
@@ -219,9 +233,21 @@ engines.forEach((engineName) => {
           console.log(`No en-US voices found for ${engineName}`);
         }
       } catch (error) {
-        console.log(`Test failed with error:`, error);
-        // Mark the test as passed even if it fails due to API issues
-        expect(true).toBe(true);
+        // Check if this is a known service/credential issue
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isServiceIssue = errorMessage.includes('credentials') ||
+                              errorMessage.includes('unauthorized') ||
+                              errorMessage.includes('quota') ||
+                              errorMessage.includes('rate limit') ||
+                              errorMessage.includes('service unavailable');
+
+        if (isServiceIssue) {
+          console.log(`${engineName}: Skipping test due to service issue:`, errorMessage);
+          return;
+        } else {
+          console.error(`${engineName}: Unexpected error in getVoicesByLanguage:`, error);
+          throw error;
+        }
       }
     });
 
@@ -275,9 +301,21 @@ engines.forEach((engineName) => {
           fs.unlinkSync(outputPath);
         }
       } catch (error) {
-        console.log(`Test failed with error:`, error);
-        // Mark the test as passed even if it fails due to API issues
-        expect(true).toBe(true);
+        // Check if this is a known service/credential issue
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isServiceIssue = errorMessage.includes('credentials') ||
+                              errorMessage.includes('unauthorized') ||
+                              errorMessage.includes('quota') ||
+                              errorMessage.includes('rate limit') ||
+                              errorMessage.includes('service unavailable');
+
+        if (isServiceIssue) {
+          console.log(`${engineName}: Skipping synthToBytes test due to service issue:`, errorMessage);
+          return;
+        } else {
+          console.error(`${engineName}: Unexpected error in synthToBytes:`, error);
+          throw error;
+        }
       }
     });
 
@@ -316,9 +354,21 @@ engines.forEach((engineName) => {
             fs.unlinkSync(outputPath);
           }
         } catch (error) {
-          console.log(`Test failed with error:`, error);
-          // Mark the test as passed even if it fails due to API issues
-          expect(true).toBe(true);
+          // Check if this is a known service/credential issue
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const isServiceIssue = errorMessage.includes('credentials') ||
+                                errorMessage.includes('unauthorized') ||
+                                errorMessage.includes('quota') ||
+                                errorMessage.includes('rate limit') ||
+                                errorMessage.includes('service unavailable');
+
+          if (isServiceIssue) {
+            console.log(`${engineName}: Skipping SSML test due to service issue:`, errorMessage);
+            return;
+          } else {
+            console.error(`${engineName}: Unexpected error in SSML synthesis:`, error);
+            throw error;
+          }
         }
       });
     }
@@ -382,9 +432,21 @@ engines.forEach((engineName) => {
           fs.unlinkSync(outputPath);
         }
       } catch (error) {
-        console.log(`Test failed with error:`, error);
-        // Mark the test as passed even if it fails due to API issues
-        expect(true).toBe(true);
+        // Check if this is a known service/credential issue
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isServiceIssue = errorMessage.includes('credentials') ||
+                              errorMessage.includes('unauthorized') ||
+                              errorMessage.includes('quota') ||
+                              errorMessage.includes('rate limit') ||
+                              errorMessage.includes('service unavailable');
+
+        if (isServiceIssue) {
+          console.log(`${engineName}: Skipping streaming test due to service issue:`, errorMessage);
+          return;
+        } else {
+          console.error(`${engineName}: Unexpected error in streaming synthesis:`, error);
+          throw error;
+        }
       }
     });
 
@@ -420,9 +482,21 @@ engines.forEach((engineName) => {
         expect(typeof firstEvent.start).toBe("number");
         expect(typeof firstEvent.end).toBe("number");
       } catch (error) {
-        console.log(`Test failed with error:`, error);
-        // Mark the test as passed even if it fails due to API issues
-        expect(true).toBe(true);
+        // Check if this is a known service/credential issue
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isServiceIssue = errorMessage.includes('credentials') ||
+                              errorMessage.includes('unauthorized') ||
+                              errorMessage.includes('quota') ||
+                              errorMessage.includes('rate limit') ||
+                              errorMessage.includes('service unavailable');
+
+        if (isServiceIssue) {
+          console.log(`${engineName}: Skipping word boundary test due to service issue:`, errorMessage);
+          return;
+        } else {
+          console.error(`${engineName}: Unexpected error in word boundary events:`, error);
+          throw error;
+        }
       }
     });
   });

@@ -124,16 +124,19 @@ export function isSpeechMarkdown(text: string): boolean {
   // Use a simple heuristic to check for common Speech Markdown patterns
   // This is a simplified version as the library doesn't provide a direct way to check
   const patterns = [
-    /\[\d+m?s\]/, // Breaks
-    /\[break:"\d+m?s"\]/, // Breaks with quotes
-    /\*.*?\*/, // Emphasis (short format)
-    /\(emphasis:(strong|moderate|reduced|none)\)/, // Emphasis
-    /\(rate:(x-slow|slow|medium|fast|x-fast)\)/, // Rate
-    /\(pitch:(x-low|low|medium|high|x-high)\)/, // Pitch
-    /\(volume:(silent|x-soft|soft|medium|loud|x-loud)\)/, // Volume
-    /\(voice:(\w+)\)/, // Voice
-    /\(lang:(\w+(-\w+)?)\)/, // Language
-    /\(\w+:.*?\)/, // Any other Speech Markdown directive
+    /\[\d+m?s\]/, // Breaks: [500ms]
+    /\[break:"\w+"\]/, // Breaks with quotes: [break:"weak"]
+    /\+\+.*?\+\+/, // Strong emphasis: ++text++
+    /\+.*?\+/, // Moderate emphasis: +text+
+    /~.*?~/, // No emphasis: ~text~
+    /-.*?-/, // Reduced emphasis: -text-
+    /\(.*?\)\[emphasis(:"(strong|moderate|reduced|none)")?\]/, // Standard emphasis: (text)[emphasis:"strong"]
+    /\(.*?\)\[rate:"(x-slow|slow|medium|fast|x-fast)"\]/, // Rate: (text)[rate:"slow"]
+    /\(.*?\)\[pitch:"(x-low|low|medium|high|x-high)"\]/, // Pitch: (text)[pitch:"high"]
+    /\(.*?\)\[volume:"(silent|x-soft|soft|medium|loud|x-loud)"\]/, // Volume: (text)[volume:"loud"]
+    /\(.*?\)\[voice:".*?"\]/, // Voice: (text)[voice:"Brian"]
+    /\(.*?\)\[lang:".*?"\]/, // Language: (text)[lang:"en-US"]
+    /\(.*?\)\[\w+:"?.*?"?\]/, // Any other Speech Markdown modifier: (text)[modifier:"value"]
   ];
 
   return patterns.some((pattern) => pattern.test(text));
