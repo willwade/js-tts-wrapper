@@ -58,8 +58,9 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
 
     try {
       // Try to list voices to check if the API key is valid
-      await this._getVoices();
-      return true;
+      const voices = await this._getVoices();
+      // Check if we actually got voices back (empty array means failed request)
+      return voices.length > 0;
     } catch (error) {
       console.error("Error checking ElevenLabs credentials:", error);
       return false;
