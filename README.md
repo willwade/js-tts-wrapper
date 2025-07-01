@@ -310,10 +310,30 @@ tts.connect('onEnd', () => console.log('Speech ended'));
 
 ## SSML Support
 
-All engines support SSML (Speech Synthesis Markup Language) for advanced control over speech synthesis:
+The library provides comprehensive SSML (Speech Synthesis Markup Language) support with engine-specific capabilities:
+
+### SSML-Supported Engines
+
+The following engines **fully support SSML**:
+- **Google Cloud TTS** - Full SSML support with all elements
+- **Microsoft Azure** - Full SSML support with voice-specific features
+- **Amazon Polly** - SSML support for standard voices (neural voices strip SSML)
+- **WitAI** - Full SSML support
+- **SAPI (Windows)** - Full SSML support
+- **eSpeak/eSpeak-WASM** - SSML support with subset of elements
+
+### Non-SSML Engines
+
+The following engines **automatically strip SSML tags** and convert to plain text:
+- **ElevenLabs** - SSML tags are removed, plain text is synthesized
+- **OpenAI** - SSML tags are removed, plain text is synthesized
+- **PlayHT** - SSML tags are removed, plain text is synthesized
+- **SherpaOnnx/SherpaOnnx-WASM** - SSML tags are removed, plain text is synthesized
+
+### Usage Examples
 
 ```typescript
-// Use SSML directly
+// Use SSML directly (works with supported engines)
 const ssml = `
 <speak>
   <prosody rate="slow" pitch="low">
@@ -335,15 +355,62 @@ const ssmlText = tts.ssml
 await tts.speak(ssmlText);
 ```
 
+### Engine-Specific SSML Notes
+
+- **Amazon Polly**: Neural voices (Joanna, Matthew, etc.) don't support SSML and will automatically strip tags
+- **Microsoft Azure**: Supports voice-specific SSML elements and custom voice tags
+- **Google Cloud**: Supports the most comprehensive set of SSML elements
+- **WitAI**: Full SSML support according to W3C specification
+- **SAPI**: Windows-native SSML support with system voice capabilities
+- **eSpeak**: Supports SSML subset including prosody, breaks, and emphasis elements
+
 ## Speech Markdown Support
 
-The library supports Speech Markdown for easier speech formatting:
+The library supports Speech Markdown for easier speech formatting across **all engines**:
+
+### How Speech Markdown Works
+
+- **SSML-supported engines**: Speech Markdown is converted to SSML, then processed natively
+- **Non-SSML engines**: Speech Markdown is converted to SSML, then SSML tags are stripped to plain text
+
+### Usage
 
 ```typescript
-// Use Speech Markdown
+// Use Speech Markdown with any engine
 const markdown = "Hello (pause:500ms) world! This is (emphasis:strong) important.";
 await tts.speak(markdown, { useSpeechMarkdown: true });
+
+// Speech Markdown works with all engines
+const ttsGoogle = new TTSClient('google');
+const ttsElevenLabs = new TTSClient('elevenlabs');
+
+// Both will handle Speech Markdown appropriately
+await ttsGoogle.speak(markdown, { useSpeechMarkdown: true });     // Converts to SSML
+await ttsElevenLabs.speak(markdown, { useSpeechMarkdown: true }); // Converts to plain text
 ```
+
+### Supported Speech Markdown Elements
+
+- `(pause:500ms)` - Pauses/breaks
+- `(emphasis:strong)` - Text emphasis
+- `(rate:slow)` - Speech rate control
+- `(pitch:high)` - Pitch control
+- `(volume:loud)` - Volume control
+
+### Engine Compatibility
+
+| Engine | Speech Markdown Support | Processing Method |
+|--------|------------------------|-------------------|
+| Google Cloud TTS | ✅ Full | → SSML → Native processing |
+| Microsoft Azure | ✅ Full | → SSML → Native processing |
+| Amazon Polly | ✅ Full | → SSML → Native processing (standard voices) |
+| WitAI | ✅ Full | → SSML → Native processing |
+| SAPI | ✅ Full | → SSML → Native processing |
+| eSpeak | ✅ Full | → SSML → Native processing |
+| ElevenLabs | ✅ Converted | → SSML → Plain text |
+| OpenAI | ✅ Converted | → SSML → Plain text |
+| PlayHT | ✅ Converted | → SSML → Plain text |
+| SherpaOnnx | ✅ Converted | → SSML → Plain text |
 
 ## Engine-Specific Examples
 

@@ -1,5 +1,6 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
+import * as SpeechMarkdown from "../markdown/converter";
 import { spawn } from "node:child_process";
 import { readFileSync, unlinkSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -252,9 +253,19 @@ export class SAPITTSClient extends AbstractTTSClient {
       const rate = this.convertRate(options?.rate);
       const volume = this.convertVolume(options?.volume);
 
-      // Prepare text for synthesis (ensure proper SSML format if needed)
-      const processedText = this._isSSML(text) ? this.ensureProperSSML(text) : text;
+      // Prepare text for synthesis (handle Speech Markdown and SSML)
+      let processedText = text;
+
+      // Convert from Speech Markdown if requested
+      if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
+        const ssmlText = await SpeechMarkdown.toSSML(processedText, "microsoft-azure");
+        processedText = ssmlText;
+      }
+
+      // Ensure proper SSML format if needed
+      processedText = this._isSSML(processedText) ? this.ensureProperSSML(processedText) : processedText;
       const escapedText = this.escapePowerShellString(processedText);
+      const isSSMLProcessed = this._isSSML(processedText);
 
       // Build PowerShell script for synthesis
       const script = `
@@ -281,7 +292,7 @@ export class SAPITTSClient extends AbstractTTSClient {
 
         try {
           # Synthesize speech (supports both plain text and SSML)
-          ${this._isSSML(text) ? '$synth.SpeakSsml($text)' : '$synth.Speak($text)'}
+          ${isSSMLProcessed ? '$synth.SpeakSsml($text)' : '$synth.Speak($text)'}
           Write-Output "SUCCESS"
         } catch {
           Write-Error $_.Exception.Message
@@ -313,7 +324,7 @@ export class SAPITTSClient extends AbstractTTSClient {
       }
 
       // Create estimated word timings (SAPI doesn't provide real-time events in this mode)
-      this._createEstimatedWordTimings(this._isSSML(text) ? this.stripSSML(text) : text);
+      this._createEstimatedWordTimings(isSSMLProcessed ? this.stripSSML(processedText) : processedText);
 
       return new Uint8Array(audioBuffer);
     } catch (error) {
@@ -338,7 +349,17 @@ export class SAPITTSClient extends AbstractTTSClient {
 
       // For now, use estimated word boundaries
       // TODO: Implement real-time word boundary events using SAPI events
-      const plainText = this._isSSML(text) ? this.stripSSML(text) : text;
+      let processedText = text;
+
+      // Convert from Speech Markdown if requested
+      if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
+        const ssmlText = await SpeechMarkdown.toSSML(processedText, "microsoft-azure");
+        processedText = ssmlText;
+      }
+
+      // Ensure proper SSML format if needed
+      processedText = this._isSSML(processedText) ? this.ensureProperSSML(processedText) : processedText;
+      const plainText = this._isSSML(processedText) ? this.stripSSML(processedText) : processedText;
       const words = plainText.split(/\s+/).filter((word) => word.length > 0);
       const estimatedDuration = 0.3; // Estimated duration per word in seconds
       const wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];

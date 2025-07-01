@@ -1,5 +1,7 @@
 // Node-only imports moved inside Node-only code paths below for browser compatibility.
 import { AbstractTTSClient } from "../core/abstract-tts";
+import * as SpeechMarkdown from "../markdown/converter";
+import * as SSMLUtils from "../core/ssml-utils";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { type WordBoundary, estimateWordBoundaries } from "../utils/word-timing-estimator";
 
@@ -501,11 +503,26 @@ export class OpenAITTSClient extends AbstractTTSClient {
    */
   async synthToBytes(text: string | string[], options: OpenAITTSOptions = {}): Promise<Uint8Array> {
     try {
+      // Prepare text for synthesis (handle Speech Markdown and SSML)
+      let processedText = typeof text === "string" ? text : text.join(" ");
+
+      // Convert from Speech Markdown if requested
+      if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
+        // Convert to SSML first, then strip SSML tags since OpenAI doesn't support SSML
+        const ssml = await SpeechMarkdown.toSSML(processedText);
+        processedText = SSMLUtils.stripSSML(ssml);
+      }
+
+      // If text is SSML, strip the tags as OpenAI doesn't support SSML
+      if (SSMLUtils.isSSML(processedText)) {
+        processedText = SSMLUtils.stripSSML(processedText);
+      }
+
       const client = await this.loadClient();
       const params: any = {
         model: options.model || this.model,
         voice: options.voice || this.voice,
-        input: typeof text === "string" ? text : text.join(" "),
+        input: processedText,
         instructions: this.instructions || undefined,
         response_format: options.format || this.responseFormat,
         // Map rate to speed if provided (_options.speed takes precedence over _options.rate)

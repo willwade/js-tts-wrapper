@@ -137,6 +137,18 @@ export class PollyTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Get the appropriate engine for a voice
+   * @param voiceId Voice ID to check
+   * @returns "neural" or "standard"
+   */
+  private getEngineForVoice(voiceId: string): "neural" | "standard" {
+    // Neural voices (these support neural engine but have SSML limitations)
+    const neuralVoices = ['Joanna', 'Matthew', 'Ivy', 'Justin', 'Kendra', 'Kimberly', 'Salli', 'Joey', 'Ruth', 'Stephen', 'Olivia', 'Kevin', 'Amy', 'Emma', 'Brian', 'Arthur', 'Aria', 'Ayanda', 'Arlet', 'Hannah', 'Liam', 'Pedro', 'Kajal', 'Hiujin', 'Laura', 'Elin', 'Ida', 'Suvi', 'Ola', 'Hala', 'Andres', 'Sergio', 'Remi', 'Adriano', 'Thiago', 'Ruth', 'Stephen', 'Kazuha', 'Tomoko', 'Seoyeon', 'Lupe', 'Lucia', 'Lea', 'Vicki', 'Takumi', 'Zhiyu'];
+
+    return neuralVoices.includes(voiceId) ? "neural" : "standard";
+  }
+
+  /**
    * Check if a voice is a neural voice
    * @param voiceId Voice ID to check
    * @returns True if the voice is a neural voice
@@ -150,18 +162,8 @@ export class PollyTTSClient extends AbstractTTSClient {
       return true;
     }
 
-    try {
-      // Get the raw voices from Polly to check the SupportedEngines property
-      const rawVoices = await this._getVoices();
-      const voiceDetails = rawVoices.find(v => v.Id === voice);
-
-      // Check if the voice supports the neural engine and we're using the neural engine
-      return voiceDetails?.SupportedEngines?.includes("neural") || false;
-    } catch (error) {
-      console.warn(`Error checking if voice ${voice} is neural:`, error);
-      // Default to false if we can't determine
-      return false;
-    }
+    // Use the engine detection logic
+    return this.getEngineForVoice(voice) === "neural";
   }
 
   /**
@@ -286,10 +288,7 @@ export class PollyTTSClient extends AbstractTTSClient {
       const isSSML = this._isSSML(preparedText);
 
       // Determine the engine to use based on the voice
-      // Standard voices: Geraint, Raveena, Aditi, etc.
-      // Neural voices: Joanna, Matthew, Lupe, etc.
-      const standardVoices = ['Geraint', 'Raveena', 'Aditi', 'Carmen', 'Maxim', 'Tatyana', 'Conchita', 'Enrique', 'Russell', 'Nicole', 'Amy', 'Brian', 'Emma', 'Gwyneth', 'Raveena', 'Ivy', 'Joanna', 'Kendra', 'Kimberly', 'Salli', 'Joey', 'Justin', 'Matthew'];
-      const engine = standardVoices.includes(voiceIdString) ? "standard" : "neural";
+      const engine = this.getEngineForVoice(voiceIdString);
 
       // Create input parameters
       const input: SynthesizeSpeechCommandInput = {
@@ -378,10 +377,7 @@ export class PollyTTSClient extends AbstractTTSClient {
       const textType = this._isSSML(preparedText) ? "ssml" : "text";
 
       // Determine the engine to use based on the voice
-      // Standard voices: Geraint, Raveena, Aditi, etc.
-      // Neural voices: Joanna, Matthew, Lupe, etc.
-      const standardVoices = ['Geraint', 'Raveena', 'Aditi', 'Carmen', 'Maxim', 'Tatyana', 'Conchita', 'Enrique', 'Russell', 'Nicole', 'Amy', 'Brian', 'Emma', 'Gwyneth', 'Raveena', 'Ivy', 'Joanna', 'Kendra', 'Kimberly', 'Salli', 'Joey', 'Justin', 'Matthew'];
-      const engine = standardVoices.includes(voiceId) ? "standard" : "neural";
+      const engine = this.getEngineForVoice(voiceIdString);
 
       let wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
 

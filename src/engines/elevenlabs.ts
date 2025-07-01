@@ -168,7 +168,14 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
 
       // Get audio data as array buffer
       const arrayBuffer = await response.arrayBuffer();
-      return new Uint8Array(arrayBuffer);
+      let audioData = new Uint8Array(arrayBuffer);
+
+      // If we requested WAV format but got PCM data, add a WAV header
+      if (options?.format === "wav") {
+        audioData = this.addWavHeader(audioData, 44100);
+      }
+
+      return audioData;
     } catch (error) {
       console.error("Error synthesizing speech:", error);
       throw error;
@@ -232,7 +239,12 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
 
       // Convert the response body to a proper ReadableStream
       const responseArrayBuffer = await response.arrayBuffer();
-      const uint8Array = new Uint8Array(responseArrayBuffer);
+      let uint8Array = new Uint8Array(responseArrayBuffer);
+
+      // If we requested WAV format but got PCM data, add a WAV header
+      if (options?.format === "wav") {
+        uint8Array = this.addWavHeader(uint8Array, 44100);
+      }
 
       // Create a ReadableStream from the Uint8Array
       const readableStream = new ReadableStream({
@@ -341,5 +353,95 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       console.error("Error getting voice:", error);
       throw error;
     }
+  }
+
+  /**
+   * Add a WAV header to PCM audio data
+   * @param pcmData PCM audio data from ElevenLabs (signed 16-bit, 1 channel, little-endian)
+   * @param sampleRate Sample rate in Hz (default: 44100)
+   * @returns PCM audio data with WAV header
+   */
+  private addWavHeader(pcmData: Uint8Array, sampleRate: number = 44100): Uint8Array {
+    // WAV header is 44 bytes
+    const headerSize = 44;
+    const wavData = new Uint8Array(headerSize + pcmData.length);
+
+    // RIFF header
+    wavData[0] = 0x52; // 'R'
+    wavData[1] = 0x49; // 'I'
+    wavData[2] = 0x46; // 'F'
+    wavData[3] = 0x46; // 'F'
+
+    // File size (total file size - 8 bytes)
+    const fileSize = headerSize + pcmData.length - 8;
+    wavData[4] = fileSize & 0xff;
+    wavData[5] = (fileSize >> 8) & 0xff;
+    wavData[6] = (fileSize >> 16) & 0xff;
+    wavData[7] = (fileSize >> 24) & 0xff;
+
+    // WAVE header
+    wavData[8] = 0x57; // 'W'
+    wavData[9] = 0x41; // 'A'
+    wavData[10] = 0x56; // 'V'
+    wavData[11] = 0x45; // 'E'
+
+    // fmt chunk
+    wavData[12] = 0x66; // 'f'
+    wavData[13] = 0x6d; // 'm'
+    wavData[14] = 0x74; // 't'
+    wavData[15] = 0x20; // ' '
+
+    // fmt chunk size (16 bytes)
+    wavData[16] = 16;
+    wavData[17] = 0;
+    wavData[18] = 0;
+    wavData[19] = 0;
+
+    // Audio format (1 = PCM)
+    wavData[20] = 1;
+    wavData[21] = 0;
+
+    // Number of channels (1 = mono)
+    wavData[22] = 1;
+    wavData[23] = 0;
+
+    // Sample rate
+    wavData[24] = sampleRate & 0xff;
+    wavData[25] = (sampleRate >> 8) & 0xff;
+    wavData[26] = (sampleRate >> 16) & 0xff;
+    wavData[27] = (sampleRate >> 24) & 0xff;
+
+    // Byte rate (sample rate * channels * bits per sample / 8)
+    const byteRate = sampleRate * 1 * 16 / 8;
+    wavData[28] = byteRate & 0xff;
+    wavData[29] = (byteRate >> 8) & 0xff;
+    wavData[30] = (byteRate >> 16) & 0xff;
+    wavData[31] = (byteRate >> 24) & 0xff;
+
+    // Block align (channels * bits per sample / 8)
+    const blockAlign = 1 * 16 / 8;
+    wavData[32] = blockAlign & 0xff;
+    wavData[33] = (blockAlign >> 8) & 0xff;
+
+    // Bits per sample
+    wavData[34] = 16;
+    wavData[35] = 0;
+
+    // data chunk
+    wavData[36] = 0x64; // 'd'
+    wavData[37] = 0x61; // 'a'
+    wavData[38] = 0x74; // 't'
+    wavData[39] = 0x61; // 'a'
+
+    // Data chunk size
+    wavData[40] = pcmData.length & 0xff;
+    wavData[41] = (pcmData.length >> 8) & 0xff;
+    wavData[42] = (pcmData.length >> 16) & 0xff;
+    wavData[43] = (pcmData.length >> 24) & 0xff;
+
+    // Copy PCM data
+    wavData.set(pcmData, headerSize);
+
+    return wavData;
   }
 }

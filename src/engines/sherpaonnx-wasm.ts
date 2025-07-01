@@ -9,6 +9,8 @@
  */
 
 import { AbstractTTSClient } from "../core/abstract-tts";
+import * as SpeechMarkdown from "../markdown/converter";
+import * as SSMLUtils from "../core/ssml-utils";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
 import { fileSystem, isBrowser, isNode, pathUtils } from "../utils/environment";
 import { estimateWordBoundaries } from "../utils/word-timing-estimator";
@@ -488,7 +490,22 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to a byte array of audio data
    */
   async synthToBytes(text: string, _options?: SpeakOptions): Promise<Uint8Array> {
-    console.log("synthToBytes called with text:", text);
+    // Prepare text for synthesis (handle Speech Markdown and SSML)
+    let processedText = text;
+
+    // Convert from Speech Markdown if requested
+    if (_options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
+      // Convert to SSML first, then strip SSML tags since SherpaOnnx doesn't support SSML
+      const ssml = await SpeechMarkdown.toSSML(processedText);
+      processedText = SSMLUtils.stripSSML(ssml);
+    }
+
+    // If text is SSML, strip the tags as SherpaOnnx doesn't support SSML
+    if (SSMLUtils.isSSML(processedText)) {
+      processedText = SSMLUtils.stripSSML(processedText);
+    }
+
+    console.log("synthToBytes called with text:", processedText);
 
     // Enhanced multi-model synthesis
     if (this.enhancedOptions.enableMultiModel && this.wasmModule && this.currentVoiceId) {
@@ -500,7 +517,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         }
 
         // Generate audio using the enhanced WASM interface
-        const result = this.wasmModule._GenerateAudio(text, 0, 1.0); // text, speaker_id, speed
+        const result = this.wasmModule._GenerateAudio(processedText, 0, 1.0); // text, speaker_id, speed
 
         if (!result || !result.samples) {
           throw new Error('Failed to generate audio with enhanced interface');
@@ -574,7 +591,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
 
           // Generate audio
           console.log("Generating audio directly...");
-          const result = directTts.generate({ text, sid: 0, speed: 1.0 });
+          const result = directTts.generate({ text: processedText, sid: 0, speed: 1.0 });
           console.log("Audio generated directly:", result);
           console.log(`Generated ${result?.samples?.length} samples at ${result?.sampleRate}Hz`);
 
@@ -673,8 +690,8 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         console.log("Using generate method");
         console.log("this.tts.generate:", this.tts.generate);
         try {
-          console.log("Calling generate with:", { text, sid: 0, speed: 1.0 });
-          const result = this.tts.generate({ text, sid: 0, speed: 1.0 });
+          console.log("Calling generate with:", { text: processedText, sid: 0, speed: 1.0 });
+          const result = this.tts.generate({ text: processedText, sid: 0, speed: 1.0 });
           console.log("Generate call successful, result:", result);
           samples = result.samples;
           console.log(
@@ -689,8 +706,8 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         console.log("Using generateWithText method");
         console.log("this.tts.generateWithText:", this.tts.generateWithText);
         try {
-          console.log("Calling generateWithText with:", text);
-          samples = this.tts.generateWithText(text);
+          console.log("Calling generateWithText with:", processedText);
+          samples = this.tts.generateWithText(processedText);
           console.log(`Generated audio with samples: ${samples.length}`);
         } catch (error) {
           console.error("Error calling generateWithText:", error);

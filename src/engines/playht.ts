@@ -1,4 +1,6 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
+import * as SpeechMarkdown from "../markdown/converter";
+import * as SSMLUtils from "../core/ssml-utils";
 import { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { estimateWordBoundaries, WordBoundary } from "../utils/word-timing-estimator";
 import { getFetch } from "../utils/fetch-utils";
@@ -685,6 +687,21 @@ export class PlayHTTTSClient extends AbstractTTSClient {
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
     try {
+      // Prepare text for synthesis (handle Speech Markdown and SSML)
+      let processedText = text;
+
+      // Convert from Speech Markdown if requested
+      if (_options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
+        // Convert to SSML first, then strip SSML tags since PlayHT doesn't support SSML
+        const ssml = await SpeechMarkdown.toSSML(processedText);
+        processedText = SSMLUtils.stripSSML(ssml);
+      }
+
+      // If text is SSML, strip the tags as PlayHT doesn't support SSML
+      if (SSMLUtils.isSSML(processedText)) {
+        processedText = SSMLUtils.stripSSML(processedText);
+      }
+
       // PlayHT works best with MP3 format, especially for cloned voices
       // Use MP3 as the native format regardless of what's requested
       const nativeFormat = 'mp3';
@@ -699,7 +716,7 @@ export class PlayHTTTSClient extends AbstractTTSClient {
           'X-USER-ID': this.userId,
         },
         body: JSON.stringify({
-          text: text, // Parameter is string, no need for conditional
+          text: processedText, // Use processed text with Speech Markdown/SSML handling
           voice: this.voice,
           output_format: nativeFormat,
           voice_engine: this.voiceEngine, // Ensure this is set appropriately

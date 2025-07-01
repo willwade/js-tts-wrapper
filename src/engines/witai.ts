@@ -106,24 +106,25 @@ export class WitAITTSClient extends AbstractTTSClient {
   }
 
   /**
-   * Prepare text for synthesis
-   * @param text Text to prepare
+   * Prepare text/SSML for synthesis
+   * @param text Text or SSML to prepare
    * @param options Synthesis options
-   * @returns Prepared text
+   * @returns Prepared text or SSML
    */
   private async prepareText(text: string, options?: SpeakOptions): Promise<string> {
     let processedText = text;
 
-    // Check if the input is SpeechMarkdown and useSpeechMarkdown is enabled, convert it to plain text
+    // Check if the input is SpeechMarkdown and useSpeechMarkdown is enabled, convert it to SSML
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
-      // Convert SpeechMarkdown to SSML first, then strip SSML tags
-      const ssml = await SpeechMarkdown.toSSML(processedText);
-      processedText = SSMLUtils.stripSSML(ssml);
+      // Convert SpeechMarkdown to SSML - WitAI supports SSML
+      const ssml = await SpeechMarkdown.toSSML(processedText, "wit-ai");
+      processedText = ssml;
     }
 
-    // If the input is SSML, convert it to plain text
-    if (SSMLUtils.isSSML(processedText)) {
-      processedText = SSMLUtils.stripSSML(processedText);
+    // WitAI supports SSML, so we can pass SSML directly
+    // If text is not SSML, wrap it in speak tags for consistency
+    if (!SSMLUtils.isSSML(processedText)) {
+      processedText = SSMLUtils.wrapWithSpeakTags(processedText);
     }
 
     return processedText;

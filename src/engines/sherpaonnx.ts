@@ -6,6 +6,7 @@ import * as path from "node:path";
 import decompress from "decompress";
 import decompressTarbz2 from "decompress-tarbz2";
 import { AbstractTTSClient } from "../core/abstract-tts";
+import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 
 // Capture native fetch at module level
@@ -1236,12 +1237,22 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
   /**
    * Convert text to audio bytes
    * @param text Text to synthesize
+   * @param options Synthesis options
    * @returns Promise resolving to audio bytes
    */
-  async synthToBytes(text: string): Promise<Uint8Array> {
+  async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
     try {
-      // Remove SSML tags if present (SherpaOnnx doesn't support SSML)
+      // Prepare text for synthesis (handle Speech Markdown and SSML)
       let plainText = text;
+
+      // Convert from Speech Markdown if requested
+      if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(plainText)) {
+        // Convert to SSML first, then strip SSML tags since SherpaOnnx doesn't support SSML
+        const ssml = await SpeechMarkdown.toSSML(plainText);
+        plainText = this.stripSSML(ssml);
+      }
+
+      // Remove SSML tags if present (SherpaOnnx doesn't support SSML)
       if (this._isSSML(plainText)) {
         plainText = this.stripSSML(plainText);
       }

@@ -3,6 +3,7 @@
  */
 
 import { isNode } from "./environment";
+import { detectAudioFormat } from "./audio-input";
 
 // Global state for audio playback
 interface AudioState {
@@ -323,20 +324,35 @@ function createWavFile(
 }
 
 /**
- * Check if audio data is raw PCM (no WAV header)
+ * Check if audio data is raw PCM (no audio format header)
  * @param audioBytes Audio data to check
  * @returns True if the data appears to be raw PCM
  */
 function isRawPCM(audioBytes: Uint8Array): boolean {
-  // Check if it's NOT a WAV file (doesn't start with RIFF header)
-  const hasRiffHeader =
-    audioBytes.length >= 4 &&
-    audioBytes[0] === 0x52 && // 'R'
-    audioBytes[1] === 0x49 && // 'I'
-    audioBytes[2] === 0x46 && // 'F'
-    audioBytes[3] === 0x46; // 'F'
+  // Use the existing audio format detection to check if it's a known format
+  const detectedFormat = detectAudioFormat(audioBytes);
 
-  return !hasRiffHeader;
+  // If it's detected as WAV but we default to WAV for unknown formats,
+  // we need to check if it actually has a valid WAV header
+  if (detectedFormat === "audio/wav") {
+    // Check if it actually has a RIFF header
+    const hasRiffHeader =
+      audioBytes.length >= 12 &&
+      audioBytes[0] === 0x52 && // 'R'
+      audioBytes[1] === 0x49 && // 'I'
+      audioBytes[2] === 0x46 && // 'F'
+      audioBytes[3] === 0x46 && // 'F'
+      audioBytes[8] === 0x57 && // 'W'
+      audioBytes[9] === 0x41 && // 'A'
+      audioBytes[10] === 0x56 && // 'V'
+      audioBytes[11] === 0x45; // 'E'
+
+    // If detectAudioFormat returned WAV but there's no valid header, it's raw PCM
+    return !hasRiffHeader;
+  }
+
+  // If it's detected as MP3, OGG, or other formats, it's not raw PCM
+  return false;
 }
 
 /**
@@ -368,9 +384,21 @@ export async function playAudioInNode(
     const os = await import("node:os");
     const path = await import("node:path");
 
-    // Create a temporary file to play
+    // Detect the audio format to determine the correct file extension
+    const detectedFormat = detectAudioFormat(audioBytes);
+    let fileExtension = "wav"; // Default
+
+    if (detectedFormat === "audio/mpeg") {
+      fileExtension = "mp3";
+    } else if (detectedFormat === "audio/ogg") {
+      fileExtension = "ogg";
+    } else if (detectedFormat === "audio/wav") {
+      fileExtension = "wav";
+    }
+
+    // Create a temporary file to play with the correct extension
     const tempDir = os.tmpdir();
-    const tempFile = path.join(tempDir, `tts-audio-${Date.now()}.wav`);
+    const tempFile = path.join(tempDir, `tts-audio-${Date.now()}.${fileExtension}`);
     audioState.tempFile = tempFile;
 
     // Determine if we need to add a WAV header
@@ -388,11 +416,14 @@ export async function playAudioInNode(
       }
 
       finalAudioBytes = createWavFile(audioBytes, actualSampleRate);
+      // Update file extension to WAV since we're adding a WAV header
+      const tempFileWav = path.join(tempDir, `tts-audio-${Date.now()}.wav`);
+      audioState.tempFile = tempFileWav;
     }
 
     // Write the audio data to the temp file
-    audioState.fs.writeFileSync(tempFile, Buffer.from(finalAudioBytes));
-    console.log(`Audio saved to temporary file: ${tempFile}`);
+    audioState.fs.writeFileSync(audioState.tempFile, Buffer.from(finalAudioBytes));
+    console.log(`Audio saved to temporary file: ${audioState.tempFile}`);
 
     // Determine which player to use based on platform
     let command: string;
@@ -401,17 +432,35 @@ export async function playAudioInNode(
     const platform = process.platform;
 
     if (platform === "darwin") {
-      // macOS
+      // macOS - afplay supports WAV, MP3, and many other formats
       command = "afplay";
-      args = [tempFile];
+      args = [audioState.tempFile];
     } else if (platform === "win32") {
-      // Windows
-      command = "powershell";
-      args = ["-c", `(New-Object System.Media.SoundPlayer "${tempFile}").PlaySync()`];
+      // Windows - use different players based on file format
+      if (fileExtension === "mp3" || fileExtension === "ogg") {
+        // For MP3/OGG files, use Windows Media Player command line
+        command = "powershell";
+        args = ["-c", `Start-Process -FilePath "${audioState.tempFile}" -Wait`];
+      } else {
+        // For WAV files, use System.Media.SoundPlayer
+        command = "powershell";
+        args = ["-c", `(New-Object System.Media.SoundPlayer "${audioState.tempFile}").PlaySync()`];
+      }
     } else {
-      // Linux and others - try to use aplay
-      command = "aplay";
-      args = ["-q", tempFile];
+      // Linux and others - use different players based on format
+      if (fileExtension === "mp3") {
+        // Try mpg123 for MP3 files
+        command = "mpg123";
+        args = ["-q", audioState.tempFile];
+      } else if (fileExtension === "ogg") {
+        // Try ogg123 for OGG files
+        command = "ogg123";
+        args = ["-q", audioState.tempFile];
+      } else {
+        // Use aplay for WAV files
+        command = "aplay";
+        args = ["-q", audioState.tempFile];
+      }
     }
 
     console.log(`Playing audio with ${command}...`);

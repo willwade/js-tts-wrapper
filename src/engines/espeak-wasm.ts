@@ -1,4 +1,6 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
+import * as SpeechMarkdown from "../markdown/converter";
+import * as SSMLUtils from "../core/ssml-utils";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 
 // Dynamic require/import for meSpeak
@@ -83,6 +85,19 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
 
   async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
     try {
+      // Prepare text for synthesis (handle Speech Markdown and SSML)
+      let processedText = text;
+
+      // Convert from Speech Markdown if requested
+      if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
+        // Convert to SSML - eSpeak supports SSML
+        const ssml = await SpeechMarkdown.toSSML(processedText, "espeak");
+        processedText = ssml;
+      }
+
+      // eSpeak supports SSML, so we can pass SSML directly
+      // If text is not SSML, we can still use it as-is since eSpeak handles plain text too
+
       // Load the meSpeak module
       const meSpeakModule = await loadMeSpeak();
 
@@ -117,7 +132,7 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
       // Call meSpeak to generate audio with a callback
       return new Promise((resolve, reject) => {
         meSpeakModule.speak(
-          text,
+          processedText,
           meSpeakOptions,
           (success: boolean, _id: number, stream: ArrayBuffer) => {
             if (success && stream) {
