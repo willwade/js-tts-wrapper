@@ -125,8 +125,9 @@ export async function getEngineConfigs() {
     {
       name: "watson",
       factory: () => new WatsonTTSClient({
-        apikey: process.env.WATSON_API_KEY || '',
-        url: process.env.WATSON_URL || '',
+        apiKey: process.env.WATSON_API_KEY || '',
+        region: process.env.WATSON_REGION || '',
+        instanceId: process.env.WATSON_INSTANCE_ID || '',
       }),
       description: "IBM Watson TTS"
     },
@@ -243,8 +244,9 @@ export function getEngineConfigsCJS() {
     {
       name: "watson",
       factory: () => new WatsonTTSClient({
-        apikey: process.env.WATSON_API_KEY || '',
-        url: process.env.WATSON_URL || '',
+        apiKey: process.env.WATSON_API_KEY || '',
+        region: process.env.WATSON_REGION || '',
+        instanceId: process.env.WATSON_INSTANCE_ID || '',
       }),
       description: "IBM Watson TTS"
     },
