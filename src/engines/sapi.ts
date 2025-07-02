@@ -270,10 +270,17 @@ export class SAPITTSClient extends AbstractTTSClient {
         processedText = ssmlText;
       }
 
-      // Ensure proper SSML format if needed
-      processedText = this._isSSML(processedText) ? this.ensureProperSSML(processedText) : processedText;
+      // Always ensure SSML format - wrap plain text in speak tags like other engines
+      if (this._isSSML(processedText)) {
+        processedText = this.ensureProperSSML(processedText);
+      } else {
+        // Wrap plain text in SSML tags to enable consistent SSML processing
+        processedText = this.ensureProperSSML(`<speak>${processedText}</speak>`);
+      }
+
       const escapedText = this.escapePowerShellString(processedText);
-      const isSSMLProcessed = this._isSSML(processedText);
+      // Always use SSML processing since we now always have SSML format
+      const isSSMLProcessed = true;
 
       // Build PowerShell script for synthesis
       const script = `
@@ -299,8 +306,8 @@ export class SAPITTSClient extends AbstractTTSClient {
         $synth.SetOutputToWaveFile("${this.escapePowerShellString(tempFilename)}")
 
         try {
-          # Synthesize speech (supports both plain text and SSML)
-          ${isSSMLProcessed ? '$synth.SpeakSsml($text)' : '$synth.Speak($text)'}
+          # Synthesize speech using SSML (all text is now wrapped in SSML format)
+          $synth.SpeakSsml($text)
           Write-Output "SUCCESS"
         } catch {
           Write-Error $_.Exception.Message
@@ -365,8 +372,13 @@ export class SAPITTSClient extends AbstractTTSClient {
         processedText = ssmlText;
       }
 
-      // Ensure proper SSML format if needed
-      processedText = this._isSSML(processedText) ? this.ensureProperSSML(processedText) : processedText;
+      // Always ensure SSML format - wrap plain text in speak tags like other engines
+      if (this._isSSML(processedText)) {
+        processedText = this.ensureProperSSML(processedText);
+      } else {
+        // Wrap plain text in SSML tags to enable consistent SSML processing
+        processedText = this.ensureProperSSML(`<speak>${processedText}</speak>`);
+      }
       const plainText = this._isSSML(processedText) ? this.stripSSML(processedText) : processedText;
       const words = plainText.split(/\s+/).filter((word) => word.length > 0);
       const estimatedDuration = 0.3; // Estimated duration per word in seconds
