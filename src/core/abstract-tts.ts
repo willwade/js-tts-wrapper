@@ -14,6 +14,8 @@ import { LanguageNormalizer } from "./language-utils";
 import * as SSMLUtils from "./ssml-utils";
 import { isBrowser, isNode } from "../utils/environment";
 import { isNodeAudioAvailable, playAudioInNode } from "../utils/node-audio";
+import { convertAudioFormat, isAudioConversionAvailable, getMimeTypeForFormat, type AudioFormat } from "../utils/audio-converter";
+import { detectAudioFormat } from "../utils/audio-input";
 
 /**
  * Abstract base class for all TTS clients
@@ -119,6 +121,69 @@ export abstract class AbstractTTSClient {
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }>;
 
+  // --- Format conversion support ---
+
+  /**
+   * Synthesize text to audio bytes with format conversion support
+   * This method wraps the engine's native synthToBytes and adds format conversion
+   * @param text Text or SSML to synthesize
+   * @param options Synthesis options including format
+   * @returns Promise resolving to audio bytes in the requested format
+   */
+  async synthToBytesWithConversion(text: string, options?: SpeakOptions): Promise<Uint8Array> {
+    // Get audio from the engine's native implementation
+    const nativeAudioBytes = await this.synthToBytes(text, options);
+
+    // If no format specified, return native audio
+    if (!options?.format) {
+      return nativeAudioBytes;
+    }
+
+    // Check if conversion is needed and available
+    const requestedFormat = options.format as AudioFormat;
+    const nativeFormat = this.detectNativeFormat(nativeAudioBytes);
+
+    // If already in requested format, return as-is
+    if (nativeFormat === requestedFormat) {
+      return nativeAudioBytes;
+    }
+
+    // Try to convert if conversion is available
+    if (isAudioConversionAvailable()) {
+      try {
+        const conversionResult = await convertAudioFormat(nativeAudioBytes, requestedFormat);
+        return conversionResult.audioBytes;
+      } catch (error) {
+        console.warn(`Audio format conversion failed: ${error instanceof Error ? error.message : String(error)}`);
+        console.warn(`Returning native format (${nativeFormat}) instead of requested format (${requestedFormat})`);
+      }
+    } else {
+      console.warn(`Audio format conversion not available. Returning native format (${nativeFormat}) instead of requested format (${requestedFormat})`);
+    }
+
+    // Fallback: return native audio
+    return nativeAudioBytes;
+  }
+
+  /**
+   * Detect the native audio format produced by this engine
+   * @param audioBytes Audio bytes to analyze
+   * @returns Detected audio format
+   */
+  protected detectNativeFormat(audioBytes: Uint8Array): AudioFormat {
+    const detectedMimeType = detectAudioFormat(audioBytes);
+
+    switch (detectedMimeType) {
+      case "audio/mpeg":
+        return "mp3";
+      case "audio/ogg":
+        return "ogg";
+      case "audio/wav":
+      default:
+        return "wav";
+    }
+  }
+
   /**
    * Get available voices from the provider with normalized language codes
    * @returns Promise resolving to an array of unified voice objects
@@ -181,16 +246,12 @@ export abstract class AbstractTTSClient {
 
       // Handle different input types
       if (typeof input === "string") {
-        // Traditional text input
-        audioBytes = await this.synthToBytes(input, options);
+        // Traditional text input with format conversion support
+        audioBytes = await this.synthToBytesWithConversion(input, options);
 
-        // Determine MIME type based on options or engine default
-        mimeType = "audio/wav"; // default to WAV
-        if (options?.format === "mp3") {
-          mimeType = "audio/mpeg";
-        } else if (options?.format === "ogg") {
-          mimeType = "audio/ogg";
-        }
+        // Determine MIME type based on actual audio format
+        const actualFormat = this.detectNativeFormat(audioBytes);
+        mimeType = getMimeTypeForFormat(actualFormat);
       } else {
         // Audio input (file, bytes, or stream)
         const { processAudioInput } = await import("../utils/audio-input");
@@ -327,12 +388,22 @@ export abstract class AbstractTTSClient {
           offset += chunk.length;
         }
 
-        // Determine MIME type based on options or engine default
-        mimeType = "audio/wav"; // default to WAV
-        if (options?.format === "mp3") {
-          mimeType = "audio/mpeg";
-        } else if (options?.format === "ogg") {
-          mimeType = "audio/ogg";
+        // Apply format conversion if needed (for streaming, we convert the final buffer)
+        if (options?.format && isAudioConversionAvailable()) {
+          try {
+            const conversionResult = await convertAudioFormat(audioBytes, options.format as AudioFormat);
+            audioBytes = conversionResult.audioBytes;
+            mimeType = conversionResult.mimeType;
+          } catch (error) {
+            console.warn(`Streaming format conversion failed: ${error instanceof Error ? error.message : String(error)}`);
+            // Fallback to detecting actual format
+            const actualFormat = this.detectNativeFormat(audioBytes);
+            mimeType = getMimeTypeForFormat(actualFormat);
+          }
+        } else {
+          // Determine MIME type based on actual audio format
+          const actualFormat = this.detectNativeFormat(audioBytes);
+          mimeType = getMimeTypeForFormat(actualFormat);
         }
       } else {
         // Audio input (file, bytes, or stream)
@@ -474,8 +545,8 @@ export abstract class AbstractTTSClient {
     format: "mp3" | "wav" = "wav",
     options?: SpeakOptions
   ): Promise<void> {
-    // Convert text to audio bytes with the specified format
-    const audioBytes = await this.synthToBytes(text, { ...options, format });
+    // Convert text to audio bytes with the specified format (with conversion support)
+    const audioBytes = await this.synthToBytesWithConversion(text, { ...options, format });
 
     if (isBrowser) {
       // Create blob with appropriate MIME type

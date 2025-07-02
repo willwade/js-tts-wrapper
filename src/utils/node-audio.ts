@@ -436,13 +436,31 @@ export async function playAudioInNode(
       command = "afplay";
       args = [audioState.tempFile];
     } else if (platform === "win32") {
-      // Windows - use different players based on file format
+      // Windows - System.Media.SoundPlayer only supports WAV files reliably
+      // For non-WAV files, we need to convert them or use alternative playback
       if (fileExtension === "mp3" || fileExtension === "ogg") {
-        // For MP3/OGG files, use Windows Media Player command line
+        // For MP3/OGG files, try to use Windows Media Player first
+        // If that fails, we'll fall back to converting to WAV
         command = "powershell";
-        args = ["-c", `Start-Process -FilePath "${audioState.tempFile}" -Wait`];
+        args = ["-c", `
+          try {
+            Add-Type -AssemblyName presentationCore
+            $mediaPlayer = New-Object system.windows.media.mediaplayer
+            $mediaPlayer.open([uri]"${audioState.tempFile}")
+            $mediaPlayer.Play()
+            Start-Sleep -Seconds 1
+            while($mediaPlayer.NaturalDuration.HasTimeSpan -eq $false) { Start-Sleep -Milliseconds 100 }
+            $duration = $mediaPlayer.NaturalDuration.TimeSpan.TotalSeconds
+            Start-Sleep -Seconds $duration
+            $mediaPlayer.Stop()
+            $mediaPlayer.Close()
+          } catch {
+            Write-Error "Failed to play audio file: $_"
+            exit 1
+          }
+        `];
       } else {
-        // For WAV files, use System.Media.SoundPlayer
+        // For WAV files, use System.Media.SoundPlayer (most reliable)
         command = "powershell";
         args = ["-c", `(New-Object System.Media.SoundPlayer "${audioState.tempFile}").PlaySync()`];
       }

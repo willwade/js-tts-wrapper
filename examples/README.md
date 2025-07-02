@@ -44,6 +44,17 @@ We've cleaned up and organized the browser testing infrastructure to provide:
   - Verifies engine instantiation
   - Useful for debugging build issues
 
+- **`issue6-reproduction-demo.js`** - Audio input bug reproduction demo
+  - Demonstrates the fix for MP3 audio playback issues on Windows
+  - Tests both WAV and MP3 audio input handling
+  - Shows proper temporary file cleanup
+
+- **`format-conversion-demo.js`** - Audio format conversion showcase
+  - Demonstrates automatic format conversion capabilities
+  - Tests both native format support and conversion fallbacks
+  - Shows graceful handling of unsupported formats
+  - Compares engines with different format capabilities
+
 ## 🚀 Getting Started
 
 ### 1. Start HTTP Server
@@ -76,6 +87,14 @@ node examples/unified-test-runner.js azure --mode=features
 
 # Test with audio playback
 PLAY_AUDIO=true node examples/unified-test-runner.js mock --mode=audio
+
+# Test format conversion capabilities
+node examples/issue6-reproduction-demo.js azure  # Native MP3 support
+node examples/issue6-reproduction-demo.js sapi   # WAV-only with conversion
+
+# Comprehensive format conversion demo
+node examples/format-conversion-demo.js          # Test multiple engines
+PLAY_AUDIO=true node examples/format-conversion-demo.js  # With audio playback
 ```
 
 ## 🔧 Browser-Compatible Engines
@@ -122,10 +141,34 @@ Some TTS APIs may have CORS restrictions. Solutions:
 - Tests handle auto-play restrictions gracefully
 - Audio controls are provided for manual playback
 
-### Supported Formats
+### Supported Formats & Automatic Conversion
 - **WAV** - Uncompressed, works everywhere
 - **MP3** - Compressed, smaller files
 - **OGG** - Open format, good compression
+
+The library now includes **automatic format conversion** for engines that don't natively support the requested format:
+
+- **Native Support**: Engines like Azure, Polly, and PlayHT support multiple formats natively
+- **Automatic Conversion**: Engines like SAPI and SherpaOnnx only support WAV but can convert to MP3/OGG
+- **Graceful Fallback**: When conversion isn't available, returns native format with helpful warnings
+- **ffmpeg Integration**: Install ffmpeg for advanced format conversion capabilities
+
+**⚠️ Browser Limitations**: Audio format conversion is currently **Node.js only**. In browser environments:
+- Engines return their native format (no conversion)
+- WebSpeech API engines typically support the browser's native audio capabilities
+- Format requests are honored when the engine natively supports them
+
+```bash
+# Enable advanced format conversion (optional)
+# Windows (chocolatey)
+choco install ffmpeg
+
+# macOS (homebrew)
+brew install ffmpeg
+
+# Linux (apt)
+sudo apt install ffmpeg
+```
 
 ## 🐛 Troubleshooting
 
