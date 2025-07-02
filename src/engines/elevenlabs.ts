@@ -143,7 +143,8 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       // Prepare text for synthesis (strip SSML tags)
       const preparedText = await this.prepareText(text, options);
 
-      // Prepare request options
+      // ElevenLabs API always returns MP3 data regardless of the requested format
+      // So we always request MP3 and convert if needed
       const requestOptions = {
         method: "POST",
         headers: {
@@ -153,7 +154,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
         body: JSON.stringify({
           text: preparedText,
           model_id: "eleven_monolingual_v1",
-          output_format: options?.format === "mp3" ? "mp3_44100_128" : "pcm_44100",
+          output_format: "mp3_44100_128", // Always request MP3 since that's what ElevenLabs actually returns
           voice_settings: {
             stability: 0.5,
             similarity_boost: 0.75,
@@ -179,9 +180,9 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       const arrayBuffer = await response.arrayBuffer();
       let audioData = new Uint8Array(arrayBuffer);
 
-      // If we requested WAV format but got PCM data, add a WAV header
+      // Convert to WAV if requested (since we always get MP3 from ElevenLabs)
       if (options?.format === "wav") {
-        audioData = this.addWavHeader(audioData, 44100);
+        audioData = await this.convertMp3ToWav(audioData);
       }
 
       return audioData;
@@ -211,7 +212,8 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       // Prepare text for synthesis (strip SSML tags)
       const preparedText = await this.prepareText(text, options);
 
-      // Prepare request options
+      // ElevenLabs API always returns MP3 data regardless of the requested format
+      // So we always request MP3 and convert if needed
       const requestOptions = {
         method: "POST",
         headers: {
@@ -221,7 +223,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
         body: JSON.stringify({
           text: preparedText,
           model_id: "eleven_monolingual_v1",
-          output_format: options?.format === "mp3" ? "mp3_44100_128" : "pcm_44100",
+          output_format: "mp3_44100_128", // Always request MP3 since that's what ElevenLabs actually returns
           voice_settings: {
             stability: 0.5,
             similarity_boost: 0.75,
@@ -250,9 +252,9 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       const responseArrayBuffer = await response.arrayBuffer();
       let uint8Array = new Uint8Array(responseArrayBuffer);
 
-      // If we requested WAV format but got PCM data, add a WAV header
+      // Convert to WAV if requested (since we always get MP3 from ElevenLabs)
       if (options?.format === "wav") {
-        uint8Array = this.addWavHeader(uint8Array, 44100);
+        uint8Array = await this.convertMp3ToWav(uint8Array);
       }
 
       // Create a ReadableStream from the Uint8Array
@@ -365,92 +367,24 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
   }
 
   /**
-   * Add a WAV header to PCM audio data
-   * @param pcmData PCM audio data from ElevenLabs (signed 16-bit, 1 channel, little-endian)
-   * @param sampleRate Sample rate in Hz (default: 44100)
-   * @returns PCM audio data with WAV header
+   * Convert MP3 audio data to WAV format using the audio converter utility
+   * @param mp3Data MP3 audio data from ElevenLabs
+   * @returns WAV audio data
    */
-  private addWavHeader(pcmData: Uint8Array, sampleRate: number = 44100): Uint8Array {
-    // WAV header is 44 bytes
-    const headerSize = 44;
-    const wavData = new Uint8Array(headerSize + pcmData.length);
+  private async convertMp3ToWav(mp3Data: Uint8Array): Promise<Uint8Array> {
+    try {
+      // Import the audio converter utility
+      const { convertAudioFormat } = await import("../utils/audio-converter");
 
-    // RIFF header
-    wavData[0] = 0x52; // 'R'
-    wavData[1] = 0x49; // 'I'
-    wavData[2] = 0x46; // 'F'
-    wavData[3] = 0x46; // 'F'
-
-    // File size (total file size - 8 bytes)
-    const fileSize = headerSize + pcmData.length - 8;
-    wavData[4] = fileSize & 0xff;
-    wavData[5] = (fileSize >> 8) & 0xff;
-    wavData[6] = (fileSize >> 16) & 0xff;
-    wavData[7] = (fileSize >> 24) & 0xff;
-
-    // WAVE header
-    wavData[8] = 0x57; // 'W'
-    wavData[9] = 0x41; // 'A'
-    wavData[10] = 0x56; // 'V'
-    wavData[11] = 0x45; // 'E'
-
-    // fmt chunk
-    wavData[12] = 0x66; // 'f'
-    wavData[13] = 0x6d; // 'm'
-    wavData[14] = 0x74; // 't'
-    wavData[15] = 0x20; // ' '
-
-    // fmt chunk size (16 bytes)
-    wavData[16] = 16;
-    wavData[17] = 0;
-    wavData[18] = 0;
-    wavData[19] = 0;
-
-    // Audio format (1 = PCM)
-    wavData[20] = 1;
-    wavData[21] = 0;
-
-    // Number of channels (1 = mono)
-    wavData[22] = 1;
-    wavData[23] = 0;
-
-    // Sample rate
-    wavData[24] = sampleRate & 0xff;
-    wavData[25] = (sampleRate >> 8) & 0xff;
-    wavData[26] = (sampleRate >> 16) & 0xff;
-    wavData[27] = (sampleRate >> 24) & 0xff;
-
-    // Byte rate (sample rate * channels * bits per sample / 8)
-    const byteRate = sampleRate * 1 * 16 / 8;
-    wavData[28] = byteRate & 0xff;
-    wavData[29] = (byteRate >> 8) & 0xff;
-    wavData[30] = (byteRate >> 16) & 0xff;
-    wavData[31] = (byteRate >> 24) & 0xff;
-
-    // Block align (channels * bits per sample / 8)
-    const blockAlign = 1 * 16 / 8;
-    wavData[32] = blockAlign & 0xff;
-    wavData[33] = (blockAlign >> 8) & 0xff;
-
-    // Bits per sample
-    wavData[34] = 16;
-    wavData[35] = 0;
-
-    // data chunk
-    wavData[36] = 0x64; // 'd'
-    wavData[37] = 0x61; // 'a'
-    wavData[38] = 0x74; // 't'
-    wavData[39] = 0x61; // 'a'
-
-    // Data chunk size
-    wavData[40] = pcmData.length & 0xff;
-    wavData[41] = (pcmData.length >> 8) & 0xff;
-    wavData[42] = (pcmData.length >> 16) & 0xff;
-    wavData[43] = (pcmData.length >> 24) & 0xff;
-
-    // Copy PCM data
-    wavData.set(pcmData, headerSize);
-
-    return wavData;
+      // Convert MP3 to WAV
+      const result = await convertAudioFormat(mp3Data, "wav");
+      return result.audioBytes;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.warn("Failed to convert MP3 to WAV, returning original MP3 data:", errorMessage);
+      // Fallback: return the original MP3 data
+      // The playback system should handle MP3 files even when WAV was requested
+      return mp3Data;
+    }
   }
 }
