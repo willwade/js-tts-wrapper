@@ -42,8 +42,22 @@ jobs:
         else
           echo "has_creds=false" >> $GITHUB_OUTPUT
         fi
-    - name: Run Azure TTS tests
+    - name: Validate Azure credentials
       if: steps.check_azure.outputs.has_creds == 'true'
+      id: validate_azure
+      run: |
+        # Test credential validity using our credential validation example
+        if node examples/credential-validation-example.js azure > /dev/null 2>&1; then
+          echo "creds_valid=true" >> $GITHUB_OUTPUT
+        else
+          echo "creds_valid=false" >> $GITHUB_OUTPUT
+          echo "Azure credentials are invalid, skipping tests"
+        fi
+      env:
+        MICROSOFT_TOKEN: ${{ secrets.MICROSOFT_TOKEN }}
+        MICROSOFT_REGION: ${{ secrets.MICROSOFT_REGION }}
+    - name: Run Azure TTS tests
+      if: steps.check_azure.outputs.has_creds == 'true' && steps.validate_azure.outputs.creds_valid == 'true'
       run: npm run test:azure
       env:
         MICROSOFT_TOKEN: ${{ secrets.MICROSOFT_TOKEN }}
@@ -57,8 +71,21 @@ jobs:
         else
           echo "has_creds=false" >> $GITHUB_OUTPUT
         fi
-    - name: Run ElevenLabs tests
+    - name: Validate ElevenLabs credentials
       if: steps.check_elevenlabs.outputs.has_creds == 'true'
+      id: validate_elevenlabs
+      run: |
+        # Test credential validity using our credential validation example
+        if node examples/credential-validation-example.js elevenlabs > /dev/null 2>&1; then
+          echo "creds_valid=true" >> $GITHUB_OUTPUT
+        else
+          echo "creds_valid=false" >> $GITHUB_OUTPUT
+          echo "ElevenLabs credentials are invalid or rate limited, skipping tests"
+        fi
+      env:
+        ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+    - name: Run ElevenLabs tests
+      if: steps.check_elevenlabs.outputs.has_creds == 'true' && steps.validate_elevenlabs.outputs.creds_valid == 'true'
       run: npm run test:elevenlabs
       env:
         ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
@@ -71,8 +98,23 @@ jobs:
         else
           echo "has_creds=false" >> $GITHUB_OUTPUT
         fi
-    - name: Run Google tests
+    - name: Validate Google credentials
       if: steps.check_google.outputs.has_creds == 'true'
+      id: validate_google
+      run: |
+        # Create temporary credentials file for validation
+        echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" > google-sa-key.json
+        export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/google-sa-key.json
+        # Test credential validity using our credential validation example
+        if node examples/credential-validation-example.js google > /dev/null 2>&1; then
+          echo "creds_valid=true" >> $GITHUB_OUTPUT
+        else
+          echo "creds_valid=false" >> $GITHUB_OUTPUT
+          echo "Google credentials are invalid, skipping tests"
+        fi
+        rm google-sa-key.json
+    - name: Run Google tests
+      if: steps.check_google.outputs.has_creds == 'true' && steps.validate_google.outputs.creds_valid == 'true'
       run: |
         echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" > google-sa-key.json
         export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/google-sa-key.json
