@@ -1018,12 +1018,35 @@ node examples/unified-test-runner.js --help
 node examples/unified-test-runner.js --mode=help
 ```
 
+### Audio Format Conversion
+
+The library includes **automatic format conversion** for engines that don't natively support the requested format:
+
+```javascript
+// Request MP3, get MP3 if supported, WAV with warning if not
+const audioBytes = await client.synthToBytes("Hello world", { format: "mp3" });
+await client.synthToFile("Hello world", "output", "mp3");
+await client.speak("Hello world", { format: "mp3" });
+```
+
+**Supported Formats**: WAV, MP3, OGG
+
+**Engine Behavior**:
+- **Native Support**: Azure, Polly, PlayHT support multiple formats natively
+- **Automatic Conversion**: SAPI, SherpaOnnx convert from WAV when possible
+- **Graceful Fallback**: Returns native format with helpful warnings when conversion isn't available
+
+**Environment Support**:
+- **Node.js**: Full format conversion support (install `ffmpeg` for advanced conversions)
+- **Browser**: Engines return their native format (no conversion)
+
 ### Common Issues
 
 1. **No Audio in Node.js**: Install audio dependencies with `npm install sound-play speaker pcm-convert`
 2. **SherpaOnnx Not Working**: Use the helper script and ensure environment variables are set correctly
 3. **WitAI Audio Issues**: The library automatically handles WitAI's raw PCM format conversion
 4. **Sample Rate Issues**: Different engines use different sample rates (WitAI: 24kHz, Polly: 16kHz) - this is handled automatically
+5. **Format Conversion**: Install `ffmpeg` for advanced audio format conversion in Node.js
 
 For detailed troubleshooting, see the [docs/](docs/) directory, especially:
 - [SherpaOnnx Documentation](docs/sherpaonnx.md)

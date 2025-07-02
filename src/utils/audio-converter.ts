@@ -37,6 +37,14 @@ export interface AudioConversionResult {
 
 /**
  * Check if audio conversion is available in the current environment
+ *
+ * Audio format conversion is currently only supported in Node.js environments
+ * due to the need for external tools like ffmpeg or native Node.js modules.
+ *
+ * In browser environments:
+ * - Engines return their native format without conversion
+ * - WebSpeech API engines use browser's native audio capabilities
+ * - Format requests are honored only when engines natively support them
  */
 export function isAudioConversionAvailable(): boolean {
   return isNode; // Currently only supported in Node.js
