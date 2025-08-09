@@ -1114,6 +1114,21 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
     // In a real implementation, you would use a ReadableStream
     const audioBytes = await this.synthToBytes(text, options);
 
+    // Generate word boundaries if requested
+    let wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
+
+    if (options?.useWordBoundary) {
+      // Create estimated word timings and store them
+      this._createEstimatedWordTimings(text);
+
+      // Convert internal timings to word boundary format
+      wordBoundaries = this.timings.map(([start, end, word]) => ({
+        text: word,
+        offset: Math.round(start * 10000), // Convert to 100-nanosecond units
+        duration: Math.round((end - start) * 10000)
+      }));
+    }
+
     // Create a ReadableStream from the audio bytes
     return {
       audioStream: new ReadableStream({
@@ -1122,7 +1137,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           controller.close();
         },
       }),
-      wordBoundaries: [],
+      wordBoundaries,
     };
   }
 }

@@ -11,6 +11,7 @@ const fetch = getFetch();
  */
 export interface ElevenLabsTTSOptions extends SpeakOptions {
   format?: "mp3" | "wav"; // Define formats supported by this client logic (maps to pcm)
+  useTimestamps?: boolean; // Enable character-level timing data
 }
 
 /**
@@ -21,6 +22,24 @@ export interface ElevenLabsCredentials extends TTSCredentials {
    * ElevenLabs API key
    */
   apiKey?: string;
+}
+
+/**
+ * ElevenLabs character alignment data
+ */
+export interface ElevenLabsAlignment {
+  characters: string[];
+  character_start_times_seconds: number[];
+  character_end_times_seconds: number[];
+}
+
+/**
+ * ElevenLabs API response with timestamps
+ */
+export interface ElevenLabsTimestampResponse {
+  audio_base64: string;
+  alignment: ElevenLabsAlignment;
+  normalized_alignment?: ElevenLabsAlignment;
 }
 
 /**
@@ -143,42 +162,72 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       // Prepare text for synthesis (strip SSML tags)
       const preparedText = await this.prepareText(text, options);
 
-      // ElevenLabs API always returns MP3 data regardless of the requested format
-      // So we always request MP3 and convert if needed
-      const requestOptions = {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "xi-api-key": this.apiKey,
-        },
-        body: JSON.stringify({
-          text: preparedText,
-          model_id: "eleven_monolingual_v1",
-          output_format: "mp3_44100_128", // Always request MP3 since that's what ElevenLabs actually returns
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            use_speaker_boost: true,
-            style: 0,
-            speed: typeof this.properties.rate === "number" ? this.properties.rate : 1.0,
+      // Check if we need timing data for word boundaries
+      const useTimestamps = options?.useTimestamps || options?.useWordBoundary;
+
+      let audioData: Uint8Array;
+
+      if (useTimestamps) {
+        // Use the with-timestamps endpoint for timing data
+        const timestampResponse = await this.synthWithTimestamps(preparedText, voiceId);
+
+        // Decode base64 audio data
+        const audioBase64 = timestampResponse.audio_base64;
+        const audioBuffer = Buffer.from(audioBase64, 'base64');
+        audioData = new Uint8Array(audioBuffer);
+
+        // Convert character timing to word boundaries and store for events
+        if (timestampResponse.alignment) {
+          const wordBoundaries = this.convertCharacterTimingToWordBoundaries(
+            preparedText,
+            timestampResponse.alignment
+          );
+
+          // Store timing data for word boundary events
+          this.timings = wordBoundaries.map(wb => [
+            wb.offset / 10000, // Convert from 100-nanosecond units to seconds
+            (wb.offset + wb.duration) / 10000,
+            wb.text
+          ]);
+        }
+      } else {
+        // Use the regular endpoint (no timing data)
+        const requestOptions = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "xi-api-key": this.apiKey,
           },
-        }),
-      };
+          body: JSON.stringify({
+            text: preparedText,
+            model_id: "eleven_monolingual_v1",
+            output_format: "mp3_44100_128",
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75,
+              use_speaker_boost: true,
+              style: 0,
+              speed: typeof this.properties.rate === "number" ? this.properties.rate : 1.0,
+            },
+          }),
+        };
 
-      // Make API request
-      const response = await fetch(`${this.baseUrl}/text-to-speech/${voiceId}`, requestOptions);
+        const response = await fetch(`${this.baseUrl}/text-to-speech/${voiceId}`, requestOptions);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(
-          `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
-        );
-        throw new Error(`Failed to synthesize speech: ${response.statusText}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(
+            `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
+          );
+          throw new Error(`Failed to synthesize speech: ${response.statusText}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        audioData = new Uint8Array(arrayBuffer);
+
+        // Create estimated word timings if no timing data available
+        this._createEstimatedWordTimings(preparedText);
       }
-
-      // Get audio data as array buffer
-      const arrayBuffer = await response.arrayBuffer();
-      let audioData = new Uint8Array(arrayBuffer);
 
       // Convert to WAV if requested (since we always get MP3 from ElevenLabs)
       if (options?.format === "wav") {
@@ -196,7 +245,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    * Synthesize text to a byte stream
    * @param text Text to synthesize
    * @param options Synthesis options
-   * @returns Promise resolving to an object containing the audio stream and an empty word boundaries array
+   * @returns Promise resolving to an object containing the audio stream and word boundaries array
    */
   async synthToBytestream(
     text: string,
@@ -212,64 +261,180 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       // Prepare text for synthesis (strip SSML tags)
       const preparedText = await this.prepareText(text, options);
 
-      // ElevenLabs API always returns MP3 data regardless of the requested format
-      // So we always request MP3 and convert if needed
-      const requestOptions = {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "xi-api-key": this.apiKey,
-        },
-        body: JSON.stringify({
-          text: preparedText,
-          model_id: "eleven_monolingual_v1",
-          output_format: "mp3_44100_128", // Always request MP3 since that's what ElevenLabs actually returns
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            use_speaker_boost: true,
-            style: 0,
-            speed: typeof this.properties.rate === "number" ? this.properties.rate : 1.0,
+      // Check if we need timing data
+      const useTimestamps = options?.useTimestamps || options?.useWordBoundary;
+
+      let audioData: Uint8Array;
+      let wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
+
+      if (useTimestamps) {
+        // Use the with-timestamps endpoint for timing data
+        const timestampResponse = await this.synthWithTimestamps(preparedText, voiceId);
+
+        // Decode base64 audio data
+        const audioBase64 = timestampResponse.audio_base64;
+        const audioBuffer = Buffer.from(audioBase64, 'base64');
+        audioData = new Uint8Array(audioBuffer);
+
+        // Convert character timing to word boundaries
+        if (timestampResponse.alignment) {
+          wordBoundaries = this.convertCharacterTimingToWordBoundaries(
+            preparedText,
+            timestampResponse.alignment
+          );
+        }
+      } else {
+        // Use the regular streaming endpoint (no timing data)
+        const requestOptions = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "xi-api-key": this.apiKey,
           },
-        }),
-      };
+          body: JSON.stringify({
+            text: preparedText,
+            model_id: "eleven_monolingual_v1",
+            output_format: "mp3_44100_128",
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75,
+              use_speaker_boost: true,
+              style: 0,
+              speed: typeof this.properties.rate === "number" ? this.properties.rate : 1.0,
+            },
+          }),
+        };
 
-      // Make API request with streaming option
-      const response = await fetch(
-        `${this.baseUrl}/text-to-speech/${voiceId}/stream`,
-        requestOptions
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(
-          `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
+        const response = await fetch(
+          `${this.baseUrl}/text-to-speech/${voiceId}/stream`,
+          requestOptions
         );
-        throw new Error(`Failed to synthesize speech stream: ${response.statusText}`);
-      }
 
-      // Convert the response body to a proper ReadableStream
-      const responseArrayBuffer = await response.arrayBuffer();
-      let uint8Array = new Uint8Array(responseArrayBuffer);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(
+            `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
+          );
+          throw new Error(`Failed to synthesize speech stream: ${response.statusText}`);
+        }
+
+        const responseArrayBuffer = await response.arrayBuffer();
+        audioData = new Uint8Array(responseArrayBuffer);
+      }
 
       // Convert to WAV if requested (since we always get MP3 from ElevenLabs)
       if (options?.format === "wav") {
-        uint8Array = await this.convertMp3ToWav(uint8Array);
+        audioData = await this.convertMp3ToWav(audioData);
       }
 
       // Create a ReadableStream from the Uint8Array
       const readableStream = new ReadableStream({
         start(controller) {
-          controller.enqueue(uint8Array);
+          controller.enqueue(audioData);
           controller.close();
         },
       });
 
-      return { audioStream: readableStream, wordBoundaries: [] };
+      return { audioStream: readableStream, wordBoundaries };
     } catch (error) {
       console.error("Error synthesizing speech stream:", error);
       throw error;
     }
+  }
+
+  /**
+   * Call ElevenLabs API with timestamps endpoint
+   * @param text Text to synthesize
+   * @param voiceId Voice ID to use
+   * @returns Promise resolving to timestamp response
+   */
+  private async synthWithTimestamps(
+    text: string,
+    voiceId: string
+  ): Promise<ElevenLabsTimestampResponse> {
+    const requestOptions = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "xi-api-key": this.apiKey,
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: "eleven_monolingual_v1",
+        output_format: "mp3_44100_128",
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75,
+          use_speaker_boost: true,
+          style: 0,
+          speed: typeof this.properties.rate === "number" ? this.properties.rate : 1.0,
+        },
+      }),
+    };
+
+    const response = await fetch(
+      `${this.baseUrl}/text-to-speech/${voiceId}/with-timestamps`,
+      requestOptions
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
+      );
+      throw new Error(`Failed to synthesize speech with timestamps: ${response.statusText}`);
+    }
+
+    return await response.json() as ElevenLabsTimestampResponse;
+  }
+
+  /**
+   * Convert character-level timing data to word boundaries
+   * @param text Original text
+   * @param alignment Character alignment data from ElevenLabs
+   * @returns Array of word boundary objects
+   */
+  private convertCharacterTimingToWordBoundaries(
+    text: string,
+    alignment: ElevenLabsAlignment
+  ): Array<{ text: string; offset: number; duration: number }> {
+    const wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
+
+    // Split text into words while preserving positions
+    const words: Array<{ word: string; startIndex: number; endIndex: number }> = [];
+    const wordRegex = /\S+/g;
+    let match;
+
+    while ((match = wordRegex.exec(text)) !== null) {
+      words.push({
+        word: match[0],
+        startIndex: match.index,
+        endIndex: match.index + match[0].length - 1
+      });
+    }
+
+    // Convert each word to boundary data using character timing
+    for (const wordInfo of words) {
+      // Find the character timing for the start and end of this word
+      const startCharIndex = wordInfo.startIndex;
+      const endCharIndex = wordInfo.endIndex;
+
+      // Make sure we have timing data for these character positions
+      if (startCharIndex < alignment.character_start_times_seconds.length &&
+          endCharIndex < alignment.character_end_times_seconds.length) {
+
+        const startTime = alignment.character_start_times_seconds[startCharIndex];
+        const endTime = alignment.character_end_times_seconds[endCharIndex];
+
+        wordBoundaries.push({
+          text: wordInfo.word,
+          offset: Math.round(startTime * 10000), // Convert to 100-nanosecond units
+          duration: Math.round((endTime - startTime) * 10000)
+        });
+      }
+    }
+
+    return wordBoundaries;
   }
 
   /**
@@ -286,8 +451,14 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
     // Register the callback
     this.on("boundary", callback);
 
+    // Enable timestamps for better word boundary accuracy
+    const enhancedOptions = {
+      ...options,
+      useTimestamps: true
+    };
+
     // Start playback
-    await this.speakStreamed(text, options);
+    await this.speakStreamed(text, enhancedOptions);
   }
 
   /**

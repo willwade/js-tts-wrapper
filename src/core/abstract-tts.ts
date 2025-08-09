@@ -102,9 +102,27 @@ export abstract class AbstractTTSClient {
    * Synthesize text to audio bytes
    * @param text Text or SSML to synthesize
    * @param options Synthesis options
-   * @returns Promise resolving to audio bytes
+   * @returns Promise resolving to audio bytes in engine's native format
+   * @note For format conversion (e.g., WAV to MP3), use synthToBytesWithConversion() instead
    */
   abstract synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array>;
+
+  /**
+   * Synthesize text to audio bytes with format conversion support
+   * This is the recommended method when you need a specific audio format
+   * @param text Text or SSML to synthesize
+   * @param options Synthesis options including format (mp3, wav, ogg)
+   * @returns Promise resolving to audio bytes in the requested format
+   * @example
+   * // Get MP3 audio
+   * const mp3Bytes = await tts.synthToBytesWithFormat('Hello world', { format: 'mp3' });
+   *
+   * // Get WAV audio (default)
+   * const wavBytes = await tts.synthToBytesWithFormat('Hello world', { format: 'wav' });
+   */
+  async synthToBytesWithFormat(text: string, options?: SpeakOptions): Promise<Uint8Array> {
+    return this.synthToBytesWithConversion(text, options);
+  }
 
   /**
    * Synthesize text to a byte stream and optionally provide word boundaries.
@@ -310,9 +328,17 @@ export abstract class AbstractTTSClient {
           // Check if Node.js audio playback is available
           const audioAvailable = await isNodeAudioAvailable();
 
+          // Create estimated word timings if needed (only for text input)
+          if (typeof input === "string") {
+            this._createEstimatedWordTimings(input);
+          }
+
           if (audioAvailable) {
             // Emit start event
             this.emit("start");
+
+            // Schedule word boundary callbacks
+            this._scheduleWordBoundaryCallbacks();
 
             // Play audio using our node-audio utility
             // Pass the engine name to handle Polly audio differently
@@ -324,10 +350,14 @@ export abstract class AbstractTTSClient {
             console.log("Audio playback in Node.js requires the sound-play package.");
             console.log("Install it with: npm install js-tts-wrapper[node-audio]");
             console.log("Or use synthToFile() to save audio to a file and play it with an external player.");
+
+            // Fire word boundary callbacks immediately when audio playback is not available
+            this._fireWordBoundaryCallbacks();
             this.emit("end");
           }
         } catch (nodeAudioError) {
           console.error("Error playing audio in Node.js:", nodeAudioError);
+          this._fireWordBoundaryCallbacks();
           this.emit("end");
         }
       } else {
@@ -476,16 +506,21 @@ export abstract class AbstractTTSClient {
         audio.src = url;
       } else if (isNode) {
         // In Node.js environment, try to use sound-play
+        console.log('🔍 Taking Node.js audio path');
         try {
           // Check if Node.js audio playback is available
           const audioAvailable = await isNodeAudioAvailable();
+          console.log(`🔍 Audio available: ${audioAvailable}`);
 
           // Create estimated word timings if needed and we have text
           if (text) {
+            console.log(`🔍 Creating estimated word timings for: "${text}"`);
             this._createEstimatedWordTimings(text);
+            console.log(`🔍 Created ${this.timings.length} timings`);
           }
 
           if (audioAvailable) {
+            console.log('🔍 Audio available - scheduling word boundary callbacks');
             // Schedule word boundary callbacks
             this._scheduleWordBoundaryCallbacks();
 
@@ -712,15 +747,13 @@ export abstract class AbstractTTSClient {
   protected _fireWordBoundaryCallbacks(): void {
     if (!this.timings.length) return;
 
-    // Get all boundary callbacks
-    const callbacks = this.callbacks["boundary"] || [];
-    if (!callbacks.length) return;
-
-    // Fire callbacks for each word
+    // Fire boundary events for each word using the new event emitter system
     for (const [start, end, word] of this.timings) {
-      for (const callback of callbacks) {
-        callback(word, start, end);
-      }
+      this.emit("boundary", {
+        text: word,
+        offset: Math.round(start * 10000), // Convert to 100-nanosecond units
+        duration: Math.round((end - start) * 10000)
+      });
     }
   }
 
@@ -731,16 +764,16 @@ export abstract class AbstractTTSClient {
   protected _scheduleWordBoundaryCallbacks(): void {
     if (!this.timings.length) return;
 
-    // Get all boundary callbacks
-    const callbacks = this.callbacks["boundary"] || [];
-    if (!callbacks.length) return;
-
-    // Schedule callbacks for each word
+    // Schedule boundary events for each word using the new event emitter system
     for (const [start, end, word] of this.timings) {
+      const event = {
+        text: word,
+        offset: Math.round(start * 10000), // Convert to 100-nanosecond units
+        duration: Math.round((end - start) * 10000)
+      };
+
       setTimeout(() => {
-        for (const callback of callbacks) {
-          callback(word, start, end);
-        }
+        this.emit("boundary", event);
       }, start * 1000);
     }
   }

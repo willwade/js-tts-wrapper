@@ -158,6 +158,22 @@ export class EspeakNodeTTSClient extends AbstractTTSClient {
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
     const audioBytes = await this.synthToBytes(text, options);
+
+    // Generate word boundaries if requested
+    let wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
+
+    if (options?.useWordBoundary) {
+      // Create estimated word timings and store them
+      this._createEstimatedWordTimings(text);
+
+      // Convert internal timings to word boundary format
+      wordBoundaries = this.timings.map(([start, end, word]) => ({
+        text: word,
+        offset: Math.round(start * 10000), // Convert to 100-nanosecond units
+        duration: Math.round((end - start) * 10000)
+      }));
+    }
+
     // "Fake" streaming by wrapping full audio in a ReadableStream
     const audioStream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -166,7 +182,7 @@ export class EspeakNodeTTSClient extends AbstractTTSClient {
       },
     });
 
-    return { audioStream, wordBoundaries: [] };
+    return { audioStream, wordBoundaries };
   }
 
   // TODO: Add voice/language/rate/pitch options, browser WASM loader, etc.

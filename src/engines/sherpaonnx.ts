@@ -153,9 +153,9 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
   constructor(credentials: SherpaOnnxTTSCredentials) {
     super(credentials);
 
-    // Initialize instance variables
-    this.modelPath = credentials.modelPath || null;
-    this.modelId = credentials.modelId || null;
+    // Initialize instance variables with proper null/undefined checking
+    this.modelPath = credentials?.modelPath || null;
+    this.modelId = credentials?.modelId || null;
 
     // Use a dedicated models directory if modelPath is not provided
     if (this.modelPath) {
@@ -181,9 +181,13 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
     this.jsonModels = this.loadModelsAndVoices();
 
     // Only set up voice if we have a modelId or auto-download is enabled
-    if (this.modelId || !credentials.noDefaultDownload) {
+    if (this.modelId || !credentials?.noDefaultDownload) {
       this.modelId = this.modelId || "mms_eng"; // Default to English if not specified
-      this.setVoice(this.modelId);
+
+      // Initialize voice asynchronously (don't await in constructor)
+      this.setVoice(this.modelId).catch(error => {
+        console.warn(`Failed to initialize SherpaOnnx voice in constructor: ${error.message}`);
+      });
     } else {
       console.log("Skipping automatic model download (noDefaultDownload=true)");
     }
@@ -1400,14 +1404,29 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         },
       });
 
-      // Map raw boundaries to the expected format { text, offset, duration }
-      const formattedWordBoundaries = rawWordBoundaries.map(
-        (wb: { word: string; start: number; end: number }) => ({
-          text: wb.word,
-          offset: wb.start * 1000, // Assuming start is in seconds, convert to ms
-          duration: (wb.end - wb.start) * 1000, // Calculate duration in ms
-        })
-      );
+      // Generate word boundaries
+      let formattedWordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
+
+      if (rawWordBoundaries.length > 0) {
+        // Use real word boundaries if available from the TTS engine
+        formattedWordBoundaries = rawWordBoundaries.map(
+          (wb: { word: string; start: number; end: number }) => ({
+            text: wb.word,
+            offset: wb.start * 10000, // Convert seconds to 100-nanosecond units
+            duration: (wb.end - wb.start) * 10000, // Calculate duration in 100-nanosecond units
+          })
+        );
+      } else if (_options?.useWordBoundary) {
+        // Generate estimated word boundaries if requested
+        this._createEstimatedWordTimings(plainText);
+
+        // Convert internal timings to word boundary format
+        formattedWordBoundaries = this.timings.map(([start, end, word]) => ({
+          text: word,
+          offset: Math.round(start * 10000), // Convert to 100-nanosecond units
+          duration: Math.round((end - start) * 10000)
+        }));
+      }
 
       // Return both the audio stream and the formatted word boundaries
       return {

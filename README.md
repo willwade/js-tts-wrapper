@@ -58,6 +58,36 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 **Class Name**: Use with direct import `import { ClassName } from 'js-tts-wrapper'`
 **Environment**: Node.js = server-side only, Browser = browser-compatible, Both = works in both environments
 
+### Timing and Audio Format Capabilities
+
+#### Word Boundary and Timing Support
+
+| Engine | Word Boundaries | Timing Source | Character-Level | Accuracy |
+|--------|----------------|---------------|-----------------|----------|
+| **ElevenLabs** | ✅ | **Real API data** | ✅ **NEW!** | **High** |
+| **Azure** | ✅ | **Real API data** | ❌ | **High** |
+| **Google** | ✅ | Estimated | ❌ | Low |
+| **Watson** | ✅ | Estimated | ❌ | Low |
+| **OpenAI** | ✅ | Estimated | ❌ | Low |
+| **WitAI** | ✅ | Estimated | ❌ | Low |
+| **PlayHT** | ✅ | Estimated | ❌ | Low |
+| **Polly** | ✅ | Estimated | ❌ | Low |
+| **eSpeak** | ✅ | Estimated | ❌ | Low |
+| **eSpeak-WASM** | ✅ | Estimated | ❌ | Low |
+| **SherpaOnnx** | ✅ | Estimated | ❌ | Low |
+| **SherpaOnnx-WASM** | ✅ | Estimated | ❌ | Low |
+| **SAPI** | ✅ | Estimated | ❌ | Low |
+
+**Character-Level Timing**: Only ElevenLabs provides precise character-level timing data via the `/with-timestamps` endpoint, enabling the most accurate word highlighting and speech synchronization.
+
+#### Audio Format Conversion Support
+
+| Engine | Native Format | WAV Support | MP3 Conversion | Conversion Method |
+|--------|---------------|-------------|----------------|-------------------|
+| **All Engines** | Varies | ✅ | ✅ | Pure JavaScript (lamejs) |
+
+**Format Conversion**: All engines support WAV and MP3 output through automatic format conversion. The wrapper uses pure JavaScript conversion (lamejs) when FFmpeg is not available, ensuring cross-platform compatibility without external dependencies.
+
 ## Installation
 
 The library uses a modular approach where TTS engine-specific dependencies are optional. You can install the package and its dependencies as follows:
@@ -339,6 +369,71 @@ tts.on('boundary', (word, start, end) => {
 // Alternative event connection
 tts.connect('onStart', () => console.log('Speech started'));
 tts.connect('onEnd', () => console.log('Speech ended'));
+```
+
+### Word Boundary Events and Timing
+
+Word boundary events provide precise timing information for speech synchronization, word highlighting, and interactive applications.
+
+#### Basic Word Boundary Usage
+
+```typescript
+// Enable word boundary events
+tts.on('boundary', (word, startTime, endTime) => {
+  console.log(`"${word}" spoken from ${startTime}s to ${endTime}s`);
+});
+
+await tts.speak('Hello world, this is a test.');
+// Output:
+// "Hello" spoken from 0.000s to 0.300s
+// "world," spoken from 0.300s to 0.600s
+// "this" spoken from 0.600s to 0.900s
+// ...
+```
+
+#### Advanced Timing with Character-Level Precision (ElevenLabs)
+
+```typescript
+// ElevenLabs: Enable character-level timing for maximum accuracy
+const tts = createTTSClient('elevenlabs');
+
+// Method 1: Using synthToBytestream with timestamps
+const result = await tts.synthToBytestream('Hello world', {
+  useTimestamps: true
+});
+
+console.log(`Generated ${result.wordBoundaries.length} word boundaries:`);
+result.wordBoundaries.forEach(wb => {
+  const startSec = wb.offset / 10000;
+  const durationSec = wb.duration / 10000;
+  console.log(`"${wb.text}": ${startSec}s - ${startSec + durationSec}s`);
+});
+
+// Method 2: Using enhanced callback support
+await tts.startPlaybackWithCallbacks('Hello world', (word, start, end) => {
+  console.log(`Precise timing: "${word}" from ${start}s to ${end}s`);
+});
+```
+
+#### Real-Time Word Highlighting Example
+
+```typescript
+// Example: Real-time word highlighting for accessibility
+const textElement = document.getElementById('text');
+const words = 'Hello world, this is a test.'.split(' ');
+let wordIndex = 0;
+
+tts.on('boundary', (word, startTime, endTime) => {
+  // Highlight current word
+  if (wordIndex < words.length) {
+    textElement.innerHTML = words.map((w, i) =>
+      i === wordIndex ? `<mark>${w}</mark>` : w
+    ).join(' ');
+    wordIndex++;
+  }
+});
+
+await tts.speak('Hello world, this is a test.', { useWordBoundary: true });
 ```
 
 ## SSML Support
