@@ -510,7 +510,8 @@ The library supports Speech Markdown for easier speech formatting across **all e
 
 ```typescript
 // Use Speech Markdown with any engine
-const markdown = "Hello (pause:500ms) world! This is (emphasis:strong) important.";
+const markdown =
+  "Hello [500ms] world! ++This text is emphasized++ (slowly)[rate:\"slow\"] (high)[pitch:\"high\"] (loudly)[volume:\"loud\"]";
 await tts.speak(markdown, { useSpeechMarkdown: true });
 
 // Speech Markdown works with all engines
@@ -524,11 +525,11 @@ await ttsElevenLabs.speak(markdown, { useSpeechMarkdown: true }); // Converts to
 
 ### Supported Speech Markdown Elements
 
-- `(pause:500ms)` - Pauses/breaks
-- `(emphasis:strong)` - Text emphasis
-- `(rate:slow)` - Speech rate control
-- `(pitch:high)` - Pitch control
-- `(volume:loud)` - Volume control
+- `[500ms]` or `[break:"500ms"]` - Pauses/breaks
+- `++text++` or `+text+` - Text emphasis
+- `(text)[rate:"slow"]` - Speech rate control
+- `(text)[pitch:"high"]` - Pitch control
+- `(text)[volume:"loud"]` - Volume control
 
 ### Engine Compatibility
 

@@ -96,8 +96,8 @@ const defaultConverter = new SpeechMarkdownConverter();
  * This function uses the speechmarkdown-js library to convert Speech Markdown syntax to SSML.
  * The library supports various Speech Markdown features including:
  * - Breaks: [500ms] or [break:"500ms"]
- * - Emphasis: *emphasized text*
- * - Rate, pitch, volume: (rate:slow), (pitch:high), (volume:loud)
+ * - Emphasis: ++emphasized++ or +emphasized+
+ * - Rate, pitch, volume: (text)[rate:"slow"], (text)[pitch:"high"], (text)[volume:"loud"]
  * - And many more (see the speechmarkdown-js documentation)
  *
  * @param markdown Speech Markdown text
@@ -114,8 +114,8 @@ export async function toSSML(markdown: string, platform = "amazon-alexa"): Promi
  * This function checks if the text contains Speech Markdown syntax patterns.
  * It uses regular expressions to detect common Speech Markdown patterns such as:
  * - Breaks: [500ms] or [break:"500ms"]
- * - Emphasis: *emphasized text*
- * - Rate, pitch, volume: (rate:slow), (pitch:high), (volume:loud)
+ * - Emphasis: ++text++ or +text+
+ * - Rate, pitch, volume: (text)[rate:"slow"], (text)[pitch:"high"], (text)[volume:"loud"]
  *
  * @param text Text to check
  * @returns True if the text contains Speech Markdown syntax
@@ -125,7 +125,7 @@ export function isSpeechMarkdown(text: string): boolean {
   // This is a simplified version as the library doesn't provide a direct way to check
   const patterns = [
     /\[\d+m?s\]/, // Breaks: [500ms]
-    /\[break:"\w+"\]/, // Breaks with quotes: [break:"weak"]
+    /\[break:"[^"\]]+"\]/, // Breaks with quotes: [break:"weak"] or [break:"500ms"]
     /\+\+.*?\+\+/, // Strong emphasis: ++text++
     /\+.*?\+/, // Moderate emphasis: +text+
     /~.*?~/, // No emphasis: ~text~
