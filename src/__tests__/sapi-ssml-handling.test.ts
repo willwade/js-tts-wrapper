@@ -22,7 +22,7 @@ describe("SAPI SSML Handling", () => {
   beforeAll(async () => {
     // Only run on Windows
     isWindows = os.platform() === "win32";
-    
+
     if (isWindows) {
       try {
         client = new SAPITTSClient({});
@@ -150,12 +150,73 @@ describe("SAPI SSML Handling", () => {
       <break time="400ms"/>
       And this is normal speed again.
     </speak>`;
-    
+
     const audioBytes = await client!.synthToBytes(mixedSSML);
-    
+
     expect(audioBytes).toBeInstanceOf(Uint8Array);
     expect(audioBytes.length).toBeGreaterThan(0);
-    
+
+    // Check for WAV header
+    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
+    expect(wavHeader.startsWith('RIFF')).toBe(true);
+    expect(wavHeader.includes('WAVE')).toBe(true);
+  });
+
+  runTest("should respect voice selection with setVoice", async () => {
+    // Get available voices first
+    const voices = await client!.getVoices();
+    expect(voices.length).toBeGreaterThan(0);
+
+    // Find a German voice if available (like TTS_MS_DE-DE_HEDDA_11.0)
+    const germanVoice = voices.find(v => v.id.includes('DE-DE') || v.name.includes('German'));
+
+    if (germanVoice) {
+      // Set the German voice
+      client!.setVoice(germanVoice.id);
+
+      // Synthesize some text
+      const testText = "Hallo Welt, das ist ein Test.";
+      const audioBytes = await client!.synthToBytes(testText);
+
+      expect(audioBytes).toBeInstanceOf(Uint8Array);
+      expect(audioBytes.length).toBeGreaterThan(0);
+
+      // Check for WAV header
+      const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
+      expect(wavHeader.startsWith('RIFF')).toBe(true);
+      expect(wavHeader.includes('WAVE')).toBe(true);
+    } else {
+      // If no German voice available, test with any available voice
+      const firstVoice = voices[0];
+      client!.setVoice(firstVoice.id);
+
+      const testText = "Hello world, this is a voice selection test.";
+      const audioBytes = await client!.synthToBytes(testText);
+
+      expect(audioBytes).toBeInstanceOf(Uint8Array);
+      expect(audioBytes.length).toBeGreaterThan(0);
+
+      // Check for WAV header
+      const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
+      expect(wavHeader.startsWith('RIFF')).toBe(true);
+      expect(wavHeader.includes('WAVE')).toBe(true);
+    }
+  });
+
+  runTest("should handle voice selection via options parameter", async () => {
+    // Get available voices first
+    const voices = await client!.getVoices();
+    expect(voices.length).toBeGreaterThan(0);
+
+    // Use the first available voice via options
+    const testVoice = voices[0];
+    const testText = "This text should use the voice specified in options.";
+
+    const audioBytes = await client!.synthToBytes(testText, { voice: testVoice.id });
+
+    expect(audioBytes).toBeInstanceOf(Uint8Array);
+    expect(audioBytes.length).toBeGreaterThan(0);
+
     // Check for WAV header
     const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
     expect(wavHeader.startsWith('RIFF')).toBe(true);

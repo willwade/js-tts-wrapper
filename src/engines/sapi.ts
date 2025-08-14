@@ -249,6 +249,40 @@ export class SAPITTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Get voice name by voice ID for SAPI SelectVoice() method
+   * @param voiceId Voice ID to look up
+   * @returns Promise resolving to voice name or null if not found
+   */
+  private async getVoiceNameById(voiceId: string): Promise<string | null> {
+    try {
+      const script = `
+        Add-Type -AssemblyName System.Speech
+        $synth = [System.Speech.Synthesis.SpeechSynthesizer]::new()
+        $voices = $synth.GetInstalledVoices()
+
+        foreach ($voice in $voices) {
+          if ($voice.Enabled) {
+            $info = $voice.VoiceInfo
+            if ($info.Id -eq "${this.escapePowerShellString(voiceId)}" -or $info.Name -eq "${this.escapePowerShellString(voiceId)}") {
+              Write-Output $info.Name
+              exit 0
+            }
+          }
+        }
+
+        # If not found, return empty (PowerShell will return nothing)
+        exit 1
+      `;
+
+      const result = await this.runPowerShellScript(script);
+      return result.trim() || null;
+    } catch (error) {
+      console.warn(`Could not find voice name for ID: ${voiceId}`, error);
+      return null;
+    }
+  }
+
+  /**
    * Synthesize text to audio bytes using SAPI
    */
   async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
@@ -260,6 +294,12 @@ export class SAPITTSClient extends AbstractTTSClient {
       const voice = options?.voice || this.voiceId || null;
       const rate = this.convertRate(options?.rate);
       const volume = this.convertVolume(options?.volume);
+
+      // Get the voice name for SAPI SelectVoice() method
+      let voiceName = null;
+      if (voice) {
+        voiceName = await this.getVoiceNameById(voice);
+      }
 
       // Prepare text for synthesis (handle Speech Markdown and SSML)
       let processedText = text;
@@ -290,12 +330,12 @@ export class SAPITTSClient extends AbstractTTSClient {
         $synth = [System.Speech.Synthesis.SpeechSynthesizer]::new()
 
         # Set voice if specified
-        ${voice ? `
+        ${voiceName ? `
         try {
-          $synth.SelectVoice("${this.escapePowerShellString(voice)}")
+          $synth.SelectVoice("${this.escapePowerShellString(voiceName)}")
         } catch {
           # If voice selection fails, continue with default voice
-          Write-Warning "Could not select voice '${this.escapePowerShellString(voice)}', using default voice"
+          Write-Warning "Could not select voice '${this.escapePowerShellString(voiceName)}', using default voice"
         }` : ""}
 
         # Set speech properties
