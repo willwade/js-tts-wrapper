@@ -7,7 +7,7 @@
   "browser": "dist/browser.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "js-tts-wrapper": "./bin/cli.js"
+    "js-tts-wrapper": "bin/cli.js"
   },
   "files": [
     "dist/cjs",
@@ -32,7 +32,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/willwade/js-tts-wrapper.git"
+    "url": "git+https://github.com/willwade/js-tts-wrapper.git"
   },
   "author": "Will Wade <willwade@gmail.com>",
   "license": "MIT",
