@@ -499,19 +499,53 @@ export class AzureTTSClient extends AbstractTTSClient {
     // Use voice from options or the default voice
     const voiceId = options?.voice || this.voiceId;
 
-    // Always add the required SSML attributes for Azure
-    ssml = ssml.replace(
-      "<speak",
-      `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${this.lang}"`
-    );
+    // Validate and process SSML for Azure compatibility
+    const validation = SSMLUtils.validateSSMLForEngine(ssml, 'azure', voiceId || undefined);
+    if (validation.warnings.length > 0) {
+      console.warn('Azure SSML warnings:', validation.warnings);
+    }
+    if (!validation.isValid) {
+      console.error('Azure SSML validation errors:', validation.errors);
+      throw new Error(`Invalid SSML for Azure: ${validation.errors.join(', ')}`);
+    }
 
-    // Add voice selection if a voice is set (should always be true now)
-    if (voiceId) {
-      // Insert voice tag before the content
-      ssml = ssml.replace(">", `><voice name="${voiceId}">`);
+    // Process SSML for Azure compatibility
+    ssml = SSMLUtils.processSSMLForEngine(ssml, 'azure', voiceId || undefined);
 
-      // Close voice tag before </speak>
-      ssml = ssml.replace("</speak>", "</voice></speak>");
+    // Ensure proper SSML structure for Azure
+    ssml = this.ensureAzureSSMLStructure(ssml, voiceId, options);
+
+    return ssml;
+  }
+
+  /**
+   * Ensure proper SSML structure for Azure TTS
+   * @param ssml SSML text
+   * @param voiceId Voice ID
+   * @param options Synthesis options
+   * @returns Properly structured SSML for Azure
+   */
+  private ensureAzureSSMLStructure(ssml: string, voiceId?: string | null, options?: AzureTTSOptions): string {
+    // Ensure required attributes are present
+    if (!ssml.includes('version=')) {
+      ssml = ssml.replace('<speak', '<speak version="1.0"');
+    }
+    if (!ssml.includes('xmlns=')) {
+      ssml = ssml.replace('<speak', '<speak xmlns="http://www.w3.org/2001/10/synthesis"');
+    }
+    if (!ssml.includes('xml:lang=')) {
+      ssml = ssml.replace('<speak', `<speak xml:lang="${this.lang}"`);
+    }
+
+    // Add voice selection if a voice is set and not already present
+    if (voiceId && !ssml.includes('<voice')) {
+      // Extract content between speak tags
+      const speakMatch = ssml.match(/<speak[^>]*>(.*?)<\/speak>/s);
+      if (speakMatch) {
+        const content = speakMatch[1].trim();
+        const speakTag = ssml.substring(0, ssml.indexOf('>') + 1);
+        ssml = `${speakTag}<voice name="${voiceId}">${content}</voice></speak>`;
+      }
     }
 
     // Add prosody if properties are set

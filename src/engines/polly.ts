@@ -1,4 +1,5 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
+import * as SSMLUtils from "../core/ssml-utils";
 import type {
   SpeakOptions,
   TTSCredentials,
@@ -229,44 +230,7 @@ export class PollyTTSClient extends AbstractTTSClient {
     }
   }
 
-  /**
-   * Strip unsupported SSML tags for limited SSML engines
-   * Based on AWS Polly documentation for neural and generative voices
-   * @param ssml SSML text to process
-   * @returns SSML with unsupported tags removed
-   */
-  private stripUnsupportedSSMLTags(ssml: string): string {
-    // For neural and generative voices, remove unsupported tags:
-    // - emphasis (not available)
-    // - prosody with max-duration (not available)
-    // - auto-breaths (not available)
-    // - phonation="soft" (not available)
-    // - vocal-tract-length (not available)
-    // - whispered (not available)
 
-    let processedSSML = ssml;
-
-    // Remove emphasis tags (not supported in neural/generative)
-    processedSSML = processedSSML.replace(/<emphasis[^>]*>(.*?)<\/emphasis>/g, '$1');
-
-    // Remove prosody with max-duration (not supported in neural/generative)
-    processedSSML = processedSSML.replace(/<prosody[^>]*amazon:max-duration[^>]*>(.*?)<\/prosody>/g, '$1');
-
-    // Remove auto-breaths (not supported in neural/generative)
-    processedSSML = processedSSML.replace(/<amazon:auto-breaths[^>]*\/>/g, '');
-    processedSSML = processedSSML.replace(/<amazon:auto-breaths[^>]*>(.*?)<\/amazon:auto-breaths>/g, '$1');
-
-    // Remove phonation="soft" effects (not supported in neural/generative)
-    processedSSML = processedSSML.replace(/<amazon:effect[^>]*phonation="soft"[^>]*>(.*?)<\/amazon:effect>/g, '$1');
-
-    // Remove vocal-tract-length effects (not supported in neural/generative)
-    processedSSML = processedSSML.replace(/<amazon:effect[^>]*vocal-tract-length[^>]*>(.*?)<\/amazon:effect>/g, '$1');
-
-    // Remove whispered effects (not supported in neural/generative)
-    processedSSML = processedSSML.replace(/<amazon:effect[^>]*name="whispered"[^>]*>(.*?)<\/amazon:effect>/g, '$1');
-
-    return processedSSML;
-  }
 
   /**
    * Prepare SSML for AWS Polly based on voice engine capabilities
@@ -284,30 +248,26 @@ export class PollyTTSClient extends AbstractTTSClient {
       text = ssmlText;
     }
 
-    // Get SSML support level and engine for this voice
-    const ssmlSupport = await this.getSSMLSupportLevel(voiceId);
-    const engine = await this.getEngineForVoice(voiceId);
-
-    // Handle SSML based on support level
-    if (this._isSSML(text)) {
-      switch (ssmlSupport) {
-        case "full":
-          // Standard and long-form voices support full SSML
-          break; // Continue with SSML processing
-        case "limited":
-          // Neural and generative voices have limited SSML support
-          console.warn(`Voice ${voiceId} (${engine} engine) has limited SSML support. Removing unsupported tags.`);
-          text = this.stripUnsupportedSSMLTags(text);
-          break;
-        case "none":
-          // Fallback: strip all SSML
-          console.warn(`Voice ${voiceId} (${engine} engine) doesn't support SSML. Stripping all SSML tags.`);
-          return this._stripSSML(text);
-      }
-    } else {
-      // If text is not SSML, wrap it in speak tags
+    // Ensure text is wrapped in SSML
+    if (!this._isSSML(text)) {
       text = `<speak>${text}</speak>`;
     }
+
+    // Validate and process SSML for Polly compatibility
+    const validation = SSMLUtils.validateSSMLForEngine(text, 'polly', voiceId);
+    if (validation.warnings.length > 0) {
+      console.warn('Polly SSML warnings:', validation.warnings);
+    }
+    if (!validation.isValid) {
+      console.error('Polly SSML validation errors:', validation.errors);
+      throw new Error(`Invalid SSML for Polly: ${validation.errors.join(', ')}`);
+    }
+
+    // Process SSML for Polly compatibility (removes unsupported tags based on voice type)
+    text = SSMLUtils.processSSMLForEngine(text, 'polly', voiceId);
+
+    // Get SSML support level for additional processing
+    const ssmlSupport = await this.getSSMLSupportLevel(voiceId);
 
     // Fix common SSML issues for Polly (for voices that support SSML)
     if (ssmlSupport === "full") {

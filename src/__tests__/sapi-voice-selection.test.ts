@@ -115,18 +115,18 @@ describe("SAPI Voice Selection", () => {
     }
 
     const voices = await client.getVoices();
-    
+
     if (voices.length < 2) {
       console.log("Skipping multi-voice test - only one voice available");
       return;
     }
 
     const testText = "Testing different voices.";
-    
+
     // Test with first voice
     client.setVoice(voices[0].id);
     const audio1 = await client.synthToBytes(testText);
-    
+
     // Test with second voice
     client.setVoice(voices[1].id);
     const audio2 = await client.synthToBytes(testText);
@@ -138,5 +138,61 @@ describe("SAPI Voice Selection", () => {
 
     console.log(`✓ Voice 1 (${voices[0].id}): ${audio1.length} bytes`);
     console.log(`✓ Voice 2 (${voices[1].id}): ${audio2.length} bytes`);
+  });
+
+  it("should handle complex SSML without double wrapping", async () => {
+    if (!client) {
+      console.log("Skipping test - SAPI not available");
+      return;
+    }
+
+    // Test the exact SSML from the bug report
+    const complexSSML = `<speak>
+  <prosody rate="x-fast" pitch="x-high">
+    This text will be spoken slowly with a low pitch.
+  </prosody>
+  <break time="500ms"/>
+  <emphasis level="strong">This text is emphasized.</emphasis>
+</speak>`;
+
+    const audioBytes = await client.synthToBytes(complexSSML);
+
+    expect(audioBytes).toBeInstanceOf(Uint8Array);
+    expect(audioBytes.length).toBeGreaterThan(0);
+
+    // Check for WAV header
+    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
+    expect(wavHeader.startsWith('RIFF')).toBe(true);
+    expect(wavHeader.includes('WAVE')).toBe(true);
+
+    console.log(`✓ Successfully synthesized complex SSML: ${audioBytes.length} bytes`);
+  });
+
+  it("should handle SSML with version attributes", async () => {
+    if (!client) {
+      console.log("Skipping test - SAPI not available");
+      return;
+    }
+
+    // Test SSML that already has version attributes
+    const ssmlWithVersion = `<speak version="1.0" xml:lang="en">
+  <prosody rate="slow" pitch="low">
+    This text should be spoken slowly with a low pitch.
+  </prosody>
+  <break time="1s"/>
+  <emphasis level="strong">This text is emphasized.</emphasis>
+</speak>`;
+
+    const audioBytes = await client.synthToBytes(ssmlWithVersion);
+
+    expect(audioBytes).toBeInstanceOf(Uint8Array);
+    expect(audioBytes.length).toBeGreaterThan(0);
+
+    // Check for WAV header
+    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
+    expect(wavHeader.startsWith('RIFF')).toBe(true);
+    expect(wavHeader.includes('WAVE')).toBe(true);
+
+    console.log(`✓ Successfully synthesized SSML with version: ${audioBytes.length} bytes`);
   });
 });

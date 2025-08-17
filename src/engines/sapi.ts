@@ -565,6 +565,13 @@ export class SAPITTSClient extends AbstractTTSClient {
       return text; // Return original text to preserve formatting
     }
 
+    // Check for double wrapping (defensive programming)
+    // This prevents the bug where SSML gets wrapped twice
+    if (trimmedText.includes('<speak') && trimmedText.indexOf('<speak') !== trimmedText.lastIndexOf('<speak')) {
+      console.warn('SAPI: Detected potential double SSML wrapping, returning text as-is');
+      return text;
+    }
+
     // If it's a simple <speak> tag, add the version attribute
     // Note: SAPI requires xml:lang="en" (not "en-US") for SSML to work properly
     if (trimmedText.startsWith('<speak>')) {

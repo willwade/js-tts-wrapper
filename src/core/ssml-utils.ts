@@ -1,4 +1,5 @@
 import type { SpeakOptions } from "../types";
+import { SSMLCompatibilityManager } from "./ssml-compatibility.js";
 
 /**
  * Check if text is SSML
@@ -7,6 +8,28 @@ import type { SpeakOptions } from "../types";
  */
 export function isSSML(text: string): boolean {
   return text.trim().startsWith("<speak") && text.trim().endsWith("</speak>");
+}
+
+/**
+ * Validate SSML for a specific engine
+ * @param ssml SSML text to validate
+ * @param engine Target TTS engine
+ * @param voiceId Optional voice ID for voice-specific validation
+ * @returns Validation result with errors and warnings
+ */
+export function validateSSMLForEngine(ssml: string, engine: string, voiceId?: string) {
+  return SSMLCompatibilityManager.validateSSML(ssml, engine, voiceId);
+}
+
+/**
+ * Process SSML for engine compatibility
+ * @param ssml SSML text to process
+ * @param engine Target TTS engine
+ * @param voiceId Optional voice ID for voice-specific processing
+ * @returns Processed SSML compatible with the target engine
+ */
+export function processSSMLForEngine(ssml: string, engine: string, voiceId?: string): string {
+  return SSMLCompatibilityManager.processSSMLForEngine(ssml, engine, voiceId);
 }
 
 /**
