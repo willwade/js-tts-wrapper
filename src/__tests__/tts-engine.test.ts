@@ -14,6 +14,7 @@ import { PlayHTTTSClient } from "../engines/playht";
 import { WatsonTTSClient } from "../engines/watson";
 import { WitAITTSClient } from "../engines/witai";
 import { SAPITTSClient } from "../engines/sapi";
+import { UpliftAITTSClient } from "../engines/upliftai";
 import { MockTTSClient } from "./mock-tts-client.helper";
 
 // Use mocks for tests to avoid API calls
@@ -118,6 +119,16 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
         });
         break;
 
+      case "upliftai":
+        if (!process.env.UPLIFTAI_API_KEY) {
+          console.log("UpliftAI credentials not available");
+          return null;
+        }
+        client = new UpliftAITTSClient({
+          apiKey: process.env.UPLIFTAI_API_KEY,
+        });
+        break;
+
       case "sapi":
         // SAPI doesn't require credentials, but only works on Windows
         client = new SAPITTSClient({});
@@ -145,7 +156,7 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
 }
 
 // Define the engines to test (excluding sherpaonnx which has its own dedicated test files)
-const engines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "watson", "witai", "sapi"];
+const engines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "watson", "witai", "upliftai", "sapi"];
 
 // Run tests for each engine
 engines.forEach((engineName) => {

@@ -34,7 +34,14 @@ if (fs.existsSync(envFile)) {
 
 // Define which engines support SSML
 const SSML_SUPPORTED_ENGINES = ["google", "azure", "polly", "witai", "sapi", "espeak-wasm"];
-const NON_SSML_ENGINES = ["elevenlabs", "openai", "playht", "sherpaonnx", "sherpaonnx-wasm"];
+const NON_SSML_ENGINES = [
+  "elevenlabs",
+  "openai",
+  "playht",
+  "upliftai",
+  "sherpaonnx",
+  "sherpaonnx-wasm",
+];
 
 // Engines that don't require credentials
 const CREDENTIAL_FREE_ENGINES = ["espeak-wasm", "sherpaonnx", "sherpaonnx-wasm"];

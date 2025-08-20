@@ -20,6 +20,7 @@ export { WatsonTTSClient } from "./engines/watson";
 export { WitAITTSClient } from "./engines/witai";
 export { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm";
 export { EspeakBrowserTTSClient } from "./engines/espeak-wasm";
+export { UpliftAITTSClient } from "./engines/upliftai";
 
 // Browser-compatible factory (excludes server-only engines)
 export { createBrowserTTSClient } from "./factory-browser";

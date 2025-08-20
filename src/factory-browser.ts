@@ -9,6 +9,7 @@ import { PollyTTSClient } from "./engines/polly.js";
 import { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm.js";
 import { WatsonTTSClient } from "./engines/watson.js";
 import { WitAITTSClient } from "./engines/witai.js";
+import { UpliftAITTSClient } from "./engines/upliftai.js";
 import type { TTSCredentials } from "./types";
 
 // Import MockTTSClient for testing
@@ -35,6 +36,7 @@ export type SupportedBrowserTTS =
   | "playht"
   | "watson"
   | "witai"
+  | "upliftai"
   | "sherpaonnx-wasm"
   | "espeak-wasm"
   | "mock";
@@ -59,6 +61,10 @@ export function createBrowserTTSClient(engine: SupportedBrowserTTS, credentials?
       return new WatsonTTSClient(credentials as import("./engines/watson").WatsonTTSCredentials);
     case "witai":
       return new WitAITTSClient(credentials as import("./engines/witai").WitAITTSCredentials);
+    case "upliftai":
+      return new UpliftAITTSClient(
+        credentials as import("./engines/upliftai").UpliftAITTSCredentials
+      );
     case "sherpaonnx-wasm":
       return new SherpaOnnxWasmTTSClient(credentials as any);
     case "espeak-wasm":

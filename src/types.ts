@@ -100,6 +100,7 @@ export type UnifiedVoice = {
     | "witai"
     | "playht"
     | "openai"
+    | "upliftai"
     | "sherpa"
     | "sherpaonnx"
     | "sherpaonnx-wasm"

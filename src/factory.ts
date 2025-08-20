@@ -7,6 +7,7 @@ import { GoogleTTSClient } from "./engines/google.js";
 import { OpenAITTSClient } from "./engines/openai.js";
 import { PlayHTTTSClient } from "./engines/playht.js";
 import { PollyTTSClient } from "./engines/polly.js";
+import { UpliftAITTSClient } from "./engines/upliftai.js";
 import { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm.js";
 import { SherpaOnnxTTSClient } from "./engines/sherpaonnx.js";
 import { WatsonTTSClient } from "./engines/watson.js";
@@ -38,6 +39,7 @@ export type SupportedTTS =
   | "playht"
   | "watson"
   | "witai"
+  | "upliftai"
   | "sherpaonnx"
   | "sherpaonnx-wasm"
   | "espeak"
@@ -65,6 +67,10 @@ export function createTTSClient(engine: SupportedTTS, credentials?: TTSCredentia
       return new WatsonTTSClient(credentials as import("./engines/watson").WatsonTTSCredentials);
     case "witai":
       return new WitAITTSClient(credentials as import("./engines/witai").WitAITTSCredentials);
+    case "upliftai":
+      return new UpliftAITTSClient(
+        credentials as import("./engines/upliftai").UpliftAITTSCredentials
+      );
     case "sherpaonnx":
       return new SherpaOnnxTTSClient(credentials as any);
     case "sherpaonnx-wasm":
