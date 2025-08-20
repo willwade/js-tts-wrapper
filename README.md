@@ -45,6 +45,7 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 | `elevenlabs` | `ElevenLabsTTSClient` | Both | ElevenLabs | `node-fetch@2` (Node.js only) |
 | `watson` | `WatsonTTSClient` | Both | IBM Watson | None (uses fetch API) |
 | `openai` | `OpenAITTSClient` | Both | OpenAI | `openai` |
+| `upliftai` | `UpliftAITTSClient` | Both | UpLiftAI | None (uses fetch API) |
 | `playht` | `PlayHTTTSClient` | Both | PlayHT | `node-fetch@2` (Node.js only) |
 | `polly` | `PollyTTSClient` | Both | Amazon Web Services | `@aws-sdk/client-polly` |
 | `sherpaonnx` | `SherpaOnnxTTSClient` | Node.js | k2-fsa/sherpa-onnx | `sherpa-onnx-node`, `decompress`, `decompress-bzip2`, `decompress-tarbz2`, `decompress-targz`, `tar-stream` |
@@ -68,6 +69,7 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 | **Azure** | ✅ | **Real API data** | ❌ | **High** |
 | **Google** | ✅ | Estimated | ❌ | Low |
 | **Watson** | ✅ | Estimated | ❌ | Low |
+| **UpLiftAI** | ✅ | Estimated | ❌ | Low |
 | **OpenAI** | ✅ | Estimated | ❌ | Low |
 | **WitAI** | ✅ | Estimated | ❌ | Low |
 | **PlayHT** | ✅ | Estimated | ❌ | Low |
