@@ -1,6 +1,6 @@
 {
   "name": "js-tts-wrapper",
-  "version": "0.1.38",
+  "version": "0.1.39",
   "description": "A JavaScript/TypeScript library that provides a unified API for working with multiple cloud-based Text-to-Speech (TTS) services",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -54,6 +54,7 @@
     "test:polly": "node run-tts-tests.cjs polly",
     "test:openai": "node run-tts-tests.cjs openai",
     "test:playht": "node run-tts-tests.cjs playht",
+    "test:upliftai": "node run-tts-tests.cjs upliftai",
     "test:sherpaonnx": "node run-tts-tests.cjs sherpaonnx",
     "test:sherpaonnx:mac": "node scripts/run-with-sherpaonnx.cjs run-tts-tests.cjs sherpaonnx",
     "test:sherpaonnx:auto": "node --require ./scripts/sherpaonnx-preload.cjs run-tts-tests.cjs sherpaonnx",
@@ -67,6 +68,7 @@
     "example:elevenlabs": "node examples/unified-test-runner.js elevenlabs",
     "example:google": "node examples/unified-test-runner.js google",
     "example:polly": "node examples/unified-test-runner.js polly",
+    "example:upliftai": "node examples/unified-test-runner.js upliftai",
     "example:sherpaonnx": "node examples/unified-test-runner.js sherpaonnx",
     "example:sherpaonnx:mac": "node scripts/run-with-sherpaonnx.cjs examples/unified-test-runner.js sherpaonnx",
     "example:sherpaonnx:auto": "node --require ./scripts/sherpaonnx-preload.cjs examples/unified-test-runner.js sherpaonnx",

@@ -40,6 +40,7 @@ export async function getEngineConfigs() {
     WatsonTTSClient,
     WitAITTSClient,
     SAPITTSClient,
+    UpliftAITTSClient,
 
   } = await import("../../dist/esm/index.js");
 
@@ -143,6 +144,13 @@ export async function getEngineConfigs() {
       factory: () => new SAPITTSClient({}),
       description: "Windows Speech API (SAPI) - Windows only"
     },
+    {
+      name: "upliftai",
+      factory: () => new UpliftAITTSClient({
+        apiKey: process.env.UPLIFTAI_API_KEY || '',
+      }),
+      description: "UpliftAI TTS"
+    },
 
   ];
 }
@@ -165,7 +173,8 @@ export function getEngineConfigsCJS() {
     EspeakBrowserTTSClient,
     WatsonTTSClient,
     WitAITTSClient,
-    SAPITTSClient
+    SAPITTSClient,
+    UpliftAITTSClient
   } = require('../../dist/cjs/index.js');
 
   const { MockTTSClient } = require('../../dist/cjs/__tests__/mock-tts-client.helper.js');
@@ -261,6 +270,13 @@ export function getEngineConfigsCJS() {
       name: "sapi",
       factory: () => new SAPITTSClient({}),
       description: "Windows Speech API (SAPI) - Windows only"
+    },
+    {
+      name: "upliftai",
+      factory: () => new UpliftAITTSClient({
+        apiKey: process.env.UPLIFTAI_API_KEY || '',
+      }),
+      description: "UpliftAI TTS"
     },
 
   ];
