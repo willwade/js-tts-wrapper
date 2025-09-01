@@ -56,6 +56,9 @@ async function installEngine(engine) {
     polly: ["@aws-sdk/client-polly"],
     openai: ["openai"],
     witai: [],
+    espeak: ["text2wav"],
+    "espeak-wasm": ["mespeak"],
+    system: ["say"],
     "node-audio": ["sound-play", "speaker", "pcm-convert"],
     sherpaonnx: [
       "sherpa-onnx-node@^1.12.0",
@@ -128,6 +131,9 @@ Available engines:
   polly               AWS Polly TTS
   openai              OpenAI TTS
   witai               Wit.ai TTS
+  espeak             eSpeak NG TTS (Node.js)
+  espeak-wasm        eSpeak NG WASM TTS
+  system             System TTS (say)
   sherpaonnx          SherpaOnnx TTS (offline)
   node-audio          Node.js audio playback dependencies
   cloud               All cloud TTS engines

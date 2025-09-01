@@ -1,5 +1,7 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
+import { createRequire } from "node:module";
+import path from "node:path";
 
 // Dynamic text2wav module - will be loaded when needed
 let text2wav: any = null;
@@ -19,28 +21,35 @@ async function loadText2Wav() {
       typeof process !== "undefined" &&
       (process.env.NEXT_RUNTIME || process.env.__NEXT_PRIVATE_ORIGIN);
 
-    // Enhanced dynamic import for better ESM compatibility
     try {
+      // First attempt normal module resolution relative to this file
       text2wav = await import("text2wav" as any);
-
-      // Handle both default and named exports
-      if (text2wav.default) {
-        text2wav = text2wav.default;
+    } catch (_importError) {
+      // Fallback: try resolving from the user's project directory
+      try {
+        const requireFromCwd = createRequire(path.join(process.cwd(), "noop.js"));
+        const resolvedPath = requireFromCwd.resolve("text2wav");
+        text2wav = await import(resolvedPath);
+      } catch (cwdError) {
+        // Specific handling for Next.js environments where bundling may omit the module
+        if (isNextJS) {
+          throw new Error(
+            "text2wav package not found in Next.js environment. " +
+              "This may be due to Next.js bundling restrictions. " +
+              "Consider using EspeakBrowserTTSClient for browser environments or " +
+              "ensure text2wav is properly installed: npm install text2wav"
+          );
+        }
+        throw cwdError;
       }
-
-      return text2wav;
-    } catch (importError) {
-      // Fallback for environments where dynamic import might fail
-      if (isNextJS) {
-        throw new Error(
-          "text2wav package not found in Next.js environment. " +
-            "This may be due to Next.js bundling restrictions. " +
-            "Consider using EspeakBrowserTTSClient for browser environments or " +
-            "ensure text2wav is properly installed: npm install text2wav"
-        );
-      }
-      throw importError;
     }
+
+    // Handle both default and named exports
+    if (text2wav?.default) {
+      text2wav = text2wav.default;
+    }
+
+    return text2wav;
   } catch (err) {
     console.error("Error loading text2wav:", err);
     const errorMessage = err instanceof Error ? err.message : String(err);
@@ -170,7 +179,7 @@ export class EspeakNodeTTSClient extends AbstractTTSClient {
       wordBoundaries = this.timings.map(([start, end, word]) => ({
         text: word,
         offset: Math.round(start * 10000), // Convert to 100-nanosecond units
-        duration: Math.round((end - start) * 10000)
+        duration: Math.round((end - start) * 10000),
       }));
     }
 
