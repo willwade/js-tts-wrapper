@@ -8,9 +8,18 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { platform } from "node:os";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+/**
+ * Get the correct npm command for the current platform
+ * @returns {string} npm command
+ */
+function getNpmCommand() {
+  return platform() === "win32" ? "npm.cmd" : "npm";
+}
 
 /**
  * Execute a command and return a promise
@@ -26,6 +35,7 @@ function executeCommand(command, args, options = {}) {
     const child = spawn(command, args, {
       stdio: "inherit",
       cwd: options.cwd || process.cwd(),
+      shell: platform() === "win32", // Use shell on Windows
       ...options,
     });
 
@@ -105,7 +115,7 @@ async function installEngine(engine) {
   }
 
   console.log(`Installing dependencies for ${engine}: ${deps.join(", ")}`);
-  await executeCommand("npm", ["install", ...deps]);
+  await executeCommand(getNpmCommand(), ["install", ...deps]);
   console.log(`Successfully installed dependencies for ${engine}`);
 }
 
