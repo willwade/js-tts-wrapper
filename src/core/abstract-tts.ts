@@ -13,8 +13,7 @@ import type {
 import { LanguageNormalizer } from "./language-utils";
 import * as SSMLUtils from "./ssml-utils";
 import { isBrowser, isNode } from "../utils/environment";
-import { isNodeAudioAvailable, playAudioInNode } from "../utils/node-audio";
-import { convertAudioFormat, isAudioConversionAvailable, getMimeTypeForFormat, type AudioFormat } from "../utils/audio-converter";
+import type { AudioFormat } from "../utils/audio-converter";
 import { detectAudioFormat } from "../utils/audio-input";
 
 /**
@@ -167,16 +166,21 @@ export abstract class AbstractTTSClient {
     }
 
     // Try to convert if conversion is available
-    if (isAudioConversionAvailable()) {
-      try {
-        const conversionResult = await convertAudioFormat(nativeAudioBytes, requestedFormat);
-        return conversionResult.audioBytes;
-      } catch (error) {
-        console.warn(`Audio format conversion failed: ${error instanceof Error ? error.message : String(error)}`);
-        console.warn(`Returning native format (${nativeFormat}) instead of requested format (${requestedFormat})`);
+    try {
+      const { isAudioConversionAvailable, convertAudioFormat } = await (new Function('m','return import(m)'))('../utils/audio-converter');
+      if (isAudioConversionAvailable()) {
+        try {
+          const conversionResult = await convertAudioFormat(nativeAudioBytes, requestedFormat);
+          return conversionResult.audioBytes;
+        } catch (error) {
+          console.warn(`Audio format conversion failed: ${error instanceof Error ? error.message : String(error)}`);
+          console.warn(`Returning native format (${nativeFormat}) instead of requested format (${requestedFormat})`);
+        }
+      } else {
+        console.warn(`Audio format conversion not available. Returning native format (${nativeFormat}) instead of requested format (${requestedFormat})`);
       }
-    } else {
-      console.warn(`Audio format conversion not available. Returning native format (${nativeFormat}) instead of requested format (${requestedFormat})`);
+    } catch {
+      console.warn(`Audio converter not available at runtime; returning native format (${nativeFormat})`);
     }
 
     // Fallback: return native audio
@@ -268,6 +272,7 @@ export abstract class AbstractTTSClient {
         audioBytes = await this.synthToBytesWithConversion(input, options);
 
         // Determine MIME type based on actual audio format
+        const { getMimeTypeForFormat } = await (new Function('m','return import(m)'))('../utils/audio-converter');
         const actualFormat = this.detectNativeFormat(audioBytes);
         mimeType = getMimeTypeForFormat(actualFormat);
       } else {
@@ -326,6 +331,7 @@ export abstract class AbstractTTSClient {
         // In Node.js environment, try to use sound-play
         try {
           // Check if Node.js audio playback is available
+          const { isNodeAudioAvailable, playAudioInNode } = await (new Function('m','return import(m)'))('../utils/node-audio');
           const audioAvailable = await isNodeAudioAvailable();
 
           // Create estimated word timings if needed (only for text input)
@@ -419,18 +425,25 @@ export abstract class AbstractTTSClient {
         }
 
         // Apply format conversion if needed (for streaming, we convert the final buffer)
-        if (options?.format && isAudioConversionAvailable()) {
+        if (options?.format) {
           try {
-            const conversionResult = await convertAudioFormat(audioBytes, options.format as AudioFormat);
-            audioBytes = conversionResult.audioBytes;
-            mimeType = conversionResult.mimeType;
+            const { isAudioConversionAvailable, convertAudioFormat, getMimeTypeForFormat } = await (new Function('m','return import(m)'))('../utils/audio-converter');
+            if (isAudioConversionAvailable()) {
+              const conversionResult = await convertAudioFormat(audioBytes, options.format as AudioFormat);
+              audioBytes = conversionResult.audioBytes;
+              mimeType = conversionResult.mimeType;
+            } else {
+              const actualFormat = this.detectNativeFormat(audioBytes);
+              mimeType = getMimeTypeForFormat(actualFormat);
+            }
           } catch (error) {
             console.warn(`Streaming format conversion failed: ${error instanceof Error ? error.message : String(error)}`);
-            // Fallback to detecting actual format
+            const { getMimeTypeForFormat } = await (new Function('m','return import(m)'))('../utils/audio-converter');
             const actualFormat = this.detectNativeFormat(audioBytes);
             mimeType = getMimeTypeForFormat(actualFormat);
           }
         } else {
+          const { getMimeTypeForFormat } = await (new Function('m','return import(m)'))('../utils/audio-converter');
           // Determine MIME type based on actual audio format
           const actualFormat = this.detectNativeFormat(audioBytes);
           mimeType = getMimeTypeForFormat(actualFormat);
@@ -509,6 +522,7 @@ export abstract class AbstractTTSClient {
         console.log('🔍 Taking Node.js audio path');
         try {
           // Check if Node.js audio playback is available
+          const { isNodeAudioAvailable, playAudioInNode } = await (new Function('m','return import(m)'))('../utils/node-audio');
           const audioAvailable = await isNodeAudioAvailable();
           console.log(`🔍 Audio available: ${audioAvailable}`);
 
@@ -608,7 +622,7 @@ export abstract class AbstractTTSClient {
     } else if (isNode) {
       // In Node.js, use the file system
       const outputPath = filename.endsWith(`.${format}`) ? filename : `${filename}.${format}`;
-      const fs = await import('node:fs');
+      const fs = await (new Function('m','return import(m)'))('node:fs');
       fs.writeFileSync(outputPath, Buffer.from(audioBytes));
     } else {
       console.warn("File saving not implemented for this environment.");

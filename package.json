@@ -1,6 +1,6 @@
 {
   "name": "js-tts-wrapper",
-  "version": "0.1.42",
+  "version": "0.1.43",
   "description": "A JavaScript/TypeScript library that provides a unified API for working with multiple cloud-based Text-to-Speech (TTS) services",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -100,7 +100,8 @@
     "install:espeak": "npm install text2wav",
     "install:espeak-wasm": "npm install mespeak",
     "install:system": "npm install say",
-    "install:all-dev": "npm install openai @google-cloud/text-to-speech @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly @elevenlabs/elevenlabs-js node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream text2wav mespeak say sound-play pcm-convert"
+    "install:all-dev": "npm install openai @google-cloud/text-to-speech @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly @elevenlabs/elevenlabs-js node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream text2wav mespeak say sound-play pcm-convert",
+    "smoke:bundle": "node scripts/bundle-smoke.mjs"
   },
   "keywords": [
     "tts",

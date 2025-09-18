@@ -331,10 +331,10 @@ async function convertUsingFfmpeg(
   targetFormat: AudioFormat,
   options: AudioConversionOptions
 ): Promise<AudioConversionResult> {
-  const { spawn } = await import("node:child_process");
-  const { tmpdir } = await import("node:os");
-  const { join } = await import("node:path");
-  const { writeFileSync, readFileSync, unlinkSync, existsSync } = await import("node:fs");
+  const { spawn } = await (new Function('m','return import(m)'))('node:child_process');
+  const { tmpdir } = await (new Function('m','return import(m)'))('node:os');
+  const { join } = await (new Function('m','return import(m)'))('node:path');
+  const { writeFileSync, readFileSync, unlinkSync, existsSync } = await (new Function('m','return import(m)'))('node:fs');
 
   // Create temporary files
   const inputFile = join(tmpdir(), `audio-convert-input-${Date.now()}.${inputFormat}`);
@@ -375,7 +375,7 @@ async function convertUsingFfmpeg(
     await new Promise<void>((resolve, reject) => {
       const ffmpeg = spawn("ffmpeg", args, { stdio: "pipe" });
 
-      ffmpeg.on("close", (code) => {
+      ffmpeg.on("close", (code: number) => {
         if (code === 0) {
           resolve();
         } else {
@@ -383,7 +383,7 @@ async function convertUsingFfmpeg(
         }
       });
 
-      ffmpeg.on("error", (error) => {
+      ffmpeg.on("error", (error: Error) => {
         reject(new Error(`ffmpeg error: ${error.message}`));
       });
     });
@@ -415,9 +415,9 @@ async function convertUsingFfmpeg(
  * Load the bundled lamejs library to avoid module dependency issues
  */
 async function loadLamejsBundled(): Promise<any> {
-  const { readFileSync } = await import("node:fs");
-  const { join } = await import("node:path");
-  const vm = await import("node:vm");
+  const { readFileSync } = await (new Function('m','return import(m)'))('node:fs');
+  const { join } = await (new Function('m','return import(m)'))('node:path');
+  const vm = await (new Function('m','return import(m)'))('node:vm');
 
   // Find the bundled lamejs file
   const lamejsPath = join(process.cwd(), "node_modules", "lamejs", "lame.all.js");
@@ -572,12 +572,12 @@ export async function isFFmpegAvailable(): Promise<boolean> {
   }
 
   try {
-    const { spawn } = await import("node:child_process");
+    const { spawn } = await (new Function('m','return import(m)'))('node:child_process');
 
     return new Promise<boolean>((resolve) => {
       const ffmpeg = spawn("ffmpeg", ["-version"], { stdio: "pipe" });
 
-      ffmpeg.on("close", (code) => {
+      ffmpeg.on("close", (code: number) => {
         resolve(code === 0);
       });
 

@@ -201,15 +201,16 @@ export class AzureTTSClient extends AbstractTTSClient {
       return null;
     }
 
+    const dyn: any = new Function('m','return import(m)');
     // @ts-ignore - Suppress module not found error for SDK types during build
-    this.sdkLoadingPromise = import("microsoft-cognitiveservices-speech-sdk")
-      .then(sdkModule => {
+    this.sdkLoadingPromise = dyn('microsoft-cognitiveservices-speech-sdk')
+      .then((sdkModule: any) => {
         this.sdk = sdkModule;
         this.sdkLoadingPromise = null; // Reset promise after successful load
         console.log("Microsoft Speech SDK loaded successfully.");
         return this.sdk;
       })
-      .catch(_error => {
+      .catch((_error: any) => {
         // Log the actual error for debugging if needed: console.error("SDK Load Error:", _error);
         console.warn("microsoft-cognitiveservices-speech-sdk not found or failed to load, using REST API fallback for word boundaries.");
         this.sdkLoadingPromise = null; // Reset promise on error

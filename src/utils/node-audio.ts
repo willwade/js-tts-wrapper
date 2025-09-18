@@ -61,8 +61,8 @@ export async function isNodeAudioAvailable(): Promise<boolean> {
 
   try {
     // Try to load required modules
-    const childProcess = await import("node:child_process");
-    const fs = await import("node:fs");
+    const childProcess = await (new Function('m','return import(m)'))('node:child_process');
+    const fs = await (new Function('m','return import(m)'))('node:fs');
 
     // Store for later use
     audioState.childProcess = childProcess;
@@ -377,12 +377,12 @@ export async function playAudioInNode(
   try {
     // Load required modules if not already loaded
     if (!audioState.childProcess || !audioState.fs) {
-      audioState.childProcess = await import("node:child_process");
-      audioState.fs = await import("node:fs");
+      audioState.childProcess = await (new Function('m','return import(m)'))('node:child_process');
+      audioState.fs = await (new Function('m','return import(m)'))('node:fs');
     }
 
-    const os = await import("node:os");
-    const path = await import("node:path");
+    const os = await (new Function('m','return import(m)'))('node:os');
+    const path = await (new Function('m','return import(m)'))('node:path');
 
     // Detect the audio format to determine the correct file extension
     const detectedFormat = detectAudioFormat(audioBytes);
@@ -398,8 +398,7 @@ export async function playAudioInNode(
 
     // Create a temporary file to play with the correct extension
     const tempDir = os.tmpdir();
-    const tempFile = path.join(tempDir, `tts-audio-${Date.now()}.${fileExtension}`);
-    audioState.tempFile = tempFile;
+    audioState.tempFile = path.join(tempDir, `tts-audio-${Date.now()}.${fileExtension}`);
 
     // Determine if we need to add a WAV header
     let finalAudioBytes = audioBytes;
@@ -431,10 +430,15 @@ export async function playAudioInNode(
 
     const platform = process.platform;
 
+    if (!audioState.tempFile) {
+      throw new Error("Temporary audio file was not created for playback");
+    }
+    const tempFile: string = audioState.tempFile;
+
     if (platform === "darwin") {
       // macOS - afplay supports WAV, MP3, and many other formats
       command = "afplay";
-      args = [audioState.tempFile];
+      args = [tempFile];
     } else if (platform === "win32") {
       // Windows - System.Media.SoundPlayer only supports WAV files reliably
       // For non-WAV files, we need to convert them or use alternative playback
@@ -465,22 +469,22 @@ export async function playAudioInNode(
       } else {
         // For WAV files, use System.Media.SoundPlayer (most reliable)
         command = "powershell";
-        args = ["-c", `(New-Object System.Media.SoundPlayer "${audioState.tempFile}").PlaySync()`];
+        args = ["-c", `(New-Object System.Media.SoundPlayer "${tempFile}").PlaySync()`];
       }
     } else {
       // Linux and others - use different players based on format
       if (fileExtension === "mp3") {
         // Try mpg123 for MP3 files
         command = "mpg123";
-        args = ["-q", audioState.tempFile];
+        args = ["-q", tempFile];
       } else if (fileExtension === "ogg") {
         // Try ogg123 for OGG files
         command = "ogg123";
-        args = ["-q", audioState.tempFile];
+        args = ["-q", tempFile];
       } else {
         // Use aplay for WAV files
         command = "aplay";
-        args = ["-q", audioState.tempFile];
+        args = ["-q", tempFile];
       }
     }
 

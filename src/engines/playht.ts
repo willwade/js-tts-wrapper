@@ -338,8 +338,9 @@ export class PlayHTTTSClient extends AbstractTTSClient {
       if (typeof window !== "undefined") {
         throw new Error("File output is not supported in the browser. Use synthToBytes or synthToBytestream instead.");
       }
-      const fs = await import("node:fs");
-      const path = await import("node:path");
+      const dyn: any = new Function('m','return import(m)');
+      const fs = await dyn('node:fs');
+      const path = await dyn('node:path');
       // Create output directory if it doesn't exist
       const outputDir = options.outputDir || ".";
       if (!fs.existsSync(outputDir)) {
@@ -425,8 +426,9 @@ export class PlayHTTTSClient extends AbstractTTSClient {
       if (typeof window !== "undefined") {
         throw new Error("File output is not supported in the browser. Use synthToBytes or synthToBytestream instead.");
       }
-      const fs = await import("node:fs");
-      const path = await import("node:path");
+      const dyn: any = new Function('m','return import(m)');
+      const fs = await dyn('node:fs');
+      const path = await dyn('node:path');
       // Create output directory if it doesn't exist
       const outputDir = options.outputDir || ".";
       if (!fs.existsSync(outputDir)) {
@@ -634,7 +636,8 @@ export class PlayHTTTSClient extends AbstractTTSClient {
       });
     } else {
       // Node.js environment
-      const fs = await import("node:fs");
+      const dyn: any = new Function('m','return import(m)');
+      const fs = await dyn('node:fs');
       // Use the requested filename as-is (even if it has .wav extension)
       const outputPath = filename.endsWith(`.${format}`) ? filename : `${filename}.${format}`;
       fs.writeFileSync(outputPath, Buffer.from(audioBytes));

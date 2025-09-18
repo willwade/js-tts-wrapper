@@ -495,7 +495,8 @@ export class GoogleTTSClient extends AbstractTTSClient {
       try {
         // Only import fs in Node.js environment
         if (typeof window === "undefined") {
-          const fs = await import("node:fs");
+          const dyn: any = new Function('m','return import(m)');
+          const fs = await dyn('node:fs');
           const credentials = this.credentials as GoogleTTSCredentials;
 
           // Check if the keyFilename exists
@@ -538,7 +539,8 @@ export class GoogleTTSClient extends AbstractTTSClient {
       try {
         // Only import fs in Node.js environment
         if (typeof window === "undefined") {
-          const fs = await import("node:fs");
+          const dyn: any = new Function('m','return import(m)');
+          const fs = await dyn('node:fs');
           const credentials = this.credentials as GoogleTTSCredentials;
 
           // Check if the keyFilename exists

@@ -76,12 +76,69 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
     }
 
     try {
-      // Try to list voices to check if the API key is valid
+      // 1) Basic auth probe: list voices
       const voices = await this._getVoices();
-      // Check if we actually got voices back (empty array means failed request)
-      return voices.length > 0;
+      if (!voices || voices.length === 0) return false;
+
+      // 2) Quota probe: attempt a tiny synthesis to detect quota/Unauthorized early
+      const quotaOk = await this._quotaProbe();
+      return quotaOk;
     } catch (error) {
       console.error("Error checking ElevenLabs credentials:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Perform a tiny synthesis to detect quota/Unauthorized issues up-front
+   * Returns false if quota is exceeded or API key is unauthorized for synthesis
+   */
+  private async _quotaProbe(): Promise<boolean> {
+    try {
+      const voiceId = this.voiceId || "21m00Tcm4TlvDq8ikWAM"; // Rachel
+      const requestOptions = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "xi-api-key": this.apiKey,
+        },
+        body: JSON.stringify({
+          text: "hello",
+          model_id: "eleven_monolingual_v1",
+          output_format: "mp3_44100_64", // keep tiny
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+            use_speaker_boost: true,
+            style: 0,
+            speed: 1.0,
+          },
+        }),
+      } as const;
+
+      const response = await fetch(`${this.baseUrl}/text-to-speech/${voiceId}`, requestOptions);
+      if (!response.ok) {
+        const errorText = await response.text();
+        const lower = (errorText || "").toLowerCase();
+        if (
+          response.status === 401 ||
+          response.status === 402 ||
+          response.status === 429 ||
+          lower.includes("quota") ||
+          lower.includes("exceeded your current quota") ||
+          lower.includes("insufficient")
+        ) {
+          console.log("ElevenLabs: quota/authorization not sufficient for tests; skipping.");
+          return false;
+        }
+        // Other failures count as invalid
+        console.error(`ElevenLabs quota probe failed: ${response.status} ${response.statusText} - ${errorText}`);
+        return false;
+      }
+      // success
+      return true;
+    } catch (err) {
+      console.error("ElevenLabs quota probe error:", err);
       return false;
     }
   }
@@ -219,7 +276,9 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
           console.error(
             `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
           );
-          throw new Error(`Failed to synthesize speech: ${response.statusText}`);
+          const err = new Error(`Failed to synthesize speech: ${response.status} ${response.statusText} - ${errorText}`);
+          (err as any).status = response.status;
+          throw err;
         }
 
         const arrayBuffer = await response.arrayBuffer();
@@ -315,7 +374,9 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
           console.error(
             `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
           );
-          throw new Error(`Failed to synthesize speech stream: ${response.statusText}`);
+          const err = new Error(`Failed to synthesize speech stream: ${response.status} ${response.statusText} - ${errorText}`);
+          (err as any).status = response.status;
+          throw err;
         }
 
         const responseArrayBuffer = await response.arrayBuffer();
@@ -382,7 +443,9 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       console.error(
         `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
       );
-      throw new Error(`Failed to synthesize speech with timestamps: ${response.statusText}`);
+      const err = new Error(`Failed to synthesize speech with timestamps: ${response.status} ${response.statusText} - ${errorText}`);
+      (err as any).status = response.status;
+      throw err;
     }
 
     return await response.json() as ElevenLabsTimestampResponse;
@@ -544,8 +607,9 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    */
   private async convertMp3ToWav(mp3Data: Uint8Array): Promise<Uint8Array> {
     try {
-      // Import the audio converter utility
-      const { convertAudioFormat } = await import("../utils/audio-converter");
+      // Import the audio converter utility (Node-only) using a truly dynamic import
+      const dyn: any = new Function('m','return import(m)');
+      const { convertAudioFormat } = await dyn("../utils/audio-converter");
 
       // Convert MP3 to WAV
       const result = await convertAudioFormat(mp3Data, "wav");
