@@ -174,8 +174,8 @@ export class OpenAITTSClient extends AbstractTTSClient {
       return this.client;
     }
 
-    this.clientLoadingPromise = import("openai")
-      .then((openaiModule) => {
+    this.clientLoadingPromise = (new Function('m','return import(m)') as any)("openai")
+      .then((openaiModule: any) => {
         const OpenAIClass = openaiModule.OpenAI;
         this.client = new OpenAIClass({
           apiKey: this.credentials.apiKey || process.env.OPENAI_API_KEY,
@@ -186,7 +186,7 @@ export class OpenAITTSClient extends AbstractTTSClient {
         console.log("OpenAI SDK loaded successfully.");
         return this.client;
       })
-      .catch((_error) => {
+      .catch((_error: any) => {
         console.warn("OpenAI package not found or failed to load, using mock implementation.");
         this.client = new MockOpenAI();
         this.clientLoadingPromise = null;

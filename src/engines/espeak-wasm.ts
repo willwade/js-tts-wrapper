@@ -1,6 +1,5 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
-import { EspeakNodeTTSClient } from "./espeak";
 
 // Function to detect if we're in a browser environment
 function isBrowser(): boolean {
@@ -15,7 +14,7 @@ function isBrowser(): boolean {
  * For Node.js-only environments with better performance, use EspeakNodeTTSClient instead.
  */
 export class EspeakBrowserTTSClient extends AbstractTTSClient {
-  private nodeClient?: EspeakNodeTTSClient;
+  private nodeClient?: any;
 
   constructor(credentials: TTSCredentials = {}) {
     super(credentials);
@@ -23,15 +22,18 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
     // Set a default voice for eSpeak TTS
     this.voiceId = "en"; // Default English voice
 
-    // In Node.js environments, create a fallback client
-    if (!isBrowser()) {
-      this.nodeClient = new EspeakNodeTTSClient(credentials);
-    }
+    // In Node.js environments, we'll lazily load the Node client when needed to avoid bundling it in browsers.
   }
 
   async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
-    // For Node.js environments, delegate to the regular eSpeak client
-    if (!isBrowser() && this.nodeClient) {
+    // For Node.js environments, delegate to the regular eSpeak client (lazy loaded)
+    if (!isBrowser()) {
+      if (!this.nodeClient) {
+        const dynamicImport: any = new Function('m','return import(m)');
+        const mod = await dynamicImport("./espeak");
+        const EspeakNodeTTSClient = (mod as any).EspeakNodeTTSClient || (mod as any).default;
+        this.nodeClient = new EspeakNodeTTSClient(this.credentials);
+      }
       console.log("eSpeak-WASM: Delegating to Node.js eSpeak client");
       return await this.nodeClient.synthToBytes(text, options);
     }
@@ -91,11 +93,17 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
    * Return available voices for eSpeak WASM
    */
   async _getVoices(): Promise<UnifiedVoice[]> {
-    // For Node.js environments, delegate to the regular eSpeak client
-    if (!isBrowser() && this.nodeClient) {
+    // For Node.js environments, delegate to the regular eSpeak client (lazy loaded)
+    if (!isBrowser()) {
+      if (!this.nodeClient) {
+        const dynamicImport: any = new Function('m','return import(m)');
+        const mod = await dynamicImport("./espeak");
+        const EspeakNodeTTSClient = (mod as any).EspeakNodeTTSClient || (mod as any).default;
+        this.nodeClient = new EspeakNodeTTSClient(this.credentials);
+      }
       const nodeVoices = await this.nodeClient._getVoices();
       // Rename them to indicate they're from eSpeak WASM (but actually using Node.js fallback)
-      return nodeVoices.map(voice => ({
+      return nodeVoices.map((voice: UnifiedVoice) => ({
         ...voice,
         name: voice.name.replace('(eSpeak)', '(eSpeak WASM)')
       }));

@@ -85,7 +85,7 @@ export class PollyTTSClient extends AbstractTTSClient {
    */
   protected async _getVoices(): Promise<any[]> {
     try {
-      const pollyModule = this._pollyModule || (await import("@aws-sdk/client-polly"));
+      const pollyModule = this._pollyModule || (await (new Function('m','return import(m)') as any)("@aws-sdk/client-polly"));
       if (!this.client) {
         const PollyClient = pollyModule.PollyClient;
         this.client = new PollyClient({
@@ -315,7 +315,7 @@ export class PollyTTSClient extends AbstractTTSClient {
     options?: PollyTTSOptions
   ): Promise<Uint8Array> {
     try {
-      const pollyModule = this._pollyModule || (await import("@aws-sdk/client-polly"));
+      const pollyModule = this._pollyModule || (await (new Function('m','return import(m)') as any)("@aws-sdk/client-polly"));
       if (!this.client) {
         const PollyClient = pollyModule.PollyClient;
         this.client = new PollyClient({
@@ -428,7 +428,7 @@ export class PollyTTSClient extends AbstractTTSClient {
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
     try {
-      const pollyModule = this._pollyModule || (await import("@aws-sdk/client-polly"));
+      const pollyModule = this._pollyModule || (await (new Function('m','return import(m)') as any)("@aws-sdk/client-polly"));
       if (!this.client) {
         const PollyClient = pollyModule.PollyClient;
         this.client = new PollyClient({
@@ -721,7 +721,7 @@ export class PollyTTSClient extends AbstractTTSClient {
    */
   async checkCredentials(): Promise<boolean> {
     try {
-      const pollyModule = this._pollyModule || (await import("@aws-sdk/client-polly"));
+      const pollyModule = this._pollyModule || (await (new Function('m','return import(m)') as any)("@aws-sdk/client-polly"));
       if (!this.client) {
         const PollyClient = pollyModule.PollyClient;
         this.client = new PollyClient({

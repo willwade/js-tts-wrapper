@@ -76,7 +76,8 @@ export class GoogleTTSClient extends AbstractTTSClient {
   private async initializeClient(credentials: GoogleTTSCredentials): Promise<void> {
     try {
       // Try to load the Google Cloud Text-to-Speech client (Node.js only)
-      const ttsModule = await import("@google-cloud/text-to-speech");
+      const dynamicImport: any = new Function('m', 'return import(m)');
+      const ttsModule = await dynamicImport("@google-cloud/text-to-speech");
       const { TextToSpeechClient } = ttsModule;
 
       this.client = new TextToSpeechClient({
@@ -211,8 +212,9 @@ export class GoogleTTSClient extends AbstractTTSClient {
       if (useWordTimings) {
         // Use beta API for word timings
         try {
-          // Use dynamic import for ESM compatibility
-          const ttsModule = await import("@google-cloud/text-to-speech");
+          // Use dynamic import for ESM compatibility without static specifiers for bundlers
+          const dynamicImport: any = new Function('m', 'return import(m)');
+          const ttsModule = await dynamicImport("@google-cloud/text-to-speech");
           const betaClient = new ttsModule.v1beta1.TextToSpeechClient({
             projectId: this.googleCredentials.projectId,
             credentials: this.googleCredentials.credentials,

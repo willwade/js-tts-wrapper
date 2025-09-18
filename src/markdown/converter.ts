@@ -16,8 +16,9 @@ async function loadSpeechMarkdown() {
 
   try {
     if (isNode) {
-      // In Node.js, try to import speechmarkdown-js
-      const module = await import("speechmarkdown-js");
+      // In Node.js, try to import speechmarkdown-js without triggering bundlers
+      const dynamicImport: any = new Function('m', 'return import(m)');
+      const module = await dynamicImport("speechmarkdown-js");
       SpeechMarkdown = module.SpeechMarkdown;
       speechMarkdownLoaded = true;
       return SpeechMarkdown;
