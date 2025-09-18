@@ -442,7 +442,9 @@ export async function playAudioInNode(
         // For MP3/OGG files, try to use Windows Media Player first
         // If that fails, we'll fall back to converting to WAV
         command = "powershell";
-        args = ["-c", `
+        args = [
+          "-c",
+          `
           try {
             Add-Type -AssemblyName presentationCore
             $mediaPlayer = New-Object system.windows.media.mediaplayer
@@ -458,7 +460,8 @@ export async function playAudioInNode(
             Write-Error "Failed to play audio file: $_"
             exit 1
           }
-        `];
+        `,
+        ];
       } else {
         // For WAV files, use System.Media.SoundPlayer (most reliable)
         command = "powershell";

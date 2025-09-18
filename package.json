@@ -1,6 +1,6 @@
 {
   "name": "js-tts-wrapper",
-  "version": "0.1.40",
+  "version": "0.1.41",
   "description": "A JavaScript/TypeScript library that provides a unified API for working with multiple cloud-based Text-to-Speech (TTS) services",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -25,7 +25,7 @@
     },
     "./browser": {
       "types": "./dist/browser.d.ts",
-      "require": "./dist/browser.js",
+      "require": "./dist/cjs/browser.js",
       "import": "./dist/browser.js",
       "default": "./dist/browser.js"
     }
@@ -41,7 +41,7 @@
     "build": "npm run build:cjs && npm run build:esm && npm run build:browser && npm run fix:cjs-imports",
     "build:cjs": "node scripts/generate-models-ts.cjs && tsc -p tsconfig.cjs.json && node scripts/create-cjs-package.js",
     "build:esm": "node scripts/generate-models-ts.cjs && tsc -p tsconfig.esm.json && tsc-alias -p tsconfig.esm.json && tsc-esm-fix --target=dist/esm --ext=.js --dirnameVar --filenameVar --sourceMap",
-    "build:browser": "cp dist/esm/browser.js dist/browser.js && cp dist/esm/browser.d.ts dist/browser.d.ts",
+    "build:browser": "node scripts/create-browser-entry.cjs",
     "build:bundle": "rollup -c rollup.config.js",
     "fix:cjs-imports": "node scripts/fix-cjs-imports.js",
     "dev": "tsc --watch",

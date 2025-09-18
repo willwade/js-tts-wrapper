@@ -3,8 +3,8 @@
  * Provides conversion between different audio formats (WAV, MP3, OGG)
  */
 
-import { isNode } from "./environment";
 import { detectAudioFormat } from "./audio-input";
+import { isNode } from "./environment";
 
 /**
  * Supported audio formats for conversion
@@ -85,17 +85,17 @@ export function extractWavParameters(wavBytes: Uint8Array): {
     wavBytes[0] !== 0x52 || // 'R'
     wavBytes[1] !== 0x49 || // 'I'
     wavBytes[2] !== 0x46 || // 'F'
-    wavBytes[3] !== 0x46    // 'F'
+    wavBytes[3] !== 0x46 // 'F'
   ) {
     return null;
   }
 
   // Check for WAVE format
   if (
-    wavBytes[8] !== 0x57 ||  // 'W'
-    wavBytes[9] !== 0x41 ||  // 'A'
+    wavBytes[8] !== 0x57 || // 'W'
+    wavBytes[9] !== 0x41 || // 'A'
     wavBytes[10] !== 0x56 || // 'V'
-    wavBytes[11] !== 0x45    // 'E'
+    wavBytes[11] !== 0x45 // 'E'
   ) {
     return null;
   }
@@ -104,18 +104,18 @@ export function extractWavParameters(wavBytes: Uint8Array): {
   const sampleRate = new DataView(wavBytes.buffer).getUint32(24, true);
   const channels = new DataView(wavBytes.buffer).getUint16(22, true);
   const bitsPerSample = new DataView(wavBytes.buffer).getUint16(34, true);
-  
+
   // Find data chunk
   let dataOffset = 44;
   let dataSize = 0;
-  
+
   // Look for 'data' chunk
   for (let i = 12; i < wavBytes.length - 8; i += 4) {
     if (
-      wavBytes[i] === 0x64 &&     // 'd'
+      wavBytes[i] === 0x64 && // 'd'
       wavBytes[i + 1] === 0x61 && // 'a'
       wavBytes[i + 2] === 0x74 && // 't'
-      wavBytes[i + 3] === 0x61    // 'a'
+      wavBytes[i + 3] === 0x61 // 'a'
     ) {
       dataSize = new DataView(wavBytes.buffer).getUint32(i + 4, true);
       dataOffset = i + 8;
@@ -128,7 +128,7 @@ export function extractWavParameters(wavBytes: Uint8Array): {
     channels,
     bitsPerSample,
     dataOffset,
-    dataSize
+    dataSize,
   };
 }
 
@@ -145,15 +145,15 @@ export async function convertAudioFormat(
   }
 
   const inputFormat = detectAudioFormat(inputBytes);
-  const inputFormatName = inputFormat === "audio/mpeg" ? "mp3" : 
-                         inputFormat === "audio/ogg" ? "ogg" : "wav";
+  const inputFormatName =
+    inputFormat === "audio/mpeg" ? "mp3" : inputFormat === "audio/ogg" ? "ogg" : "wav";
 
   // If already in target format, return as-is
   if (inputFormatName === targetFormat) {
     return {
       audioBytes: inputBytes,
       format: targetFormat,
-      mimeType: getMimeTypeForFormat(targetFormat)
+      mimeType: getMimeTypeForFormat(targetFormat),
     };
   }
 
@@ -183,7 +183,10 @@ async function convertWavToMp3(
   try {
     return await convertWavToMp3UsingLamejs(wavBytes, options);
   } catch (lamejsError) {
-    console.warn("Pure JavaScript MP3 conversion failed:", lamejsError instanceof Error ? lamejsError.message : String(lamejsError));
+    console.warn(
+      "Pure JavaScript MP3 conversion failed:",
+      lamejsError instanceof Error ? lamejsError.message : String(lamejsError)
+    );
 
     // Fallback to ffmpeg if available
     try {
@@ -250,7 +253,9 @@ async function convertWavToMp3UsingLamejs(
         }
       }
     } else {
-      throw new Error(`Unsupported channel count: ${wavInfo.channels}. Only mono and stereo are supported.`);
+      throw new Error(
+        `Unsupported channel count: ${wavInfo.channels}. Only mono and stereo are supported.`
+      );
     }
 
     // Flush encoder
@@ -271,10 +276,12 @@ async function convertWavToMp3UsingLamejs(
     return {
       audioBytes: result,
       format: "mp3",
-      mimeType: "audio/mpeg"
+      mimeType: "audio/mpeg",
     };
   } catch (error) {
-    throw new Error(`Pure JavaScript MP3 conversion failed: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Pure JavaScript MP3 conversion failed: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
 
@@ -290,7 +297,9 @@ async function convertWavToOgg(
     return await convertUsingFfmpeg(wavBytes, "wav", "ogg", options);
   } catch (error) {
     // Throw proper error instead of silent fallback
-    throw new Error(`OGG conversion failed: ${error instanceof Error ? error.message : String(error)}. Install ffmpeg for OGG conversion.`);
+    throw new Error(
+      `OGG conversion failed: ${error instanceof Error ? error.message : String(error)}. Install ffmpeg for OGG conversion.`
+    );
   }
 }
 
@@ -337,7 +346,8 @@ async function convertUsingFfmpeg(
 
     // Build ffmpeg command
     const args = [
-      "-i", inputFile,
+      "-i",
+      inputFile,
       "-y", // Overwrite output file
     ];
 
@@ -364,7 +374,7 @@ async function convertUsingFfmpeg(
     // Execute ffmpeg
     await new Promise<void>((resolve, reject) => {
       const ffmpeg = spawn("ffmpeg", args, { stdio: "pipe" });
-      
+
       ffmpeg.on("close", (code) => {
         if (code === 0) {
           resolve();
@@ -388,9 +398,8 @@ async function convertUsingFfmpeg(
     return {
       audioBytes: new Uint8Array(convertedBytes),
       format: targetFormat,
-      mimeType: getMimeTypeForFormat(targetFormat)
+      mimeType: getMimeTypeForFormat(targetFormat),
     };
-
   } finally {
     // Clean up temporary files
     try {
@@ -411,14 +420,14 @@ async function loadLamejsBundled(): Promise<any> {
   const vm = await import("node:vm");
 
   // Find the bundled lamejs file
-  const lamejsPath = join(process.cwd(), 'node_modules', 'lamejs', 'lame.all.js');
-  const lamejsCode = readFileSync(lamejsPath, 'utf8');
+  const lamejsPath = join(process.cwd(), "node_modules", "lamejs", "lame.all.js");
+  const lamejsCode = readFileSync(lamejsPath, "utf8");
 
   // Create a context and execute the bundled code
   const context: any = {
     console,
     module: { exports: {} },
-    exports: {}
+    exports: {},
   };
   vm.createContext(context);
   vm.runInContext(lamejsCode, context);
@@ -444,17 +453,13 @@ function parseWavHeader(wavBytes: Uint8Array): {
   const view = new DataView(wavBytes.buffer, wavBytes.byteOffset, wavBytes.byteLength);
 
   // Check RIFF signature
-  const riffSignature = String.fromCharCode(
-    wavBytes[0], wavBytes[1], wavBytes[2], wavBytes[3]
-  );
+  const riffSignature = String.fromCharCode(wavBytes[0], wavBytes[1], wavBytes[2], wavBytes[3]);
   if (riffSignature !== "RIFF") {
     throw new Error("Invalid WAV file: missing RIFF signature");
   }
 
   // Check WAVE signature
-  const waveSignature = String.fromCharCode(
-    wavBytes[8], wavBytes[9], wavBytes[10], wavBytes[11]
-  );
+  const waveSignature = String.fromCharCode(wavBytes[8], wavBytes[9], wavBytes[10], wavBytes[11]);
   if (waveSignature !== "WAVE") {
     throw new Error("Invalid WAV file: missing WAVE signature");
   }
@@ -463,7 +468,10 @@ function parseWavHeader(wavBytes: Uint8Array): {
   let offset = 12;
   while (offset < wavBytes.length - 8) {
     const chunkId = String.fromCharCode(
-      wavBytes[offset], wavBytes[offset + 1], wavBytes[offset + 2], wavBytes[offset + 3]
+      wavBytes[offset],
+      wavBytes[offset + 1],
+      wavBytes[offset + 2],
+      wavBytes[offset + 3]
     );
     const chunkSize = view.getUint32(offset + 4, true); // little-endian
 
@@ -471,7 +479,9 @@ function parseWavHeader(wavBytes: Uint8Array): {
       // Parse format chunk
       const audioFormat = view.getUint16(offset + 8, true);
       if (audioFormat !== 1) {
-        throw new Error(`Unsupported WAV format: ${audioFormat}. Only PCM (format 1) is supported.`);
+        throw new Error(
+          `Unsupported WAV format: ${audioFormat}. Only PCM (format 1) is supported.`
+        );
       }
 
       const channels = view.getUint16(offset + 10, true);
@@ -482,8 +492,10 @@ function parseWavHeader(wavBytes: Uint8Array): {
       let dataOffset = offset + 8 + chunkSize;
       while (dataOffset < wavBytes.length - 8) {
         const dataChunkId = String.fromCharCode(
-          wavBytes[dataOffset], wavBytes[dataOffset + 1],
-          wavBytes[dataOffset + 2], wavBytes[dataOffset + 3]
+          wavBytes[dataOffset],
+          wavBytes[dataOffset + 1],
+          wavBytes[dataOffset + 2],
+          wavBytes[dataOffset + 3]
         );
         const dataChunkSize = view.getUint32(dataOffset + 4, true);
 
@@ -493,7 +505,7 @@ function parseWavHeader(wavBytes: Uint8Array): {
             channels,
             sampleRate,
             bitsPerSample,
-            audioData
+            audioData,
           };
         }
 
@@ -530,9 +542,10 @@ function convertWavDataToInt16Array(audioData: Uint8Array, bitsPerSample: number
     // Convert 24-bit to 16-bit
     const result = new Int16Array(audioData.length / 3);
     for (let i = 0; i < result.length; i++) {
-      const sample24 = (audioData[i * 3]) | (audioData[i * 3 + 1] << 8) | (audioData[i * 3 + 2] << 16);
+      const sample24 =
+        audioData[i * 3] | (audioData[i * 3 + 1] << 8) | (audioData[i * 3 + 2] << 16);
       // Convert from 24-bit signed to 16-bit signed
-      const sample24Signed = sample24 > 0x7FFFFF ? sample24 - 0x1000000 : sample24;
+      const sample24Signed = sample24 > 0x7fffff ? sample24 - 0x1000000 : sample24;
       result[i] = Math.round(sample24Signed / 256); // Scale down from 24-bit to 16-bit
     }
     return result;
