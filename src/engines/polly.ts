@@ -63,18 +63,16 @@ export class PollyTTSClient extends AbstractTTSClient {
     // The Python implementation uses wav.setparams((1, 2, 16000, 0, "NONE", "NONE"))
     this.sampleRate = 16000; // Default sample rate for Polly PCM format
 
-    if (typeof window !== "undefined") {
-      throw new Error("AWS Polly is not supported in the browser. Use synthToBytes or synthToBytestream if available.");
-    }
+    // Support both Node and Browser. In browsers, prefer short-lived credentials or an injected PollyClient.
     try {
-      // Do not import here, only store credentials. Actual import is done in each async method.
+      // Do not import here; defer loading SDK to async methods. Allow injected client.
       this._pollyModule = null;
-      this.client = null;
+      this.client = (credentials as any)?.client ?? null;
       this.credentials = credentials;
     } catch (error) {
       console.error("Error initializing AWS Polly client:", error);
       console.warn(
-        "AWS Polly TTS will not be available. Make sure you have valid AWS credentials."
+        "AWS Polly TTS may not be available. Ensure credentials or an injected client are provided."
       );
     }
   }
@@ -720,11 +718,18 @@ export class PollyTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to true if credentials are valid
    */
   async checkCredentials(): Promise<boolean> {
-    // Fast-fail if required credentials are missing to avoid importing SDK in CI/tests
-    const { region, accessKeyId, secretAccessKey } = this.credentials as any;
-    if (!region || !accessKeyId || !secretAccessKey) {
-      return false;
+    // If a client is injected, attempt a lightweight API call
+    const injected = (this.credentials as any)?.client;
+    if (!injected) {
+      // Fast-fail if required credentials are missing to avoid importing SDK in CI/tests
+      const { region, accessKeyId, secretAccessKey } = this.credentials as any;
+      if (!region || !accessKeyId || !secretAccessKey) {
+        return false;
+      }
+    } else {
+      this.client = injected;
     }
+
     try {
       const pollyModule = this._pollyModule || (await (new Function('m','return import(m)') as any)("@aws-sdk/client-polly"));
       if (!this.client) {
