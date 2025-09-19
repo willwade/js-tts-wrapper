@@ -4,7 +4,7 @@
   "description": "A JavaScript/TypeScript library that provides a unified API for working with multiple cloud-based Text-to-Speech (TTS) services",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
-  "browser": "dist/browser.js",
+  "browser": "dist/js-tts-wrapper.browser.js",
   "types": "dist/index.d.ts",
   "bin": {
     "js-tts-wrapper": "bin/cli.js"
@@ -12,8 +12,11 @@
   "files": [
     "dist/cjs",
     "dist/esm",
-    "dist/browser.js",
     "dist/index.d.ts",
+    "dist/js-tts-wrapper.browser.js",
+    "dist/js-tts-wrapper.browser.min.js",
+    "dist/js-tts-wrapper.browser.umd.js",
+    "dist/js-tts-wrapper.browser.umd.min.js",
     "bin/cli.js"
   ],
   "exports": {
@@ -25,9 +28,9 @@
     },
     "./browser": {
       "types": "./dist/browser.d.ts",
-      "require": "./dist/cjs/browser.js",
-      "import": "./dist/browser.js",
-      "default": "./dist/browser.js"
+      "require": "./dist/js-tts-wrapper.browser.umd.js",
+      "import": "./dist/js-tts-wrapper.browser.js",
+      "default": "./dist/js-tts-wrapper.browser.js"
     }
   },
   "repository": {
@@ -38,11 +41,11 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "npm run build:cjs && npm run build:esm && npm run build:browser && npm run fix:cjs-imports",
+    "build": "npm run build:cjs && npm run build:esm && npm run build:browser && npm run build:bundle && npm run fix:cjs-imports",
     "build:cjs": "node scripts/generate-models-ts.cjs && tsc -p tsconfig.cjs.json && node scripts/create-cjs-package.js",
     "build:esm": "node scripts/generate-models-ts.cjs && tsc -p tsconfig.esm.json && tsc-alias -p tsconfig.esm.json && tsc-esm-fix --target=dist/esm --ext=.js --dirnameVar --filenameVar --sourceMap",
     "build:browser": "node scripts/create-browser-entry.cjs",
-    "build:bundle": "rollup -c rollup.config.js",
+    "build:bundle": "rollup --bundleConfigAsCjs -c rollup.config.js",
     "fix:cjs-imports": "node scripts/fix-cjs-imports.js",
     "dev": "tsc --watch",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",

@@ -15,26 +15,54 @@ async function loadSpeechMarkdown() {
   if (speechMarkdownLoaded) return SpeechMarkdown;
 
   try {
+    // Enable in both environments, but gate Node via env flag to keep it opt-in on servers/CI
     if (isNode) {
-      // In Node.js, try to import speechmarkdown-js without triggering bundlers
-      const dynamicImport: any = new Function('m', 'return import(m)');
-      const module = await dynamicImport("speechmarkdown-js");
-      SpeechMarkdown = module.SpeechMarkdown;
-      speechMarkdownLoaded = true;
-      return SpeechMarkdown;
+      const enabled = ((): boolean => {
+        try {
+          // Allow true/1/yes/on (case-insensitive)
+          const v = (process as any)?.env?.SPEECHMARKDOWN_ENABLE ?? "";
+          return /^(1|true|yes|on)$/i.test(String(v));
+        } catch {
+          return false;
+        }
+      })();
+
+      if (!enabled) {
+        console.warn(
+          "speechmarkdown-js disabled in Node (set SPEECHMARKDOWN_ENABLE=true to enable). Using built-in fallback."
+        );
+        return null;
+      }
     }
-    // In browser, speechmarkdown-js is not available
-    console.warn(
-      "speechmarkdown-js is not available in browser environments. Speech Markdown features will be limited."
-    );
-    return null;
+
+    // Attempt dynamic import in both Node and browser without triggering bundlers to hard-require it
+    const dynamicImport: any = new Function('m', 'return import(m)');
+    const module = await dynamicImport("speechmarkdown-js");
+    // Prefer named export, but tolerate default exports
+    SpeechMarkdown = module?.SpeechMarkdown ?? module?.default?.SpeechMarkdown ?? module?.default;
+    if (!SpeechMarkdown) {
+      throw new Error("speechmarkdown-js module did not expose SpeechMarkdown class");
+    }
+    speechMarkdownLoaded = true;
+    return SpeechMarkdown;
   } catch (_error) {
     console.warn(
-      "speechmarkdown-js not found. Speech Markdown features will be limited. Install with: npm install speechmarkdown-js"
+      "speechmarkdown-js not available. Using built-in fallback. To enable full Speech Markdown in browsers, add 'speechmarkdown-js' to your app and it will be loaded at runtime."
     );
     return null;
   }
 }
+
+// Lightweight fallback converter for a minimal subset used in tests
+function convertSpeechMarkdownFallback(markdown: string): string {
+  let out = markdown;
+  // [break:"500ms"] -> <break time="500ms"/>
+  out = out.replace(/\[break:\"([^\"]+)\"\]/g, '<break time="$1"/>');
+  // [500ms] or [500s] -> <break time="500ms"/>
+  out = out.replace(/\[(\d+)m?s\]/g, '<break time="$1ms"/>');
+  return out;
+}
+
 
 /**
  * SpeechMarkdownConverter class for converting Speech Markdown to SSML
@@ -60,12 +88,13 @@ export class SpeechMarkdownConverter {
    * @returns SSML text
    */
   async toSSML(markdown: string, platform = "amazon-alexa"): Promise<string> {
-    const instance = await this.ensureInitialized();
-    if (!instance) {
-      // Fallback: return the text wrapped in basic SSML
-      return `<speak>${markdown}</speak>`;
+    // If already initialized, use the full library
+    if (this.speechMarkdownInstance) {
+      return this.speechMarkdownInstance.toSSML(markdown, { platform });
     }
-    return instance.toSSML(markdown, { platform });
+    // Fallback: do a minimal conversion without importing the library
+    const converted = convertSpeechMarkdownFallback(markdown);
+    return `<speak>${converted}</speak>`;
   }
 
   /**

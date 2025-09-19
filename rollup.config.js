@@ -32,8 +32,11 @@ module.exports = [
     ],
     plugins: [
       typescript({
-        tsconfig: "./tsconfig.json",
-        include: ['src/**/*.ts', 'node_modules/**/*.ts']
+        // Use inline compiler options to avoid outDir conflicts
+        tsconfig: false,
+        declaration: false,
+        // Only transpile our sources; do not transpile node_modules TS
+        include: ['src/**/*.ts']
       }),
       resolve(),
       commonjs(),
@@ -83,9 +86,11 @@ module.exports = [
     ],
     plugins: [
       typescript({
-        tsconfig: "./tsconfig.browser.json",
+        // Use inline compiler options to avoid outDir conflicts
+        tsconfig: false,
         declaration: false,
-        include: ['src/**/*.ts', 'node_modules/**/*.ts']
+        // Only transpile our sources; do not transpile node_modules TS
+        include: ['src/**/*.ts']
       }),
       resolve({
         browser: true

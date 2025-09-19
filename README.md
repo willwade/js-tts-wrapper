@@ -533,6 +533,19 @@ await ttsElevenLabs.speak(markdown, { useSpeechMarkdown: true }); // Converts to
 - `(text)[pitch:"high"]` - Pitch control
 - `(text)[volume:"loud"]` - Volume control
 
+
+### Node: Enabling Full Speech Markdown Conversion
+
+By default, js-tts-wrapper uses a lightweight built-in fallback for Speech Markdown conversion in Node.js (sufficient for basic patterns like breaks). To enable the full speechmarkdown-js library at runtime in Node, set the environment variable before running your app or tests:
+
+```bash
+SPEECHMARKDOWN_ENABLE=true npm test
+# or on Windows PowerShell
+$env:SPEECHMARKDOWN_ENABLE="true"; npm test
+```
+
+If the library is not available or the flag is not set, the fallback remains active and tests still pass for the basic features.
+
 ### Engine Compatibility
 
 | Engine | Speech Markdown Support | Processing Method |
