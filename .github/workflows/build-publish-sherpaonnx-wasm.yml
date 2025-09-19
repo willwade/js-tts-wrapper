@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      ASSETS_REPO_TOKEN: ${{ secrets.ASSETS_REPO_TOKEN }}
     steps:
       - name: Resolve sherpa-onnx tag
         id: tag
@@ -29,7 +31,7 @@ jobs:
             fi
             echo "tag=$LATEST" >> $GITHUB_OUTPUT
           fi
-          echo "Resolved sherpa-onnx tag: ${{ steps.tag.outputs.tag }}"
+          echo "Resolved sherpa-onnx tag written to GITHUB_OUTPUT"
 
       - name: Set up Emscripten SDK
         uses: mymindstorm/setup-emsdk@v14
@@ -81,9 +83,9 @@ jobs:
           path: out
 
       - name: Publish to js-tts-wrapper-assets repo (jsDelivr-friendly)
-        if: ${{ secrets.ASSETS_REPO_TOKEN != '' }}
+        if: ${{ env.ASSETS_REPO_TOKEN != '' }}
         env:
-          GH_TOKEN: ${{ secrets.ASSETS_REPO_TOKEN }}
+          GH_TOKEN: ${{ env.ASSETS_REPO_TOKEN }}
         run: |
           set -euo pipefail
           git config --global user.name "github-actions[bot]"
@@ -104,5 +106,5 @@ jobs:
         run: |
           echo "If published to assets repo, use this base URL:"
           echo "  https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/${{ steps.tag.outputs.tag }}"
-          echo "Use wasmPath: \"$BASE/sherpa-onnx.js\" and the runtime will fetch the .wasm next to it."
+          echo "Use wasmPath: \"https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/${{ steps.tag.outputs.tag }}/sherpa-onnx.js\""
 
