@@ -966,13 +966,22 @@ export abstract class AbstractTTSClient {
 
     try {
       const isValid = await this.checkCredentials();
-      const voices = isValid ? await this._getVoices() : [];
+      const requiresCreds = this.getRequiredCredentials().length > 0;
+      let voices: UnifiedVoice[] = [];
+      if (isValid && requiresCreds) {
+        try {
+          voices = await this._getVoices();
+        } catch (e) {
+          console.warn("getCredentialStatus: _getVoices() failed; continuing without voices", e);
+          voices = [];
+        }
+      }
 
       return {
         valid: isValid,
         engine: engineName,
         environment: isBrowser ? 'browser' : 'node',
-        requiresCredentials: this.getRequiredCredentials().length > 0,
+        requiresCredentials: requiresCreds,
         credentialTypes: this.getRequiredCredentials(),
         message: isValid ?
           `${engineName} credentials are valid and ${voices.length} voices are available` :
