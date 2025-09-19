@@ -125,6 +125,8 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
   private tts: any = null;
   private wasmPath = "";
   private wasmLoaded = false;
+  private wasmBaseUrl?: string;
+  private mergedModelsUrl?: string;
 
   // Enhanced multi-model support
   private enhancedOptions: EnhancedWasmOptions;
@@ -140,13 +142,16 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
   constructor(credentials: TTSCredentials = {}, enhancedOptions: EnhancedWasmOptions = {}) {
     super(credentials);
 
+    // Capabilities: Browser-only engine, requires WASM runtime
+    this.capabilities = { browserSupported: true, nodeSupported: false, needsWasm: true };
+
     // Set default sample rate for the Piper model
     this.sampleRate = 22050;
 
-    // Note: baseDir from credentials is accepted for backward compatibility but not used
-
-    // Set default WebAssembly path
-    this.wasmPath = (credentials.wasmPath as string) || "";
+    // Optional configuration from credentials
+    this.wasmPath = (credentials as any).wasmPath || ""; // JS glue path (if provided)
+    this.wasmBaseUrl = (credentials as any).wasmBaseUrl || undefined; // Base URL for glue+wasm
+    this.mergedModelsUrl = (credentials as any).mergedModelsUrl || (credentials as any).modelsUrl || undefined;
 
     // Enhanced options with defaults for backward compatibility
     this.enhancedOptions = {
@@ -157,7 +162,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
 
     // Initialize multi-model components if enabled
     if (this.enhancedOptions.enableMultiModel) {
-      this.modelRepository = new ModelRepository();
+      this.modelRepository = new ModelRepository(this.mergedModelsUrl);
     }
   }
 
@@ -265,7 +270,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         } else {
           // In browser environments, try to fetch from a URL
           try {
-            const response = await fetch("./data/merged_models.json");
+            const response = await fetch(this.mergedModelsUrl || "./data/merged_models.json");
             if (response.ok) {
               const modelsJson = await response.text();
               voiceModels = JSON.parse(modelsJson);
@@ -388,36 +393,73 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           this.wasmPath = wasmUrl;
           console.log("Setting wasmPath to:", this.wasmPath);
 
-          // We don't need to load the scripts here, as they should already be loaded in the HTML file
-          console.log(
-            "Checking if createOfflineTts is already available:",
-            typeof (window as any).createOfflineTts === "function"
-          );
+          // Auto-load JS glue and WASM if not present
+          const w = (window as any);
+          let baseUrl: string | undefined = this.wasmBaseUrl;
+          let scriptUrl: string | undefined;
+          const provided = wasmUrl || this.wasmPath || "";
+          if (provided) {
+            if (/\.js($|\?)/.test(provided)) {
+              scriptUrl = provided;
+              if (!baseUrl) {
+                const idx = provided.lastIndexOf("/");
+                if (idx > -1) baseUrl = provided.slice(0, idx);
+              }
+            } else {
+              baseUrl = provided;
+            }
+          }
+          if (!scriptUrl && baseUrl) {
+            const b = baseUrl.replace(/\/$/, "");
+            // Default glue filename (can be overridden by passing full wasmPath)
+            scriptUrl = `${b}/sherpaonnx.js`;
+          }
+          if (!scriptUrl) {
+            console.warn("No WASM script URL provided; attempting default ./sherpaonnx.js");
+            scriptUrl = "./sherpaonnx.js";
+          }
 
-          // Wait for the createOfflineTts function to be available
-          await new Promise<void>((resolve) => {
-            const checkCreateOfflineTts = () => {
+          // Persist the resolved script URL
+          this.wasmPath = scriptUrl!;
+          console.log("Resolved wasmPath to:", this.wasmPath);
+
+
+          // Ensure Module.locateFile points to the base for .wasm
+          w.Module = w.Module || {};
+          if (baseUrl) {
+            const b = baseUrl.replace(/\/$/, "");
+            w.Module.locateFile = (p: string) => `${b}/${p}`;
+          }
+
+          // Load the glue JS if createOfflineTts is not available
+          if (typeof w.createOfflineTts !== "function") {
+            await new Promise<void>((resolve, reject) => {
+              const s = document.createElement("script");
+              s.src = scriptUrl!;
+              s.async = true;
+              s.onload = () => resolve();
+              s.onerror = () => reject(new Error(`Failed to load SherpaONNX glue: ${scriptUrl}`));
+              document.head.appendChild(s);
+            });
+          }
+
+          // Wait for Module.calledRun and createOfflineTts to be ready
+          await new Promise<void>((resolve, reject) => {
+            const giveUpAt = Date.now() + 15000; // 15s
+            const checkReady = () => {
               if (
-                typeof (window as any).createOfflineTts === "function" &&
-                typeof (window as any).Module !== "undefined" &&
-                (window as any).Module.calledRun
+                typeof w.createOfflineTts === "function" &&
+                typeof w.Module !== "undefined" &&
+                w.Module.calledRun
               ) {
-                console.log("createOfflineTts and Module are available and initialized");
                 resolve();
+              } else if (Date.now() > giveUpAt) {
+                reject(new Error("Timed out waiting for SherpaONNX WASM to initialize"));
               } else {
-                console.log(
-                  "Waiting for createOfflineTts and Module to be available and initialized..."
-                );
-                console.log(
-                  "createOfflineTts available:",
-                  typeof (window as any).createOfflineTts === "function"
-                );
-                console.log("Module available:", typeof (window as any).Module !== "undefined");
-                console.log("Module.calledRun:", (window as any).Module?.calledRun);
-                setTimeout(checkCreateOfflineTts, 500);
+                setTimeout(checkReady, 200);
               }
             };
-            checkCreateOfflineTts();
+            checkReady();
           });
 
           // Now that we know createOfflineTts and Module are available, store them
@@ -514,6 +556,15 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
     }
 
     console.log("synthToBytes called with text:", processedText);
+
+    // Ensure runtime is initialized before attempting synthesis
+    if (isBrowser) {
+      const status = this.getInitializationStatus();
+      if (!status.isInitialized) {
+        await this.initializeWasm(this.wasmPath || this.wasmBaseUrl || "");
+      }
+    }
+
 
     // Enhanced multi-model synthesis
     if (this.enhancedOptions.enableMultiModel && this.wasmModule && this.currentVoiceId) {
@@ -992,6 +1043,10 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         return this.wasmLoaded;
       case "wasmPath":
         return this.wasmPath;
+      case "wasmBaseUrl":
+        return this.wasmBaseUrl;
+      case "mergedModelsUrl":
+        return this.mergedModelsUrl;
       case "multiModelEnabled":
         return this.enhancedOptions.enableMultiModel;
       case "maxCachedModels":
@@ -1019,6 +1074,16 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         break;
       case "wasmPath":
         this.wasmPath = value;
+        break;
+      case "wasmBaseUrl":
+        this.wasmBaseUrl = value;
+        break;
+      case "mergedModelsUrl":
+        this.mergedModelsUrl = value;
+        if (this.modelRepository) {
+          // Recreate repository with new URL on the fly
+          this.modelRepository = new ModelRepository(this.mergedModelsUrl);
+        }
         break;
       default:
         super.setProperty(property, value);
@@ -1148,9 +1213,10 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
  */
 class ModelRepository {
   private modelsIndex: ModelConfig[] = [];
+  private modelsUrl?: string;
 
-  constructor() {
-    // No baseUrl needed - we use the existing merged_models.json infrastructure
+  constructor(modelsUrl?: string) {
+    this.modelsUrl = modelsUrl;
   }
 
   async loadModelsIndex(): Promise<void> {
@@ -1168,7 +1234,7 @@ class ModelRepository {
       } else {
         // In browser, try to fetch from the existing location
         try {
-          const response = await fetch("./data/merged_models.json");
+          const response = await fetch(this.modelsUrl || "./data/merged_models.json");
           if (response.ok) {
             const modelsData = await response.json();
             voiceModels = Object.values(modelsData);

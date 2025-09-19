@@ -1000,6 +1000,25 @@ The library works in both Node.js and browser environments. In browsers, use the
 </script>
 ```
 
+### SherpaOnnx-WASM (Browser) – options and capabilities
+
+- Auto-load WASM: pass either `wasmBaseUrl` (directory with sherpaonnx.js + .wasm) or `wasmPath` (full glue JS URL). The runtime loads the glue and points Module.locateFile to fetch the .wasm.
+- Models index: set `mergedModelsUrl` to your hosted merged_models.json (defaults to ./data/merged_models.json when available).
+- Capabilities: each client exposes `client.capabilities` to help UIs filter engines.
+
+```html
+<script type="module">
+  import { SherpaOnnxWasmTTSClient } from 'js-tts-wrapper/browser';
+  const tts = new SherpaOnnxWasmTTSClient({
+    wasmBaseUrl: '/assets/sherpaonnx',            // or: wasmPath: '/assets/sherpaonnx/sherpaonnx.js'
+    mergedModelsUrl: '/assets/data/merged_models.json',
+  });
+  console.log(tts.capabilities); // { browserSupported: true, nodeSupported: false, needsWasm: true }
+  await tts.speak('Hello from SherpaONNX WASM');
+</script>
+```
+
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

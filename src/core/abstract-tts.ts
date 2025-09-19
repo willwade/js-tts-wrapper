@@ -67,6 +67,16 @@ export abstract class AbstractTTSClient {
   protected timings: Array<[number, number, string]> = [];
 
   /**
+   * Capability signaling for UIs to filter providers without hardcoding names
+   * Engines can override these in their constructors.
+   */
+  public capabilities: { browserSupported: boolean; nodeSupported: boolean; needsWasm?: boolean } = {
+    browserSupported: true,
+    nodeSupported: true,
+    needsWasm: false,
+  };
+
+  /**
    * Audio sample rate in Hz
    * This is used for playback and word timing estimation
    * Default is 24000 Hz, but engines can override this
