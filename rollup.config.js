@@ -35,6 +35,8 @@ module.exports = [
         // Use inline compiler options to avoid outDir conflicts
         tsconfig: false,
         declaration: false,
+        target: "ES2018",
+        downlevelIteration: true,
         // Only transpile our sources; do not transpile node_modules TS
         include: ['src/**/*.ts']
       }),
@@ -89,6 +91,8 @@ module.exports = [
         // Use inline compiler options to avoid outDir conflicts
         tsconfig: false,
         declaration: false,
+        target: "ES2018",
+        downlevelIteration: true,
         // Only transpile our sources; do not transpile node_modules TS
         include: ['src/**/*.ts']
       }),

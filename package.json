@@ -1,6 +1,6 @@
 {
   "name": "js-tts-wrapper",
-  "version": "0.1.45",
+  "version": "0.1.46",
   "description": "A JavaScript/TypeScript library that provides a unified API for working with multiple cloud-based Text-to-Speech (TTS) services",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -147,7 +147,6 @@
     "rollup": "^4.39.0",
     "sinon": "^20.0.0",
     "sound-play": "^1.1.0",
-    "speechmarkdown-js": "^2.1.0",
     "ts-jest": "^29.3.2",
     "tsc-alias": "^1.8.15",
     "tsc-esm-fix": "^3.1.2",
@@ -304,6 +303,7 @@
     "@elevenlabs/elevenlabs-js": "^2.1.0",
     "aws-sdk": "^2.1638.0",
     "lamejs": "^1.2.1",
-    "sherpa-onnx-node": "^1.12.0"
+    "sherpa-onnx-node": "^1.12.0",
+    "speechmarkdown-js": "^2.1.0"
   }
 }
