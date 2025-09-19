@@ -24,33 +24,7 @@ const audioState: AudioState = {
   fs: null,
 };
 
-// This function is no longer used, but we keep it for reference
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// @ts-ignore
-async function _unusedDynamicRequire(moduleName: string): Promise<any> {
-  // In Node.js, we can use a dynamic import
-  if (isNode) {
-    try {
-      // For Node.js built-in modules
-      if (moduleName.startsWith("node:")) {
-        return await import(moduleName);
-      }
-
-      // For third-party modules
-      return await import(moduleName);
-    } catch (_importError) {
-      // Fallback to global require if available
-      try {
-        // @ts-ignore
-        return require(moduleName);
-      } catch (_requireError) {
-        // Ignore errors
-      }
-    }
-  }
-
-  throw new Error(`Failed to load module: ${moduleName}`);
-}
+// Note: Removed an old dynamic-require helper to avoid bundler warnings in browser builds.
 
 /**
  * Check if Node.js audio playback is available
