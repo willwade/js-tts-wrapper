@@ -594,6 +594,9 @@ await tts.speak('Hello from Azure!');
 
 ### Google Cloud
 
+Note: Google Cloud TTS supports both authentication methods — Service Account (Node SDK) and API key (REST, browser‑safe).
+
+
 #### ESM
 ```javascript
 import { GoogleTTSClient } from 'js-tts-wrapper';
@@ -616,6 +619,43 @@ const tts = new GoogleTTSClient({
 // Inside an async function
 await tts.speak('Hello from Google Cloud!');
 ```
+
+#### API key mode (Node or Browser)
+
+Google Cloud Text-to-Speech also supports an API key over the REST API. This is browser-safe and requires no service account file. Restrict the key in Google Cloud Console (enable only Text-to-Speech API and restrict by HTTP referrer for browser use).
+
+ESM (Node or Browser):
+```javascript
+import { GoogleTTSClient } from 'js-tts-wrapper';
+
+const tts = new GoogleTTSClient({
+  apiKey: process.env.GOOGLECLOUDTTS_API_KEY || 'your-api-key',
+  // optional defaults
+  voiceId: 'en-US-Wavenet-D',
+  lang: 'en-US'
+});
+
+await tts.speak('Hello from Google TTS with API key!');
+```
+
+CommonJS (Node):
+```javascript
+const { GoogleTTSClient } = require('js-tts-wrapper');
+
+const tts = new GoogleTTSClient({
+  apiKey: process.env.GOOGLECLOUDTTS_API_KEY || 'your-api-key'
+});
+
+(async () => {
+  await tts.speak('Hello from Google TTS with API key!');
+})();
+```
+
+Notes:
+- REST v1 does not return word timepoints; the wrapper provides estimated timings for boundary events.
+- For true timings, use service account credentials (Node) where the beta client can be used.
+- Environment variable supported by examples/tests: `GOOGLECLOUDTTS_API_KEY`.
+
 
 ### AWS Polly
 

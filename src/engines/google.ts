@@ -11,19 +11,25 @@ import * as SpeechMarkdown from "../markdown/converter";
  */
 export interface GoogleTTSCredentials extends TTSCredentials {
   /**
-   * Google Cloud project ID
+   * Google Cloud project ID (Node/service-account usage)
    */
   projectId?: string;
 
   /**
-   * Google Cloud credentials JSON
+   * Google Cloud credentials JSON (Node/service-account usage)
    */
   credentials?: any;
 
   /**
-   * Google Cloud credentials file path
+   * Google Cloud credentials file path (Node/service-account usage)
    */
   keyFilename?: string;
+
+  /**
+   * API key for REST usage (browser-safe). If provided, we will use the REST API via fetch
+   * instead of the @google-cloud/text-to-speech client.
+   */
+  apiKey?: string;
 }
 
 /**
@@ -74,6 +80,13 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @param credentials Google TTS credentials
    */
   private async initializeClient(credentials: GoogleTTSCredentials): Promise<void> {
+    // If apiKey is provided, use REST mode (browser-safe) and skip Node client init
+    if (credentials.apiKey) {
+      this.client = null;
+      this.useBetaApi = false; // v1 REST doesn't return timepoints; we'll estimate timings
+      return;
+    }
+
     try {
       // Try to load the Google Cloud Text-to-Speech client (Node.js only)
       const dynamicImport: any = new Function('m', 'return import(m)');
@@ -120,6 +133,12 @@ export class GoogleTTSClient extends AbstractTTSClient {
    */
   protected async _getVoices(): Promise<any[]> {
     try {
+      // If using REST mode with API key (browser or Node), call REST voices endpoint
+      if (this.googleCredentials.apiKey) {
+        const json = await this.restListVoices(this.googleCredentials.apiKey);
+        return Array.isArray(json.voices) ? json.voices : [];
+      }
+
       // Lazy initialization - initialize client on first use
       if (!this.client) {
         await this.initializeClient(this.googleCredentials);
@@ -146,6 +165,33 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to audio bytes
    */
   async synthToBytes(text: string, options?: GoogleTTSOptions): Promise<Uint8Array> {
+    // If API key provided, use REST mode (browser-safe, no Node deps)
+    if (this.googleCredentials.apiKey) {
+      try {
+        const ssml = await this.prepareSSML(text, options);
+        const voiceName = options?.voice || this.voiceId;
+        const supportsSSML = !voiceName || (voiceName.includes("Standard") || voiceName.includes("Wavenet"));
+        let languageCode = this.lang || "en-US";
+        if (voiceName) {
+          const parts = voiceName.split("-");
+          if (parts.length >= 2) languageCode = `${parts[0]}-${parts[1]}`;
+        }
+        const request: any = {
+          input: supportsSSML && SSMLUtils.isSSML(ssml) ? { ssml } : { text: SSMLUtils.isSSML(ssml) ? SSMLUtils.stripSSML(ssml) : ssml },
+          voice: { languageCode, name: voiceName },
+          audioConfig: { audioEncoding: options?.format === "mp3" ? "MP3" : "LINEAR16" },
+        };
+        if (!options?.voice && !this.voiceId) request.voice.ssmlGender = "NEUTRAL";
+        // REST v1 does not return timepoints; estimate timings
+        const bytes = await this.restSynthesize(this.googleCredentials.apiKey, request);
+        this._createEstimatedWordTimings(text);
+        return bytes;
+      } catch (error) {
+        console.error("Error synthesizing speech via REST (apiKey):", error);
+        throw error;
+      }
+    }
+
     // Lazy initialization - initialize client on first use
     if (!this.client) {
       await this.initializeClient(this.googleCredentials);
@@ -458,6 +504,8 @@ export class GoogleTTSClient extends AbstractTTSClient {
 
       if (wordIndex >= 0 && wordIndex < words.length) {
         const word = words[wordIndex];
+
+
         const startTime = timepoint.timeSeconds;
 
         // Estimate end time (next timepoint or start + word length * average time per character)
@@ -490,6 +538,11 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to true if credentials are valid
    */
   async checkCredentials(): Promise<boolean> {
+    // If using API key mode, consider presence of key as valid for basic checks
+    if (this.googleCredentials.apiKey) {
+      return typeof this.googleCredentials.apiKey === "string" && this.googleCredentials.apiKey.length > 10;
+    }
+
     // If the client is not available, check if the credentials file exists
     if (!this.client) {
       try {
@@ -515,7 +568,7 @@ export class GoogleTTSClient extends AbstractTTSClient {
             return true;
           }
         } else {
-          // In browser environment, we can't check file existence
+          // In browser environment without apiKey, we can't check file existence
           console.warn("Cannot check Google credentials file existence in browser environment");
           return false;
         }
@@ -534,6 +587,20 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to an object with success flag and optional error message
    */
   async checkCredentialsDetailed(): Promise<{ success: boolean; error?: string; voiceCount?: number }> {
+    // API key mode: try listing voices to validate the key
+    if (this.googleCredentials.apiKey) {
+      try {
+        const json = await this.restListVoices(this.googleCredentials.apiKey);
+        const count = Array.isArray(json.voices) ? json.voices.length : 0;
+        return { success: true, voiceCount: count };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error)
+        };
+      }
+    }
+
     // If the client is not available, check if the credentials file exists
     if (!this.client) {
       try {
@@ -564,7 +631,7 @@ export class GoogleTTSClient extends AbstractTTSClient {
             error: "No valid credentials file found"
           };
         } else {
-          // In browser environment, we can't check file existence
+          // In browser environment without apiKey, we can't check file existence
           return {
             success: false,
             error: "Cannot check Google credentials file existence in browser environment"
@@ -582,4 +649,49 @@ export class GoogleTTSClient extends AbstractTTSClient {
     // Use the default implementation if client is available
     return super.checkCredentialsDetailed();
   }
+
+  // ===== REST helpers for API key mode (browser-safe) =====
+  private async restListVoices(apiKey: string): Promise<any> {
+    const url = `https://texttospeech.googleapis.com/v1/voices?key=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Google TTS voices failed: ${res.status} ${res.statusText}`);
+    }
+    return res.json();
+  }
+
+  private async restSynthesize(apiKey: string, request: any): Promise<Uint8Array> {
+    const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Google TTS synth failed: ${res.status} ${res.statusText} ${text}`);
+    }
+    const json = await res.json();
+    const b64 = json?.audioContent as string | undefined;
+    if (!b64) return new Uint8Array(0);
+    return this.base64ToBytes(b64);
+  }
+
+  private base64ToBytes(b64: string): Uint8Array {
+    // Node path
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    if (typeof Buffer !== "undefined" && typeof (Buffer as any).from === "function") {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      const buf = (Buffer as any).from(b64, "base64");
+      return buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    }
+    // Browser path
+    const binary = typeof atob === "function" ? atob(b64) : "";
+    const out = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+    return out;
+  }
+
 }

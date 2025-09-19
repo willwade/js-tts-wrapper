@@ -70,6 +70,7 @@ export async function getEngineConfigs() {
     {
       name: "google",
       factory: () => new GoogleTTSClient({
+        apiKey: process.env.GOOGLECLOUDTTS_API_KEY || process.env.GOOGLECLOUD_API_KEY || '',
         keyFilename: process.env.GOOGLE_SA_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS || '',
       }),
       description: "Google Cloud TTS"
@@ -203,6 +204,7 @@ export function getEngineConfigsCJS() {
     {
       name: "google",
       factory: () => new GoogleTTSClient({
+        apiKey: process.env.GOOGLECLOUDTTS_API_KEY || process.env.GOOGLECLOUD_API_KEY || '',
         keyFilename: process.env.GOOGLE_SA_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS || '',
       }),
       description: "Google Cloud TTS"
