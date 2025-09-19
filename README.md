@@ -1025,10 +1025,10 @@ For convenience, we publish prebuilt SherpaONNX TTS WebAssembly files to a separ
 - Default CDN base (via jsDelivr):
   - https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/<sherpa_tag>
   - Files included:
-    - sherpa-onnx.js (glue)
-    - sherpa-onnx-wasm-main.wasm
-    - sherpa-onnx-wasm-main.js
-    - sherpa-onnx-wasm-main.data
+    - sherpa-onnx-tts.js (glue; sometimes named sherpa-onnx.js depending on upstream tag)
+    - sherpa-onnx-wasm-main-tts.wasm (or sherpa-onnx-wasm-main.wasm)
+    - sherpa-onnx-wasm-main-tts.js (or sherpa-onnx-wasm-main.js)
+    - sherpa-onnx-wasm-main-tts.data (or sherpa-onnx-wasm-main.data)
 
 - Example (using hosted artifacts):
 
@@ -1039,8 +1039,8 @@ For convenience, we publish prebuilt SherpaONNX TTS WebAssembly files to a separ
   const base = 'https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/<sherpa_tag>';
 
   const tts = new SherpaOnnxWasmTTSClient({
-    // When using upstream filenames, prefer wasmPath to the glue JS file
-    wasmPath: `${base}/sherpa-onnx.js`,
+    // Prefer explicit glue filename from upstream
+    wasmPath: `${base}/sherpa-onnx-tts.js`,
     mergedModelsUrl: '/assets/data/merged_models.json',
   });
 

@@ -66,14 +66,53 @@ jobs:
           ./build-wasm-simd-tts.sh
 
       - name: Collect artifacts
+        id: collect
         run: |
           set -euo pipefail
           mkdir -p out
           SRC=sherpa-onnx/build-wasm-simd-tts/install/bin/wasm/tts
-          cp "$SRC/sherpa-onnx.js" out/
-          cp "$SRC/sherpa-onnx-wasm-main.js" out/
-          cp "$SRC/sherpa-onnx-wasm-main.wasm" out/
-          cp "$SRC/sherpa-onnx-wasm-main.data" out/
+          # Glue JS (try TTS-specific first)
+          if [ -f "$SRC/sherpa-onnx-tts.js" ]; then
+            cp "$SRC/sherpa-onnx-tts.js" out/
+            GLUE="sherpa-onnx-tts.js"
+          elif [ -f "$SRC/sherpa-onnx.js" ]; then
+            cp "$SRC/sherpa-onnx.js" out/
+            GLUE="sherpa-onnx.js"
+          elif [ -f "$SRC/sherpaonnx.js" ]; then
+            cp "$SRC/sherpaonnx.js" out/
+            GLUE="sherpaonnx.js"
+          else
+            echo "Glue JS not found in $SRC" >&2
+            ls -la "$SRC" || true
+            exit 1
+          fi
+          echo "glue=$GLUE" >> $GITHUB_OUTPUT
+
+          # Main runtime JS
+          if [ -f "$SRC/sherpa-onnx-wasm-main-tts.js" ]; then
+            cp "$SRC/sherpa-onnx-wasm-main-tts.js" out/
+          elif [ -f "$SRC/sherpa-onnx-wasm-main.js" ]; then
+            cp "$SRC/sherpa-onnx-wasm-main.js" out/
+          fi
+
+          # WASM binary
+          if [ -f "$SRC/sherpa-onnx-wasm-main-tts.wasm" ]; then
+            cp "$SRC/sherpa-onnx-wasm-main-tts.wasm" out/
+          elif [ -f "$SRC/sherpa-onnx-wasm-main.wasm" ]; then
+            cp "$SRC/sherpa-onnx-wasm-main.wasm" out/
+          else
+            echo ".wasm not found in $SRC" >&2
+            ls -la "$SRC" || true
+            exit 1
+          fi
+
+          # Data file (optional but expected in upstream)
+          if [ -f "$SRC/sherpa-onnx-wasm-main-tts.data" ]; then
+            cp "$SRC/sherpa-onnx-wasm-main-tts.data" out/
+          elif [ -f "$SRC/sherpa-onnx-wasm-main.data" ]; then
+            cp "$SRC/sherpa-onnx-wasm-main.data" out/
+          fi
+
           cp sherpa-onnx/LICENSE out/SHERPAONNX-LICENSE
 
       - name: Upload workflow artifact
@@ -106,5 +145,7 @@ jobs:
         run: |
           echo "If published to assets repo, use this base URL:"
           echo "  https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/${{ steps.tag.outputs.tag }}"
-          echo "Use wasmPath: \"https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/${{ steps.tag.outputs.tag }}/sherpa-onnx.js\""
+          GLUE=${{ steps.collect.outputs.glue }}
+          if [ -z "$GLUE" ]; then GLUE="sherpa-onnx-tts.js"; fi
+          echo "Use wasmPath: \"https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/${{ steps.tag.outputs.tag }}/$GLUE\""
 
