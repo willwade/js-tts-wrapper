@@ -205,6 +205,11 @@ export class OpenAITTSClient extends AbstractTTSClient {
    * @returns Promise resolving to true if credentials are valid, false otherwise
    */
   async checkCredentials(): Promise<boolean> {
+    // Fast-fail without importing the SDK if no API key is available
+    const apiKey = this.credentials.apiKey || process.env.OPENAI_API_KEY;
+    if (!apiKey || String(apiKey).trim() === "") {
+      return false;
+    }
     try {
       const client = await this.loadClient();
       if (client instanceof MockOpenAI) {
