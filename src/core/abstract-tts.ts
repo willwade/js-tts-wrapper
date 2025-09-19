@@ -165,7 +165,12 @@ export abstract class AbstractTTSClient {
       return nativeAudioBytes;
     }
 
-    // Try to convert if conversion is available
+    // Try to convert if conversion is available (Node only)
+    if (!isNode) {
+      console.warn(`Audio format conversion not available in browser. Returning native format (${nativeFormat}) instead of requested format (${requestedFormat})`);
+      return nativeAudioBytes;
+    }
+
     try {
       const { isAudioConversionAvailable, convertAudioFormat } = await (new Function('m','return import(m)'))('../utils/audio-converter');
       if (isAudioConversionAvailable()) {
@@ -272,9 +277,7 @@ export abstract class AbstractTTSClient {
         audioBytes = await this.synthToBytesWithConversion(input, options);
 
         // Determine MIME type based on actual audio format
-        const { getMimeTypeForFormat } = await (new Function('m','return import(m)'))('../utils/audio-converter');
-        const actualFormat = this.detectNativeFormat(audioBytes);
-        mimeType = getMimeTypeForFormat(actualFormat);
+        mimeType = detectAudioFormat(audioBytes);
       } else {
         // Audio input (file, bytes, or stream)
         const { processAudioInput } = await import("../utils/audio-input");
@@ -287,7 +290,9 @@ export abstract class AbstractTTSClient {
       if (isBrowser) {
 
         // Create audio blob and URL with the correct MIME type
-        const blob = new Blob([audioBytes], { type: mimeType });
+        const ab = new ArrayBuffer(audioBytes.byteLength);
+            new Uint8Array(ab).set(audioBytes);
+            const blob = new Blob([ab], { type: mimeType });
         const url = URL.createObjectURL(blob);
 
         // Create and play audio element
@@ -426,27 +431,27 @@ export abstract class AbstractTTSClient {
 
         // Apply format conversion if needed (for streaming, we convert the final buffer)
         if (options?.format) {
-          try {
-            const { isAudioConversionAvailable, convertAudioFormat, getMimeTypeForFormat } = await (new Function('m','return import(m)'))('../utils/audio-converter');
+          if (!isNode) {
+            // Browser: no conversion; just detect MIME from bytes
+            mimeType = detectAudioFormat(audioBytes);
+          } else {
+            try {
+            const { isAudioConversionAvailable, convertAudioFormat } = await (new Function('m','return import(m)'))('../utils/audio-converter');
             if (isAudioConversionAvailable()) {
               const conversionResult = await convertAudioFormat(audioBytes, options.format as AudioFormat);
               audioBytes = conversionResult.audioBytes;
               mimeType = conversionResult.mimeType;
             } else {
-              const actualFormat = this.detectNativeFormat(audioBytes);
-              mimeType = getMimeTypeForFormat(actualFormat);
+              mimeType = detectAudioFormat(audioBytes);
             }
           } catch (error) {
             console.warn(`Streaming format conversion failed: ${error instanceof Error ? error.message : String(error)}`);
-            const { getMimeTypeForFormat } = await (new Function('m','return import(m)'))('../utils/audio-converter');
-            const actualFormat = this.detectNativeFormat(audioBytes);
-            mimeType = getMimeTypeForFormat(actualFormat);
+            mimeType = detectAudioFormat(audioBytes);
+          }
           }
         } else {
-          const { getMimeTypeForFormat } = await (new Function('m','return import(m)'))('../utils/audio-converter');
           // Determine MIME type based on actual audio format
-          const actualFormat = this.detectNativeFormat(audioBytes);
-          mimeType = getMimeTypeForFormat(actualFormat);
+          mimeType = detectAudioFormat(audioBytes);
         }
       } else {
         // Audio input (file, bytes, or stream)
@@ -482,7 +487,9 @@ export abstract class AbstractTTSClient {
       if (isBrowser) {
 
         // Create audio blob and URL with the correct MIME type
-        const blob = new Blob([audioBytes], { type: mimeType });
+        const ab = new ArrayBuffer(audioBytes.byteLength);
+            new Uint8Array(ab).set(audioBytes);
+            const blob = new Blob([ab], { type: mimeType });
         const url = URL.createObjectURL(blob);
 
         // Create and play audio element
@@ -600,7 +607,9 @@ export abstract class AbstractTTSClient {
     if (isBrowser) {
       // Create blob with appropriate MIME type
       const mimeType = format === "mp3" ? "audio/mpeg" : "audio/wav";
-      const blob = new Blob([audioBytes], { type: mimeType });
+      const ab = new ArrayBuffer(audioBytes.byteLength);
+      new Uint8Array(ab).set(audioBytes);
+      const blob = new Blob([ab], { type: mimeType });
 
       // Create download link
       const url = URL.createObjectURL(blob);
