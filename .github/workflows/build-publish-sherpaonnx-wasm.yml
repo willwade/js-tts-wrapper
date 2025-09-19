@@ -33,6 +33,10 @@ jobs:
           fi
           echo "Resolved sherpa-onnx tag written to GITHUB_OUTPUT"
 
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Set up Emscripten SDK
         uses: mymindstorm/setup-emsdk@v14
         with:
