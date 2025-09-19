@@ -720,6 +720,11 @@ export class PollyTTSClient extends AbstractTTSClient {
    * @returns Promise resolving to true if credentials are valid
    */
   async checkCredentials(): Promise<boolean> {
+    // Fast-fail if required credentials are missing to avoid importing SDK in CI/tests
+    const { region, accessKeyId, secretAccessKey } = this.credentials as any;
+    if (!region || !accessKeyId || !secretAccessKey) {
+      return false;
+    }
     try {
       const pollyModule = this._pollyModule || (await (new Function('m','return import(m)') as any)("@aws-sdk/client-polly"));
       if (!this.client) {

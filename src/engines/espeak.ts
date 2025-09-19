@@ -21,6 +21,33 @@ async function loadText2Wav() {
       typeof process !== "undefined" &&
       (process.env.NEXT_RUNTIME || process.env.__NEXT_PRIVATE_ORIGIN);
 
+    // Patch fetch to handle local WASM path for text2wav in Node CI where fetch may be called with a file path string
+    try {
+      const g: any = globalThis as any;
+      if (!g.__text2wavFetchPatched && typeof g.fetch === "function") {
+        const originalFetch = g.fetch.bind(g);
+        g.__text2wavFetchPatched = true;
+        g.fetch = (async (input: any, init?: any) => {
+          try {
+            const req = typeof input === "string" ? input : input?.url;
+            // Intercept attempts to fetch the text2wav WASM by plain file path (no scheme)
+            if (typeof req === "string" && req.endsWith("espeak-ng.wasm") && !/^https?:|^file:/.test(req)) {
+              const { readFileSync } = await import("node:fs");
+              const requireFromCwd = createRequire(path.join(process.cwd(), "noop.js"));
+              const wasmPath = requireFromCwd.resolve("text2wav/lib/espeak-ng.wasm");
+              const buf = readFileSync(wasmPath);
+              return new Response(buf);
+            }
+          } catch (_e) {
+            // fall through to original fetch
+          }
+          return originalFetch(input as any, init);
+        }) as any;
+      }
+    } catch (_patchErr) {
+      // Non-fatal: continue without patch
+    }
+
     try {
       // First attempt normal module resolution relative to this file
       text2wav = await import("text2wav" as any);
