@@ -88,11 +88,12 @@ export class SpeechMarkdownConverter {
    * @returns SSML text
    */
   async toSSML(markdown: string, platform = "amazon-alexa"): Promise<string> {
-    // If already initialized, use the full library
+    // Attempt to initialize the full converter (no-op if disabled/unavailable)
+    await this.ensureInitialized();
     if (this.speechMarkdownInstance) {
       return this.speechMarkdownInstance.toSSML(markdown, { platform });
     }
-    // Fallback: do a minimal conversion without importing the library
+    // Fallback: minimal conversion
     const converted = convertSpeechMarkdownFallback(markdown);
     return `<speak>${converted}</speak>`;
   }
