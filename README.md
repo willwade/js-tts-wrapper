@@ -1018,6 +1018,41 @@ The library works in both Node.js and browser environments. In browsers, use the
 </script>
 ```
 
+#### Hosted WASM assets (optional)
+
+For convenience, we publish prebuilt SherpaONNX TTS WebAssembly files to a separate assets repository. You can use these as a quick-start base URL, or self-host them for production.
+
+- Default CDN base (via jsDelivr):
+  - https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/<sherpa_tag>
+  - Files included:
+    - sherpa-onnx.js (glue)
+    - sherpa-onnx-wasm-main.wasm
+    - sherpa-onnx-wasm-main.js
+    - sherpa-onnx-wasm-main.data
+
+- Example (using hosted artifacts):
+
+```html
+<script type="module">
+  import { SherpaOnnxWasmTTSClient } from 'js-tts-wrapper/browser';
+
+  const base = 'https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/<sherpa_tag>';
+
+  const tts = new SherpaOnnxWasmTTSClient({
+    // When using upstream filenames, prefer wasmPath to the glue JS file
+    wasmPath: `${base}/sherpa-onnx.js`,
+    mergedModelsUrl: '/assets/data/merged_models.json',
+  });
+
+  await tts.speak('Hello from SherpaONNX WASM');
+</script>
+```
+
+Notes:
+- For production, we recommend self-hosting to ensure stable availability and correct MIME types (application/wasm for .wasm, text/javascript for .js). If your server uses different filenames, just point `wasmPath` at your glue JS file; the runtime will find the .wasm next to it.
+- Our engine also accepts `wasmBaseUrl` if you host with filenames matching your environment; when using the upstream build outputs shown above, `wasmPath` is the safest choice.
+
+
 
 ## Contributing
 
