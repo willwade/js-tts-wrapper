@@ -47,11 +47,14 @@ Example with js-tts-wrapper in the browser:
   const base = 'https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/<sherpa_tag>';
 
   const tts = new SherpaOnnxWasmTTSClient({
-    // Prefer wasmPath when using upstream filenames
-    wasmPath: `${base}/sherpa-onnx.js`,
-    // Host merged_models.json yourself and point to it here if you use the model list
-    mergedModelsUrl: '/assets/data/merged_models.json',
+    // Prefer explicit glue filename from upstream builds
+    wasmPath: `${base}/sherpa-onnx-tts.js`,
+    // Use canonical models index (or the per-tag snapshot below)
+    mergedModelsUrl: 'https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/models/merged_models.json',
   });
+
+  // Per-tag snapshot alternative:
+  // mergedModelsUrl: `${base}/merged_models.json`
 
   await tts.speak('Hello from SherpaONNX WASM');
 </script>

@@ -114,6 +114,8 @@ jobs:
           fi
 
           cp sherpa-onnx/LICENSE out/SHERPAONNX-LICENSE
+          # Include models index JSON for browsers
+          cp src/engines/sherpaonnx/merged_models.json out/merged_models.json
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
@@ -136,16 +138,24 @@ jobs:
           mkdir -p assets-repo/sherpaonnx/tts/${{ steps.tag.outputs.tag }}
           cp -r out/* assets-repo/sherpaonnx/tts/${{ steps.tag.outputs.tag }}/
 
+          # Also publish a canonical models index (latest)
+          mkdir -p assets-repo/sherpaonnx/models
+          cp src/engines/sherpaonnx/merged_models.json assets-repo/sherpaonnx/models/merged_models.json
+
           cd assets-repo
           git add -A
-          git commit -m "feat: add sherpa-onnx TTS WASM for ${{ steps.tag.outputs.tag }}"
+          git commit -m "feat: add sherpa-onnx TTS WASM for ${{ steps.tag.outputs.tag }} and merged_models.json (snapshot + canonical)"
           git push
 
       - name: Print base URLs
         run: |
-          echo "If published to assets repo, use this base URL:"
-          echo "  https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/${{ steps.tag.outputs.tag }}"
+          echo "If published to assets repo, use these URLs:"
+          echo "  WASM base:  https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/${{ steps.tag.outputs.tag }}"
           GLUE=${{ steps.collect.outputs.glue }}
           if [ -z "$GLUE" ]; then GLUE="sherpa-onnx-tts.js"; fi
-          echo "Use wasmPath: \"https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/${{ steps.tag.outputs.tag }}/$GLUE\""
+          echo "  wasmPath:   https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/${{ steps.tag.outputs.tag }}/$GLUE"
+          echo "  Models (snapshot for this tag):"
+          echo "              https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/${{ steps.tag.outputs.tag }}/merged_models.json"
+          echo "  Models (canonical latest):"
+          echo "              https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/models/merged_models.json"
 

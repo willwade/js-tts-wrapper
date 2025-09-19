@@ -1030,6 +1030,11 @@ For convenience, we publish prebuilt SherpaONNX TTS WebAssembly files to a separ
     - sherpa-onnx-wasm-main-tts.js (or sherpa-onnx-wasm-main.js)
     - sherpa-onnx-wasm-main-tts.data (or sherpa-onnx-wasm-main.data)
 
+
+- Models index (merged_models.json):
+  - Canonical latest: https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/models/merged_models.json
+  - Snapshot for this WASM tag: https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/<sherpa_tag>/merged_models.json
+
 - Example (using hosted artifacts):
 
 ```html
@@ -1041,7 +1046,8 @@ For convenience, we publish prebuilt SherpaONNX TTS WebAssembly files to a separ
   const tts = new SherpaOnnxWasmTTSClient({
     // Prefer explicit glue filename from upstream
     wasmPath: `${base}/sherpa-onnx-tts.js`,
-    mergedModelsUrl: '/assets/data/merged_models.json',
+    // Use canonical models index (or the per-tag snapshot URL)
+    mergedModelsUrl: 'https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/models/merged_models.json',
   });
 
   await tts.speak('Hello from SherpaONNX WASM');
