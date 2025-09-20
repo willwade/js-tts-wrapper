@@ -64,10 +64,13 @@ jobs:
           # 3) Remove/prevent preloading of assets into .data
           sed -i 's/--preload-file[^\n]*assets@\. //g' "$CMAKE" || true
           sed -i 's/--preload-file[^\n]*assets[^\n]*//g' "$CMAKE" || true
-          # 4) Print first lines for debugging
-          head -n 40 "$CMAKE" || true
+          # 4) Do not install .data if it is not generated
+          sed -i '/\\.data[) ]/d' "$CMAKE" || true
+          sed -i '/WASM.*DATA/d' "$CMAKE" || true
+          # 5) Print first lines for debugging
+          head -n 60 "$CMAKE" || true
           echo "Patch complete. Checking for remaining references:"
-          grep -n "preload\|assets\/model\.onnx\|Please read" "$CMAKE" || true
+          grep -n "preload\|assets\/model\.onnx\|Please read\|\.data" "$CMAKE" || true
 
       - name: Build TTS WebAssembly
         run: |
