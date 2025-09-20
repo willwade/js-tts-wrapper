@@ -51,17 +51,18 @@ jobs:
           cd sherpa-onnx
           git checkout "${{ steps.tag.outputs.tag }}"
 
-      - name: Fetch demo TTS model (Piper en_US libritts_r-medium)
+      - name: Patch CMake for loader-only build (no preloaded assets)
         run: |
           set -euo pipefail
-          cd sherpa-onnx/wasm/tts/assets
-          wget -q https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-libritts_r-medium.tar.bz2
-          tar xf vits-piper-en_US-libritts_r-medium.tar.bz2
-          rm vits-piper-en_US-libritts_r-medium.tar.bz2
-          mv vits-piper-en_US-libritts_r-medium/en_US-libritts_r-medium.onnx model.onnx
-          mv vits-piper-en_US-libritts_r-medium/tokens.txt ./
-          mv vits-piper-en_US-libritts_r-medium/espeak-ng-data ./
-          rm -rf vits-piper-en_US-libritts_r-medium
+          cd sherpa-onnx/wasm/tts
+          CMAKE=CMakeLists.txt
+          echo "Patching $CMAKE to remove asset preloading and fatal checks..."
+          # Remove the fatal check requiring assets/model.onnx
+          awk 'BEGIN{skip=0} /if\(NOT EXISTS.*assets\/model\.onnx\)/{skip=1} skip && /endif\(\)/{skip=0; next} skip==1{next} {print}' $CMAKE > $CMAKE.patched && mv $CMAKE.patched $CMAKE
+          # Remove the --preload-file assets@. flag
+          sed -i 's/--preload-file[^\n]*assets@\. //g' $CMAKE || true
+          echo "Patch complete. Checking for remaining references:"
+          grep -n "preload\|assets\/model\.onnx" $CMAKE || true
 
       - name: Build TTS WebAssembly
         run: |

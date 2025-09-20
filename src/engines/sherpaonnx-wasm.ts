@@ -25,6 +25,8 @@ export interface ModelConfig {
   language: string;
   gender: string;
   sampleRate: number;
+  url?: string;          // Source archive URL (usually .tar.bz2)
+  compressed?: boolean;  // Whether the URL points to a compressed archive
   files: {
     model: string;
     tokens: string;
@@ -1101,28 +1103,106 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
     super.setVoice(voiceId);
     console.log(`Setting voice to ${voiceId}`);
 
-    // Enhanced multi-model support
-    if (this.enhancedOptions.enableMultiModel && this.modelRepository && this.modelManager) {
+    // Enhanced multi-model support (loader-only runtime: fetch, extract, mount into /assets)
+    if (this.enhancedOptions.enableMultiModel && this.modelRepository) {
       console.log(`Using enhanced multi-model mode for voice ${voiceId}`);
 
-      // Check if model is already loaded and active
-      if (this.modelManager.getCurrentModel() === voiceId) {
-        this.currentVoiceId = voiceId;
-        return;
+      // Ensure WASM is initialized to access FS
+      if (!this.wasmLoaded) {
+        await this.initializeWasm(this.wasmPath || this.wasmBaseUrl || "");
+      }
+      if (!this.wasmModule) {
+        throw new Error("WASM module not initialized");
       }
 
-      // Load model if not already loaded
-      if (!this.modelManager.isModelLoaded(voiceId)) {
-        const files = await this.modelRepository.downloadModelFiles(voiceId);
-        const config = this.modelRepository.getModelConfig(voiceId)!;
-        await this.modelManager.loadModel(voiceId, files, config);
+      // Resolve model config and URL
+      const cfg = this.modelRepository.getModelConfig(voiceId);
+      if (!cfg || !cfg.url) {
+        throw new Error(`No URL found for model ${voiceId}`);
       }
 
-      // Switch to the model
-      await this.modelManager.switchToModel(voiceId);
+      // Fetch archive
+      console.log(`Fetching model archive: ${cfg.url}`);
+      const res = await fetch(cfg.url);
+      if (!res.ok) throw new Error(`Failed to fetch model: ${res.status} ${res.statusText}`);
+      const archiveBuf = await res.arrayBuffer();
+
+      // Decompress .bz2 if needed
+      let tarBuffer: ArrayBuffer = archiveBuf;
+      if (cfg.compressed) {
+        const compressjsMod: any = await import("compressjs");
+        const Bzip2 = compressjsMod.Bzip2 || compressjsMod.BZ2;
+        if (!Bzip2 || typeof Bzip2.decompressFile !== "function") {
+          throw new Error("Bzip2 decompressor not available");
+        }
+        const outArr: number[] = Bzip2.decompressFile(new Uint8Array(archiveBuf));
+        tarBuffer = new Uint8Array(outArr).buffer;
+      }
+
+      // Extract tar
+      const untarMod: any = await import("js-untar");
+      const untar = untarMod.default || untarMod;
+      const entries: Array<any> = await untar(tarBuffer);
+      console.log(`Extracted ${entries.length} entries from TAR`);
+
+      const M: any = this.wasmModule as any;
+      const FS = M.FS;
+      if (!FS) throw new Error("Emscripten FS not available");
+
+      // Ensure /assets exists
+      try { FS.mkdir("/assets"); } catch {}
+      try { FS.mkdir("/assets/espeak-ng-data"); } catch {}
+
+      // Helper to create directories recursively
+      const mkdirp = (dir: string) => {
+        if (FS.mkdirTree) {
+          try { FS.mkdirTree(dir); return; } catch {}
+        }
+        const parts = dir.split("/").filter(Boolean);
+        let cur = "";
+        for (const p of parts) {
+          cur += "/" + p;
+          try { FS.mkdir(cur); } catch {}
+        }
+      };
+
+      // Map archive files to expected /assets layout
+      for (const e of entries) {
+        if (!e || !e.name) continue;
+        const name: string = String(e.name).replace(/^\.\//, "");
+        const lower = name.toLowerCase();
+
+        // Only write file entries (js-untar uses `buffer` for file data)
+        if (!e.buffer) continue;
+
+        let outPath: string | null = null;
+        if (lower.endsWith("/model.onnx") || lower === "model.onnx") {
+          outPath = "/assets/model.onnx";
+        } else if (lower.endsWith("/tokens.txt") || lower === "tokens.txt") {
+          outPath = "/assets/tokens.txt";
+        } else if (lower.includes("/espeak-ng-data/") || lower.startsWith("espeak-ng-data/")) {
+          outPath = "/assets/" + name.substring(name.toLowerCase().indexOf("espeak-ng-data/"));
+        } else if (lower.endsWith("voices.bin") || (lower.includes("voices") && lower.endsWith(".bin"))) {
+          outPath = "/assets/voices.bin";
+        } else if (lower.includes("vocoder") && lower.endsWith(".onnx")) {
+          outPath = "/assets/vocoder.onnx";
+        }
+
+        if (outPath) {
+          const dir = outPath.substring(0, outPath.lastIndexOf("/"));
+          mkdirp(dir);
+          FS.writeFile(outPath, new Uint8Array(e.buffer));
+        }
+      }
+
+      // Reset TTS so next synthesis uses the new assets
+      if (this.tts) {
+        try { if (typeof this.wasmModule._ttsDestroyOffline === "function") this.wasmModule._ttsDestroyOffline(this.tts); } catch {}
+        this.tts = null;
+      }
+
       this.currentVoiceId = voiceId;
-
-      console.log(`Successfully switched to voice ${voiceId} using multi-model system`);
+      console.log(`Prepared /assets for voice ${voiceId}`);
       return;
     }
 
@@ -1254,6 +1334,8 @@ class ModelRepository {
           language: model.language?.[0]?.lang_code || 'en',
           gender: 'unknown', // Not specified in merged_models.json
           sampleRate: model.sample_rate || 22050,
+          url: model.url,
+          compressed: !!model.compression,
           files: {
             model: 'model.onnx',
             tokens: 'tokens.txt',
