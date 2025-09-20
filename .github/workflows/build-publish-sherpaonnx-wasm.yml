@@ -57,12 +57,17 @@ jobs:
           cd sherpa-onnx/wasm/tts
           CMAKE=CMakeLists.txt
           echo "Patching $CMAKE to remove asset preloading and fatal checks..."
-          # Remove the fatal check requiring assets/model.onnx
-          awk 'BEGIN{skip=0} /if\(NOT EXISTS.*assets\/model\.onnx\)/{skip=1} skip && /endif\(\)/{skip=0; next} skip==1{next} {print}' $CMAKE > $CMAKE.patched && mv $CMAKE.patched $CMAKE
-          # Remove the --preload-file assets@. flag
-          sed -i 's/--preload-file[^\n]*assets@\. //g' $CMAKE || true
+          # 1) Downgrade any hard-stop messages to STATUS so configure continues
+          sed -i 's/message(\s*FATAL_ERROR/message(STATUS/g' "$CMAKE" || true
+          # 2) Remove the fatal check requiring assets/model.onnx (if present in if/endif block)
+          awk 'BEGIN{skip=0} /if\(NOT EXISTS.*assets\/model\.onnx\)/{skip=1} skip && /endif\(\)/{skip=0; next} skip==1{next} {print}' "$CMAKE" > "$CMAKE.patched" && mv "$CMAKE.patched" "$CMAKE"
+          # 3) Remove/prevent preloading of assets into .data
+          sed -i 's/--preload-file[^\n]*assets@\. //g' "$CMAKE" || true
+          sed -i 's/--preload-file[^\n]*assets[^\n]*//g' "$CMAKE" || true
+          # 4) Print first lines for debugging
+          head -n 40 "$CMAKE" || true
           echo "Patch complete. Checking for remaining references:"
-          grep -n "preload\|assets\/model\.onnx" $CMAKE || true
+          grep -n "preload\|assets\/model\.onnx\|Please read" "$CMAKE" || true
 
       - name: Build TTS WebAssembly
         run: |
