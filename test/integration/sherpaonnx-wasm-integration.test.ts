@@ -2,7 +2,7 @@
  * Integration tests for SherpaOnnx WebAssembly TTS client
  */
 
-import { SherpaOnnxWasmTTSClient } from '../../src';
+import { SherpaOnnxWasmTTSClient } from '../../src/browser';
 import { expect, describe, it } from '@jest/globals';
 import * as sinon from 'sinon';
 
