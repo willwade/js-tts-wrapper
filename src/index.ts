@@ -24,7 +24,9 @@ export { OpenAITTSClient } from "./engines/openai";
 export { PlayHTTTSClient } from "./engines/playht";
 export { PollyTTSClient } from "./engines/polly";
 export { SherpaOnnxTTSClient } from "./engines/sherpaonnx";
-export { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm";
+// Note: The browser-only SherpaONNX WASM engine is not exported from the Node entry.
+// Import it from 'js-tts-wrapper/browser' instead.
+// export { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm";
 export { EspeakNodeTTSClient, EspeakTTSClient } from "./engines/espeak";
 export { EspeakBrowserTTSClient, EspeakWasmTTSClient } from "./engines/espeak-wasm";
 export { WatsonTTSClient } from "./engines/watson";

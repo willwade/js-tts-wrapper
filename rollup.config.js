@@ -54,7 +54,11 @@ module.exports = [
       "sherpa-onnx-darwin-x64",
       "sherpa-onnx-darwin-arm64",
       // Optional Node-only eSpeak backend
-      "text2wav"
+      "text2wav",
+      // Browser-only utilities that must not be bundled into Node entry
+      // (avoid AMD/UMD shims causing import-time errors in CJS builds)
+      "compressjs",
+      "js-untar"
     ]
   },
   // Browser build
