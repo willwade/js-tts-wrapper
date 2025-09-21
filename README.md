@@ -59,6 +59,14 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 **Class Name**: Use with direct import `import { ClassName } from 'js-tts-wrapper'`
 **Environment**: Node.js = server-side only, Browser = browser-compatible, Both = works in both environments
 
+
+### Important: SherpaONNX is optional and does not affect other engines
+
+- Importing `js-tts-wrapper` does NOT load `sherpa-onnx-node`.
+- Cloud engines (Azure, Google, Polly, OpenAI, etc.) work without any SherpaONNX packages installed.
+- Only when you instantiate `SherpaOnnxTTSClient` (Node-only) will the library look for `sherpa-onnx-node` and its platform package. If SherpaONNX is not installed, the Sherpa engine will gracefully warn/fallback, and other engines remain unaffected.
+- See the Installation section below for how to install SherpaONNX dependencies only if you plan to use that engine.
+
 ### Timing and Audio Format Capabilities
 
 #### Word Boundary and Timing Support
@@ -1023,12 +1031,11 @@ The library works in both Node.js and browser environments. In browsers, use the
 For convenience, we publish prebuilt SherpaONNX TTS WebAssembly files to a separate assets repository. You can use these as a quick-start base URL, or self-host them for production.
 
 - Default CDN base (via jsDelivr):
-  - https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/<sherpa_tag>
-  - Files included:
+  - https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/vocoder-models
+  - Files included (loader-only build: no .data file):
     - sherpa-onnx-tts.js (glue; sometimes named sherpa-onnx.js depending on upstream tag)
     - sherpa-onnx-wasm-main-tts.wasm (or sherpa-onnx-wasm-main.wasm)
     - sherpa-onnx-wasm-main-tts.js (or sherpa-onnx-wasm-main.js)
-    - sherpa-onnx-wasm-main-tts.data (or sherpa-onnx-wasm-main.data)
 
 
 - Models index (merged_models.json):
@@ -1055,6 +1062,39 @@ For convenience, we publish prebuilt SherpaONNX TTS WebAssembly files to a separ
 ```
 
 Notes:
+
+#### Hosting on Hugging Face (avoids jsDelivr 50 MB cap)
+
+You can self-host the loader-only WASM on Hugging Face (recommended for large artifacts):
+
+- Create a Dataset or Model repo, e.g. datasets/willwade/js-tts-wrapper-wasm
+- Upload these files into a folder like sherpaonnx/tts/vocoder-models:
+  - sherpa-onnx-tts.js
+  - sherpa-onnx-wasm-main-tts.wasm
+  - (optionally) sherpa-onnx-wasm-main-tts.js
+- Optional: also upload merged_models.json to sherpaonnx/models/merged_models.json
+- Use the Hugging Face raw URLs with the “resolve” path:
+  - wasmPath: https://huggingface.co/datasets/your-user/your-repo/resolve/main/sherpaonnx/tts/vocoder-models/sherpa-onnx-tts.js
+  - mergedModelsUrl: https://huggingface.co/datasets/your-user/your-repo/resolve/main/sherpaonnx/models/merged_models.json
+
+Example:
+
+```html
+<script type="module">
+  import { SherpaOnnxWasmTTSClient } from 'js-tts-wrapper/browser';
+  const tts = new SherpaOnnxWasmTTSClient({
+    wasmPath: 'https://huggingface.co/datasets/your-user/your-repo/resolve/main/sherpaonnx/tts/vocoder-models/sherpa-onnx-tts.js',
+    mergedModelsUrl: 'https://huggingface.co/datasets/your-user/your-repo/resolve/main/sherpaonnx/models/merged_models.json'
+  });
+  await tts.speak('Hello from SherpaONNX WASM hosted on HF');
+</script>
+```
+
+Notes:
+- Hugging Face supports large files via Git LFS and serves them over a global CDN with proper CORS.
+- The glue JS will fetch the .wasm next to it automatically; ensure correct MIME types are served (HF does this by default).
+- For best performance, keep models separate and load them at runtime via their original URLs (or mirror selected ones to HF if needed).
+
 - For production, we recommend self-hosting to ensure stable availability and correct MIME types (application/wasm for .wasm, text/javascript for .js). If your server uses different filenames, just point `wasmPath` at your glue JS file; the runtime will find the .wasm next to it.
 - Our engine also accepts `wasmBaseUrl` if you host with filenames matching your environment; when using the upstream build outputs shown above, `wasmPath` is the safest choice.
 

@@ -44,8 +44,18 @@ module.exports = [
       commonjs(),
       json()
     ],
-    // External dependencies that should not be bundled
-    external: []
+    // External dependencies (optional/native or environment-specific) that should not be bundled
+    external: [
+      // Native sherpa packages (optional at runtime; load lazily only when used)
+      "sherpa-onnx-node",
+      "sherpa-onnx-win-x64",
+      "sherpa-onnx-linux-x64",
+      "sherpa-onnx-linux-arm64",
+      "sherpa-onnx-darwin-x64",
+      "sherpa-onnx-darwin-arm64",
+      // Optional Node-only eSpeak backend
+      "text2wav"
+    ]
   },
   // Browser build
   {

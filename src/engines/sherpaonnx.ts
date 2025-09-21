@@ -24,28 +24,38 @@ let sherpaOnnxLoader: typeof sherpaOnnxLoaderModule | null = null;
 let sherpaOnnxEnvironmentCheck: ReturnType<typeof sherpaOnnxLoaderModule.canRunSherpaOnnx> | null =
   null;
 
-// Try to initialize the loader and check environment
-try {
-  sherpaOnnxLoader = sherpaOnnxLoaderModule;
-  sherpaOnnxEnvironmentCheck = sherpaOnnxLoader.canRunSherpaOnnx();
-
-  if (!sherpaOnnxEnvironmentCheck.canRun) {
-    console.warn(
-      "SherpaOnnx environment check failed:",
-      sherpaOnnxEnvironmentCheck.issues.join(", ")
-    );
-    console.warn(
-      "SherpaOnnx will use mock implementation. Install required packages to enable native TTS."
-    );
-
-    // Provide specific installation guidance
-    if (sherpaOnnxLoader.getInstallationInstructions) {
-      console.warn("Installation instructions:");
-      console.warn(sherpaOnnxLoader.getInstallationInstructions());
+// Lazy-initialize the loader and environment check to avoid side effects on import
+let __sherpaLoaderInitialized = false;
+function ensureSherpaOnnxLoaderInitialized() {
+  if (__sherpaLoaderInitialized) return;
+  try {
+    sherpaOnnxLoader = sherpaOnnxLoaderModule;
+    if (sherpaOnnxLoader && typeof (sherpaOnnxLoader as any).canRunSherpaOnnx === "function") {
+      // Perform a non-throwing environment check
+      // This must not attempt to load native modules; it only inspects filesystem/package presence
+      // to keep other engines usable when SherpaONNX is not installed.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sherpaOnnxEnvironmentCheck = (sherpaOnnxLoader as any).canRunSherpaOnnx();
+      if (sherpaOnnxEnvironmentCheck && !sherpaOnnxEnvironmentCheck.canRun) {
+        console.warn(
+          "SherpaOnnx environment check failed:",
+          sherpaOnnxEnvironmentCheck.issues.join(", ")
+        );
+        console.warn(
+          "SherpaOnnx will use mock implementation. Install required packages to enable native TTS."
+        );
+        if (typeof (sherpaOnnxLoader as any).getInstallationInstructions === "function") {
+          console.warn("Installation instructions:");
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          console.warn((sherpaOnnxLoader as any).getInstallationInstructions());
+        }
+      }
     }
+  } catch (error) {
+    console.warn("Could not load sherpaonnx-loader:", error);
+  } finally {
+    __sherpaLoaderInitialized = true;
   }
-} catch (error) {
-  console.warn("Could not load sherpaonnx-loader:", error);
 }
 
 /**
@@ -107,6 +117,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    * @returns Detailed diagnostic information
    */
   static getDiagnostics() {
+    ensureSherpaOnnxLoaderInitialized();
     if (sherpaOnnxLoader?.getSherpaOnnxDiagnostics) {
       return sherpaOnnxLoader.getSherpaOnnxDiagnostics();
     }
@@ -924,6 +935,8 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    */
   private async initializeTTS(modelPath: string, tokensPath: string): Promise<void> {
     try {
+      // Ensure loader/environment check is initialized lazily
+      ensureSherpaOnnxLoaderInitialized();
       // Set the library path environment variable
       this.setLibraryPath();
 
@@ -1246,6 +1259,8 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    */
   async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
     try {
+      // Ensure loader/environment check is initialized lazily
+      ensureSherpaOnnxLoaderInitialized();
       // Prepare text for synthesis (handle Speech Markdown and SSML)
       let plainText = text;
 
@@ -1342,6 +1357,8 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
     try {
+      // Ensure loader/environment check is initialized lazily
+      ensureSherpaOnnxLoaderInitialized();
       // Remove SSML tags if present
       let plainText = text;
       if (this._isSSML(plainText)) {
@@ -1548,6 +1565,8 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    */
   async checkCredentials(): Promise<boolean> {
     try {
+      // Ensure loader/environment check is initialized lazily
+      ensureSherpaOnnxLoaderInitialized();
       // For SherpaOnnx, we'll consider credentials valid if we can initialize the engine
       // or if we have the model files available
       if (this.tts) {
