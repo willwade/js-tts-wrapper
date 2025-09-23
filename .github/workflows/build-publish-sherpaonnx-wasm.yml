@@ -25,9 +25,6 @@ jobs:
           else
             # Determine latest tag from upstream
             LATEST=$(git ls-remote --tags --sort="v:refname" https://github.com/k2-fsa/sherpa-onnx.git | awk -F/ '{print $3}' | tail -n1)
-            if [ -z "$LATEST" ]; then
-              echo "Failed to resolve latest tag" >&2
-              exit 1
             fi
             echo "tag=$LATEST" >> $GITHUB_OUTPUT
           fi

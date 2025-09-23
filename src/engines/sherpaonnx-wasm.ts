@@ -445,17 +445,18 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
             });
           }
 
-          // Wait for Module.calledRun and createOfflineTts to be ready
+          // Wait for glue + Module to be ready. Some upstream builds do not set Module.calledRun,
+          // so treat (createOfflineTts && Module) as sufficient readiness.
           await new Promise<void>((resolve, reject) => {
             const giveUpAt = Date.now() + 15000; // 15s
             const checkReady = () => {
-              if (
-                typeof w.createOfflineTts === "function" &&
-                typeof w.Module !== "undefined" &&
-                w.Module.calledRun
-              ) {
+              const hasCreate = typeof w.createOfflineTts === "function";
+              const hasModule = typeof w.Module !== "undefined";
+              if (hasCreate && hasModule) {
                 resolve();
-              } else if (Date.now() > giveUpAt) {
+                return;
+              }
+              if (Date.now() > giveUpAt) {
                 reject(new Error("Timed out waiting for SherpaONNX WASM to initialize"));
               } else {
                 setTimeout(checkReady, 200);

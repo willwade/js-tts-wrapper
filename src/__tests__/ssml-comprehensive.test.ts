@@ -1,4 +1,7 @@
-import { describe, it, expect, beforeAll } from "@jest/globals";
+import { describe, it, expect, beforeAll, jest } from "@jest/globals";
+
+// Increase timeout for external API calls that may be slow/intermittent
+jest.setTimeout(30000);
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -400,6 +403,11 @@ function isServiceIssue(error: any): boolean {
          errorMessage.includes('service unavailable') ||
          errorMessage.includes('temporarily unavailable') ||
          errorMessage.includes('server error') ||
+         // Network-layer issues we should treat as transient/unreliable in CI
+         errorMessage.includes('terminated') ||
+         errorMessage.includes('econnreset') ||
+         errorMessage.includes('und_err_socket') ||
+         errorMessage.includes('socket') ||
          errorStatus === 429 ||  // Rate limit
          errorStatus === 500 ||  // Server error
          errorStatus === 502 ||  // Bad gateway

@@ -110,7 +110,8 @@ export async function getEngineConfigs() {
     {
       name: "sherpaonnx-wasm",
       factory: () => new SherpaOnnxWasmTTSClient({
-        wasmPath: process.env.SHERPAONNX_WASM_PATH || null
+        wasmPath: process.env.SHERPAONNX_WASM_PATH || null,
+        mergedModelsUrl: process.env.SHERPAONNX_MODELS_URL || process.env.SHERPAONNX_MERGED_MODELS_URL || null
       }),
       description: "SherpaOnnx TTS (WebAssembly/Browser)"
     },
