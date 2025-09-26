@@ -1,0 +1,259 @@
+[STARTED] Backing up original state...
+[COMPLETED] Backed up original state in git stash (21fb43a)
+[STARTED] Running tasks for staged files...
+[STARTED] package.json — 21 files
+[STARTED] ./src/**/!(*.test).{js,ts} — 6 files
+[STARTED] ./bin/**/*.{js,ts} — 0 files
+[SKIPPED] ./bin/**/*.{js,ts} — no files
+[STARTED] biome lint --write
+[FAILED] biome lint --write [FAILED]
+[FAILED] biome lint --write [FAILED]
+[COMPLETED] Running tasks for staged files...
+[STARTED] Applying modifications from tasks...
+[SKIPPED] Skipped because of errors from tasks.
+[STARTED] Reverting to original state because of errors...
+[COMPLETED] Reverting to original state because of errors...
+[STARTED] Cleaning up temporary files...
+[COMPLETED] Cleaning up temporary files...
+
+✖ biome lint --write:
+/Users/willwade/GitHub/js-tts-wrapper/src/engines/espeak-wasm.ts:48:10 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━
+
+  × Forbidden non-null assertion.
+  
+    46 │     // pick meSpeak voice payload (limited set to keep bundle small)
+    47 │     const voicePayload = await this.getVoicePayload(voiceId);
+  > 48 │     if (!this.meSpeak!.isConfigLoaded()) {
+       │          ^^^^^^^^^^^^^
+    49 │       const { default: configJson } = await import('mespeak/src/mespeak_config.json');
+    50 │       this.meSpeak!.loadConfig(configJson);
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+     46  46 │       // pick meSpeak voice payload (limited set to keep bundle small)
+     47  47 │       const voicePayload = await this.getVoicePayload(voiceId);
+     48     │ - ····if·(!this.meSpeak!.isConfigLoaded())·{
+         48 │ + ····if·(!this.meSpeak?.isConfigLoaded())·{
+     49  49 │         const { default: configJson } = await import('mespeak/src/mespeak_config.json');
+     50  50 │         this.meSpeak!.loadConfig(configJson);
+  
+
+/Users/willwade/GitHub/js-tts-wrapper/src/engines/espeak-wasm.ts:50:7 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━
+
+  × Forbidden non-null assertion.
+  
+    48 │     if (!this.meSpeak!.isConfigLoaded()) {
+    49 │       const { default: configJson } = await import('mespeak/src/mespeak_config.json');
+  > 50 │       this.meSpeak!.loadConfig(configJson);
+       │       ^^^^^^^^^^^^^
+    51 │     }
+    52 │     if (voicePayload && !this.meSpeak!.isVoiceLoaded(voicePayload.voice_id)) {
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+     48  48 │       if (!this.meSpeak!.isConfigLoaded()) {
+     49  49 │         const { default: configJson } = await import('mespeak/src/mespeak_config.json');
+     50     │ - ······this.meSpeak!.loadConfig(configJson);
+         50 │ + ······this.meSpeak?.loadConfig(configJson);
+     51  51 │       }
+     52  52 │       if (voicePayload && !this.meSpeak!.isVoiceLoaded(voicePayload.voice_id)) {
+  
+
+/Users/willwade/GitHub/js-tts-wrapper/src/engines/espeak-wasm.ts:52:26 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━
+
+  × Forbidden non-null assertion.
+  
+    50 │       this.meSpeak!.loadConfig(configJson);
+    51 │     }
+  > 52 │     if (voicePayload && !this.meSpeak!.isVoiceLoaded(voicePayload.voice_id)) {
+       │                          ^^^^^^^^^^^^^
+    53 │       this.meSpeak!.loadVoice(voicePayload);
+    54 │       this.meSpeak!.setDefaultVoice(voicePayload.voice_id);
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+     50  50 │         this.meSpeak!.loadConfig(configJson);
+     51  51 │       }
+     52     │ - ····if·(voicePayload·&&·!this.meSpeak!.isVoiceLoaded(voicePayload.voice_id))·{
+         52 │ + ····if·(voicePayload·&&·!this.meSpeak?.isVoiceLoaded(voicePayload.voice_id))·{
+     53  53 │         this.meSpeak!.loadVoice(voicePayload);
+     54  54 │         this.meSpeak!.setDefaultVoice(voicePayload.voice_id);
+  
+
+/Users/willwade/GitHub/js-tts-wrapper/src/engines/espeak-wasm.ts:53:7 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━
+
+  × Forbidden non-null assertion.
+  
+    51 │     }
+    52 │     if (voicePayload && !this.meSpeak!.isVoiceLoaded(voicePayload.voice_id)) {
+  > 53 │       this.meSpeak!.loadVoice(voicePayload);
+       │       ^^^^^^^^^^^^^
+    54 │       this.meSpeak!.setDefaultVoice(voicePayload.voice_id);
+    55 │     }
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+     51  51 │       }
+     52  52 │       if (voicePayload && !this.meSpeak!.isVoiceLoaded(voicePayload.voice_id)) {
+     53     │ - ······this.meSpeak!.loadVoice(voicePayload);
+         53 │ + ······this.meSpeak?.loadVoice(voicePayload);
+     54  54 │         this.meSpeak!.setDefaultVoice(voicePayload.voice_id);
+     55  55 │       }
+  
+
+/Users/willwade/GitHub/js-tts-wrapper/src/engines/espeak-wasm.ts:54:7 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━
+
+  × Forbidden non-null assertion.
+  
+    52 │     if (voicePayload && !this.meSpeak!.isVoiceLoaded(voicePayload.voice_id)) {
+    53 │       this.meSpeak!.loadVoice(voicePayload);
+  > 54 │       this.meSpeak!.setDefaultVoice(voicePayload.voice_id);
+       │       ^^^^^^^^^^^^^
+    55 │     }
+    56 │ 
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+     52  52 │       if (voicePayload && !this.meSpeak!.isVoiceLoaded(voicePayload.voice_id)) {
+     53  53 │         this.meSpeak!.loadVoice(voicePayload);
+     54     │ - ······this.meSpeak!.setDefaultVoice(voicePayload.voice_id);
+         54 │ + ······this.meSpeak?.setDefaultVoice(voicePayload.voice_id);
+     55  55 │       }
+     56  56 │   
+  
+
+/Users/willwade/GitHub/js-tts-wrapper/src/engines/espeak-wasm.ts:76:34 lint/style/noNonNullAssertion  FIXABLE  ━━━━━━━━━━
+
+  × Forbidden non-null assertion.
+  
+    75 │     // get raw WAV buffer from meSpeak
+  > 76 │     const arr: number[] | null = this.meSpeak!.speak(text, {
+       │                                  ^^^^^^^^^^^^^
+    77 │       rawdata: 'array',
+    78 │       voice: voicePayload?.voice_id || voiceId,
+  
+  i Unsafe fix: Replace with optional chain operator ?. This operator includes runtime checks, so it is safer than the compile-only non-null assertion operator
+  
+     74  74 │   
+     75  75 │       // get raw WAV buffer from meSpeak
+     76     │ - ····const·arr:·number[]·|·null·=·this.meSpeak!.speak(text,·{
+         76 │ + ····const·arr:·number[]·|·null·=·this.meSpeak?.speak(text,·{
+     77  77 │         rawdata: 'array',
+     78  78 │         voice: voicePayload?.voice_id || voiceId,
+  
+
+/Users/willwade/GitHub/js-tts-wrapper/src/engines/sherpaonnx.ts:729:13 lint/complexity/noForEach ━━━━━━━━━━
+
+  × Prefer for...of instead of forEach.
+  
+    727 │             // Copy lexicon files if they exist
+    728 │             const lexiconFiles = this.findFilesInDirectory(destinationDir, /lexicon.*\.txt$/);
+  > 729 │             lexiconFiles.forEach((lexiconFile) => {
+        │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 730 │               const lexiconName = path.basename(lexiconFile);
+         ...
+  > 735 │               }
+  > 736 │             });
+        │             ^^
+    737 │ 
+    738 │             // Copy other potential files (dict directory, fst files, etc.)
+  
+  i forEach may lead to performance issues when working with large arrays. When combined with functions like filter or map, this causes multiple iterations over the same type.
+  
+
+/Users/willwade/GitHub/js-tts-wrapper/src/engines/sherpaonnx.ts:749:13 lint/complexity/noForEach ━━━━━━━━━━
+
+  × Prefer for...of instead of forEach.
+  
+    748 │             const fstFiles = this.findFilesInDirectory(destinationDir, /\.fst$/);
+  > 749 │             fstFiles.forEach((fstFile) => {
+        │             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 750 │               const fstName = path.basename(fstFile);
+         ...
+  > 755 │               }
+  > 756 │             });
+        │             ^^
+    757 │           }
+    758 │         } else {
+  
+  i forEach may lead to performance issues when working with large arrays. When combined with functions like filter or map, this causes multiple iterations over the same type.
+  
+
+/Users/willwade/GitHub/js-tts-wrapper/src/engines/sherpaonnx.ts:456:16 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━
+
+  ! This variable is unused.
+  
+    454 │           }
+    455 │         }
+  > 456 │       } catch (error) {
+        │                ^^^^^
+    457 │         // Ignore errors and continue
+    458 │       }
+  
+  i Unused variables usually are result of incomplete refactoring, typos and other source of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend error with an underscore.
+  
+     454  454 │             }
+     455  455 │           }
+     456      │ - ······}·catch·(error)·{
+          456 │ + ······}·catch·(_error)·{
+     457  457 │           // Ignore errors and continue
+     458  458 │         }
+  
+
+/Users/willwade/GitHub/js-tts-wrapper/src/engines/sherpaonnx.ts:500:16 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━
+
+  ! This variable is unused.
+  
+    498 │           }
+    499 │         }
+  > 500 │       } catch (error) {
+        │                ^^^^^
+    501 │         // Ignore errors and continue
+    502 │       }
+  
+  i Unused variables usually are result of incomplete refactoring, typos and other source of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend error with an underscore.
+  
+     498  498 │             }
+     499  499 │           }
+     500      │ - ······}·catch·(error)·{
+          500 │ + ······}·catch·(_error)·{
+     501  501 │           // Ignore errors and continue
+     502  502 │         }
+  
+
+/Users/willwade/GitHub/js-tts-wrapper/src/engines/sherpaonnx.ts:542:14 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━
+
+  ! This variable is unused.
+  
+    540 │         }
+    541 │       }
+  > 542 │     } catch (error) {
+        │              ^^^^^
+    543 │       // Ignore errors and return empty string
+    544 │     }
+  
+  i Unused variables usually are result of incomplete refactoring, typos and other source of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend error with an underscore.
+  
+     540  540 │           }
+     541  541 │         }
+     542      │ - ····}·catch·(error)·{
+          542 │ + ····}·catch·(_error)·{
+     543  543 │         // Ignore errors and return empty string
+     544  544 │       }
+  
+
+lint ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+
+Checked 4 files in 62ms. No fixes applied.
+Found 8 errors.
+Found 3 warnings.
+husky - pre-commit script failed (code 1)

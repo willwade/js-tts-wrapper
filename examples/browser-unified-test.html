@@ -279,8 +279,9 @@
       PollyTTSClient,
       WatsonTTSClient,
       WitAITTSClient,
+      UpliftAITTSClient,
       SherpaOnnxWasmTTSClient,
-      EspeakTTSClient,
+      EspeakBrowserTTSClient,
       createBrowserTTSClient,
       isBrowser,
       isNode
@@ -355,6 +356,7 @@
     window.ttsClients = {};
     window.audioContext = null;
     window.isTestingAll = false;
+    window.highlightState = {};
 
     // Engine configurations
     const engineConfigs = [
@@ -399,7 +401,7 @@
         description: 'Google Cloud Text-to-Speech',
         clientClass: GoogleTTSClient,
         credentialFields: [
-          { name: 'keyFilename', label: 'Service Account Key (JSON)', type: 'textarea', required: true, placeholder: 'Paste JSON content here...' }
+          { name: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'Google Cloud API key' }
         ],
         supportedFormats: ['wav', 'mp3'],
         supportsSSML: true,
@@ -431,6 +433,18 @@
         requiresCredentials: true
       },
       {
+        id: 'upliftai',
+        name: 'UpliftAI TTS',
+        description: 'UpliftAI API',
+        clientClass: UpliftAITTSClient,
+        credentialFields: [
+          { name: 'apiKey', label: 'API Key', type: 'password', required: true }
+        ],
+        supportedFormats: ['mp3', 'wav'],
+        supportsSSML: false,
+        requiresCredentials: true
+      },
+      {
         id: 'polly',
         name: 'AWS Polly TTS',
         description: 'Amazon Polly Text-to-Speech',
@@ -450,10 +464,10 @@
         description: 'Meta Wit.ai Text-to-Speech',
         clientClass: WitAITTSClient,
         credentialFields: [
-          { name: 'apiToken', label: 'API Token', type: 'password', required: true }
+          { name: 'token', label: 'API Token', type: 'password', required: true }
         ],
         supportedFormats: ['wav', 'mp3'],
-        supportsSSML: false,
+        supportsSSML: true,
         requiresCredentials: true
       },
       {
@@ -462,8 +476,9 @@
         description: 'IBM Watson Text-to-Speech',
         clientClass: WatsonTTSClient,
         credentialFields: [
-          { name: 'apikey', label: 'API Key', type: 'password', required: true },
-          { name: 'url', label: 'Service URL', type: 'text', required: true, placeholder: 'e.g., https://api.us-south.text-to-speech.watson.cloud.ibm.com' }
+          { name: 'apiKey', label: 'API Key', type: 'password', required: true },
+          { name: 'region', label: 'Region', type: 'text', required: true, placeholder: 'e.g., us-south' },
+          { name: 'instanceId', label: 'Instance ID', type: 'text', required: true }
         ],
         supportedFormats: ['wav', 'mp3'],
         supportsSSML: true,
@@ -474,7 +489,10 @@
         name: 'SherpaOnnx WASM TTS',
         description: 'SherpaOnnx WebAssembly (browser-compatible)',
         clientClass: SherpaOnnxWasmTTSClient,
-        credentialFields: [],
+        credentialFields: [
+          { name: 'wasmPath', label: 'wasmPath (glue JS URL)', type: 'text', required: false, placeholder: 'https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/tts/<sherpa_tag>/sherpa-onnx-tts.js' },
+          { name: 'mergedModelsUrl', label: 'mergedModelsUrl', type: 'text', required: false, placeholder: 'https://cdn.jsdelivr.net/gh/willwade/js-tts-wrapper-assets@main/sherpaonnx/models/merged_models.json' }
+        ],
         supportedFormats: ['wav'],
         supportsSSML: false,
         requiresCredentials: false
@@ -483,7 +501,7 @@
         id: 'espeak',
         name: 'eSpeak NG WASM',
         description: 'eSpeak NG WebAssembly (browser-compatible)',
-        clientClass: EspeakTTSClient,
+        clientClass: EspeakBrowserTTSClient,
         credentialFields: [],
         supportedFormats: ['wav'],
         supportsSSML: true,
@@ -523,6 +541,7 @@
       engineConfigs.forEach(config => {
         const section = createEngineSection(config);
         container.appendChild(section);
+        setupHighlightUI(config.id);
       });
     }
 
@@ -630,8 +649,15 @@
         // Set up event listeners
         client.on('start', () => logToEngine(engineId, 'info', 'Playback started'));
         client.on('end', () => logToEngine(engineId, 'info', 'Playback ended'));
-        client.on('boundary', (word, start, end) => {
-          logToEngine(engineId, 'info', `Word boundary: "${word}" at ${start}s`);
+        client.on('boundary', (...args) => {
+          let word = '';
+          if (args.length === 1 && typeof args[0] === 'object') {
+            word = args[0].text || '';
+          } else {
+            word = args[0] || '';
+          }
+          logToEngine(engineId, 'info', `Word boundary: "${word}"`);
+          updateHighlight(engineId, word);
         });
         client.on('error', (error) => logToEngine(engineId, 'error', `Error: ${error.message}`));
 
@@ -698,8 +724,23 @@
         logToEngine(engineId, 'info', `Synthesizing ${mode} text: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
         logToEngine(engineId, 'info', `Format: ${format}`);
 
-        // Synthesize
-        const audioData = await client.synthToBytes(text, { format });
+        // Synthesize with streaming to get word boundaries for highlighting
+        const { audioStream, wordBoundaries } = await client.synthToBytestream(text, { format, useWordBoundary: true });
+
+        // Schedule highlights based on returned boundaries (fallback to none if empty)
+        scheduleHighlights(engineId, wordBoundaries || []);
+
+        // Buffer stream to bytes
+        const reader = audioStream.getReader();
+        const chunks = [];
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) chunks.push(value);
+        }
+        const audioData = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+        let offset = 0;
+        for (const c of chunks) { audioData.set(c, offset); offset += c.length; }
         logToEngine(engineId, 'success', `Generated ${audioData.length} bytes of audio`);
 
         // Play audio
@@ -744,9 +785,120 @@
         client.stop();
         logToEngine(engineId, 'warning', 'Engine stopped');
       }
+      clearHighlightsSchedule(engineId);
     };
 
     // Utility functions
+
+    // Word highlighting UI helpers
+    function setupHighlightUI(engineId) {
+      const textArea = document.getElementById(`${engineId}-text`);
+      if (!textArea) return;
+      const section = document.getElementById(`engine-${engineId}`);
+      if (!section) return;
+
+      // Create highlight container
+      const highlight = document.createElement('div');
+      highlight.id = `highlight-${engineId}`;
+      highlight.style.background = '#fff';
+      highlight.style.border = '1px solid #e5e7eb';
+      highlight.style.borderRadius = '4px';
+      highlight.style.padding = '10px';
+      highlight.style.marginTop = '8px';
+      highlight.style.fontSize = '14px';
+      highlight.style.lineHeight = '1.6';
+
+      // Insert after textarea
+      textArea.parentElement.insertAdjacentElement('afterend', highlight);
+
+      // Init state and render
+      window.highlightState[engineId] = { index: 0, tokens: [] };
+      renderHighlight(engineId, textArea.value.trim());
+
+      // Re-render on text change
+      textArea.addEventListener('input', () => {
+        window.highlightState[engineId].index = 0;
+        renderHighlight(engineId, textArea.value.trim());
+      });
+    }
+
+    function tokenize(text) {
+      // Split on whitespace, keep punctuation attached for display but use a clean key for match
+      return text.split(/\s+/).filter(Boolean).map(raw => ({
+        raw,
+        key: raw.replace(/^[^\w]+|[^\w]+$/g, '').toLowerCase()
+      }));
+    }
+
+    function renderHighlight(engineId, text) {
+      const container = document.getElementById(`highlight-${engineId}`);
+      if (!container) return;
+      const tokens = tokenize(text);
+      window.highlightState[engineId].tokens = tokens;
+      container.innerHTML = tokens.map((t, i) => `<span data-idx="${i}">${escapeHtml(t.raw)}</span>`).join(' ');
+    }
+
+    function updateHighlight(engineId, nextWord) {
+      if (!nextWord) return;
+      const state = window.highlightState[engineId];
+      if (!state) return;
+      const tokens = state.tokens || [];
+      const start = state.index || 0;
+      const needle = String(nextWord).toLowerCase();
+
+      // Find next matching token from current index
+      for (let i = start; i < tokens.length; i++) {
+        if (tokens[i].key && (tokens[i].key === needle || tokens[i].key.includes(needle))) {
+          // Clear previous
+          const prevEl = document.querySelector(`#highlight-${engineId} span.active`);
+          if (prevEl) prevEl.classList.remove('active');
+
+          // Set current
+          const el = document.querySelector(`#highlight-${engineId} span[data-idx="${i}"]`);
+          if (el) {
+            el.classList.add('active');
+            el.style.background = '#fff3cd';
+            el.style.borderRadius = '3px';
+            el.style.padding = '0 2px';
+          }
+          state.index = i + 1;
+          break;
+        }
+      }
+    }
+
+    // Schedule DOM highlights from boundary timings (ms)
+    function scheduleHighlights(engineId, boundaries) {
+      if (!Array.isArray(boundaries) || boundaries.length === 0) return;
+      if (!window.highlightTimers) window.highlightTimers = {};
+      // Clear existing timers for this engine
+      clearHighlightsSchedule(engineId);
+      const now = performance.now();
+      const timers = [];
+      for (const wb of boundaries) {
+        const ms = typeof wb.offsetMs === 'number' ? wb.offsetMs
+                  : (typeof wb.offset === 'number' ? Math.round(wb.offset / 10000) : 0);
+        const delay = Math.max(0, ms);
+        const id = setTimeout(() => updateHighlight(engineId, wb.text || ''), delay);
+        timers.push(id);
+      }
+      window.highlightTimers[engineId] = timers;
+    }
+
+    function clearHighlightsSchedule(engineId) {
+      if (!window.highlightTimers || !window.highlightTimers[engineId]) return;
+      for (const id of window.highlightTimers[engineId]) clearTimeout(id);
+      window.highlightTimers[engineId] = [];
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
     async function playAudio(engineId, audioData, format) {
       try {
         if (!window.audioContext) {

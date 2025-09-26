@@ -5,7 +5,11 @@
     "outDir": "dist/cjs"
   },
   "include": [
-    "src/**/*", 
-    "src/engines/sherpaonnx/generated_models.ts" 
+    "src/**/*",
+    "src/engines/sherpaonnx/generated_models.ts"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "test/**/*.ts"
   ]
 }

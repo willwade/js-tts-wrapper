@@ -23,6 +23,8 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 - [API Reference](#api-reference)
 - [Contributing](#contributing)
 - [License](#license)
+- [Examples and Demos](#examples-and-demos)
+
 
 ## Features
 
@@ -1097,6 +1099,29 @@ Notes:
 
 - For production, we recommend self-hosting to ensure stable availability and correct MIME types (application/wasm for .wasm, text/javascript for .js). If your server uses different filenames, just point `wasmPath` at your glue JS file; the runtime will find the .wasm next to it.
 - Our engine also accepts `wasmBaseUrl` if you host with filenames matching your environment; when using the upstream build outputs shown above, `wasmPath` is the safest choice.
+
+## Examples and Demos
+
+- Vue.js Browser Demo (recommended for browsers)
+  - Path: examples/vue-browser-demo/
+  - Run locally:
+    - cd examples/vue-browser-demo
+    - npm install
+    - npm run dev
+  - Notes: The Vite config aliases js-tts-wrapper/browser to the workspace source for local development. For production, you can import from the published package directly.
+
+- Browser Unified Test Page (quick, no build)
+  - Path: examples/browser-unified-test.html
+  - Open this file directly in a modern browser. It exercises multiple engines and shows real-time word highlighting.
+
+- Node.js CLI Demo
+  - Path: examples/node-demo/
+  - Run: node demo.mjs [--engine <name>] [--text "Hello"]
+  - Shows boundary callbacks and file/bytes synthesis from Node. Engines requiring credentials read them from environment variables.
+
+SherpaONNX notes
+- Browser (WASM): The demos accept wasmPath/mergedModelsUrl. You can use the hosted assets shown in the Browser Support section (jsDelivr or Hugging Face resolve URLs).
+- Node (native): If SHERPAONNX_MODEL_PATH is not set, the wrapper now defaults to a Kokoro English model (kokoro-en-en-19) and will auto-download on first use.
 
 
 

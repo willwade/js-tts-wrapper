@@ -16,7 +16,7 @@ import { fileSystem, isBrowser, isNode, pathUtils } from "../utils/environment";
 import { estimateWordBoundaries } from "../utils/word-timing-estimator";
 
 // Enhanced model type definitions for multi-model support
-export type ModelType = 'kokoro' | 'matcha' | 'vits';
+export type ModelType = "kokoro" | "matcha" | "vits" | "mms";
 
 export interface ModelConfig {
   id: string;
@@ -25,14 +25,14 @@ export interface ModelConfig {
   language: string;
   gender: string;
   sampleRate: number;
-  url?: string;          // Source archive URL (usually .tar.bz2)
-  compressed?: boolean;  // Whether the URL points to a compressed archive
+  url?: string; // Source archive URL (usually .tar.bz2)
+  compressed?: boolean; // Whether the URL points to a compressed archive
   files: {
     model: string;
     tokens: string;
-    voices?: string;      // For Kokoro models
-    vocoder?: string;     // For Matcha models
-    dataDir?: string;     // For eSpeak data
+    voices?: string; // For Kokoro models
+    vocoder?: string; // For Matcha models
+    dataDir?: string; // For eSpeak data
   };
   size: number; // Model size in bytes
 }
@@ -54,8 +54,9 @@ export interface LoadedModel {
 
 // Enhanced WASM options for multi-model support
 export interface EnhancedWasmOptions {
-  enableMultiModel?: boolean;   // Enable multi-model features (default: false for backward compatibility)
-  maxCachedModels?: number;     // Maximum models to keep in memory (default: 3)
+  enableMultiModel?: boolean; // Enable multi-model features (default: false for backward compatibility)
+  maxCachedModels?: number; // Maximum models to keep in memory (default: 3)
+  modelsMirrorBaseUrl?: string; // Optional mirror base for model archives (CORS-friendly)
 }
 
 // Add SherpaOnnx to the Window interface
@@ -76,9 +77,28 @@ interface SherpaOnnxWasmModule {
   _ttsGetSamplesWithOffline?: (tts: number, samplesPtr: number) => void;
 
   // Enhanced multi-model methods
-  _LoadKokoroModel?: (modelPtr: number, modelSize: number, tokensPtr: number, tokensSize: number, voicesPtr: number, voicesSize: number) => number;
-  _LoadMatchaModel?: (modelPtr: number, modelSize: number, tokensPtr: number, tokensSize: number, vocoderPtr: number, vocoderSize: number) => number;
-  _LoadVitsModel?: (modelPtr: number, modelSize: number, tokensPtr: number, tokensSize: number) => number;
+  _LoadKokoroModel?: (
+    modelPtr: number,
+    modelSize: number,
+    tokensPtr: number,
+    tokensSize: number,
+    voicesPtr: number,
+    voicesSize: number
+  ) => number;
+  _LoadMatchaModel?: (
+    modelPtr: number,
+    modelSize: number,
+    tokensPtr: number,
+    tokensSize: number,
+    vocoderPtr: number,
+    vocoderSize: number
+  ) => number;
+  _LoadVitsModel?: (
+    modelPtr: number,
+    modelSize: number,
+    tokensPtr: number,
+    tokensSize: number
+  ) => number;
   _SwitchToModel?: (modelId: number) => number;
   _UnloadModel?: (modelId: number) => void;
   _GenerateAudio?: (text: string, speakerId: number, speed: number) => any;
@@ -129,6 +149,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
   private wasmLoaded = false;
   private wasmBaseUrl?: string;
   private mergedModelsUrl?: string;
+  private modelsMirrorUrl?: string;
 
   // Enhanced multi-model support
   private enhancedOptions: EnhancedWasmOptions;
@@ -153,13 +174,17 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
     // Optional configuration from credentials
     this.wasmPath = (credentials as any).wasmPath || ""; // JS glue path (if provided)
     this.wasmBaseUrl = (credentials as any).wasmBaseUrl || undefined; // Base URL for glue+wasm
-    this.mergedModelsUrl = (credentials as any).mergedModelsUrl || (credentials as any).modelsUrl || undefined;
+    this.mergedModelsUrl =
+      (credentials as any).mergedModelsUrl || (credentials as any).modelsUrl || undefined;
+    this.modelsMirrorUrl =
+      (credentials as any).modelsMirrorUrl || enhancedOptions?.modelsMirrorBaseUrl || undefined;
 
     // Enhanced options with defaults for backward compatibility
     this.enhancedOptions = {
-      enableMultiModel: false,  // Disabled by default for backward compatibility
+      enableMultiModel: false, // Disabled by default for backward compatibility
       maxCachedModels: 3,
-      ...enhancedOptions
+      modelsMirrorBaseUrl: this.modelsMirrorUrl,
+      ...enhancedOptions,
     };
 
     // Initialize multi-model components if enabled
@@ -167,8 +192,6 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       this.modelRepository = new ModelRepository(this.mergedModelsUrl);
     }
   }
-
-
 
   /**
    * Get the list of required credential types for this engine
@@ -194,7 +217,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       // so we'll check if it's likely to be loaded later
       if (typeof window !== "undefined") {
         if (status.issues.length > 0) {
-          console.warn("SherpaOnnx not yet initialized:", status.issues.join(', '));
+          console.warn("SherpaOnnx not yet initialized:", status.issues.join(", "));
         }
         return true; // Assume it will be loaded later in browser
       }
@@ -202,7 +225,10 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       // In Node.js, check if the WASM file exists
       if (isNode && this.wasmPath && fileSystem.existsSync(this.wasmPath)) {
         if (status.issues.length > 0) {
-          console.warn("SherpaOnnx WASM file exists but not initialized:", status.issues.join(', '));
+          console.warn(
+            "SherpaOnnx WASM file exists but not initialized:",
+            status.issues.join(", ")
+          );
         }
         return true;
       }
@@ -319,33 +345,44 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         console.error("Error loading voice models:", error);
       }
 
-      // Filter for SherpaOnnx models and map to unified format
-      const sherpaOnnxModels = voiceModels.filter(
-        (model) => model.engine === "sherpaonnx" || model.engine === "sherpaonnx-wasm"
-      );
+      // Normalize merged_models.json which may be an object map (id -> model)
+      const entries: any[] = Array.isArray(voiceModels)
+        ? voiceModels
+        : voiceModels && typeof voiceModels === "object"
+          ? Object.values(voiceModels)
+          : [];
 
-      console.log("Found SherpaOnnx models:", sherpaOnnxModels);
+      console.log("Loaded SherpaOnnx model entries:", entries?.length || 0);
 
-      const voices = sherpaOnnxModels.map((model) => ({
-        id: model.id,
-        name: model.name,
-        gender: model.gender || "Unknown",
-        provider: "sherpaonnx-wasm" as const,
-        languageCodes: [
-          {
-            bcp47: model.language || "en-US",
-            iso639_3: model.language ? model.language.split("-")[0] : "eng",
-            display: model.language_display || "English (US)",
-          },
-        ],
-      }));
+      const voices = entries.map((model: any) => {
+        const langCode =
+          model?.language?.[0]?.lang_code ||
+          (typeof model?.language === "string" ? model.language : model?.language_code || "en");
+        const bcp47 = langCode || "en";
+        const iso = bcp47.split("-")[0] || "en";
+        const id = model?.id || model?.model_id || model?.name || "sherpa-model";
+        const name = model?.name || id;
+        return {
+          id,
+          name,
+          gender: (model?.gender || "Unknown") as any,
+          provider: "sherpaonnx-wasm" as const,
+          languageCodes: [
+            {
+              bcp47,
+              iso639_3: iso,
+              display: model?.language_display || bcp47,
+            },
+          ],
+        };
+      });
 
       // If no voices found, return a default voice for backward compatibility
       if (voices.length === 0) {
         return [
           {
-            id: "piper_en_US",
-            name: "Piper English (US)",
+            id: "sherpa_en",
+            name: "Sherpa English",
             gender: "Unknown",
             provider: "sherpaonnx-wasm" as const,
             languageCodes: [
@@ -396,7 +433,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           console.log("Setting wasmPath to:", this.wasmPath);
 
           // Auto-load JS glue and WASM if not present
-          const w = (window as any);
+          const w = window as any;
           let baseUrl: string | undefined = this.wasmBaseUrl;
           let scriptUrl: string | undefined;
           const provided = wasmUrl || this.wasmPath || "";
@@ -418,13 +455,13 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           }
           if (!scriptUrl) {
             console.warn("No WASM script URL provided; attempting default ./sherpaonnx.js");
-            scriptUrl = "./sherpaonnx.js";
           }
 
-          // Persist the resolved script URL
-          this.wasmPath = scriptUrl!;
-          console.log("Resolved wasmPath to:", this.wasmPath);
+          const resolvedScriptUrl = scriptUrl ?? "./sherpaonnx.js";
 
+          // Persist the resolved script URL
+          this.wasmPath = resolvedScriptUrl;
+          console.log("Resolved wasmPath to:", this.wasmPath);
 
           // Ensure Module.locateFile points to the base for .wasm
           w.Module = w.Module || {};
@@ -433,26 +470,113 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
             w.Module.locateFile = (p: string) => `${b}/${p}`;
           }
 
-          // Load the glue JS if createOfflineTts is not available
-          if (typeof w.createOfflineTts !== "function") {
-            await new Promise<void>((resolve, reject) => {
-              const s = document.createElement("script");
-              s.src = scriptUrl!;
-              s.async = true;
-              s.onload = () => resolve();
-              s.onerror = () => reject(new Error(`Failed to load SherpaONNX glue: ${scriptUrl}`));
-              document.head.appendChild(s);
-            });
+          const deriveBaseFromScript = () => {
+            const lastSlash = resolvedScriptUrl.lastIndexOf("/");
+            return lastSlash >= 0 ? resolvedScriptUrl.slice(0, lastSlash) : ".";
+          };
+          const normalizedBase = (baseUrl ?? deriveBaseFromScript()).replace(/\/$/, "");
+
+          // Determine if we're using the wrapper glue (sherpa-onnx-tts.js)
+          const isWrapper = /sherpa-onnx-tts\.js($|\?)/.test(resolvedScriptUrl);
+          const mainGlueUrl = `${normalizedBase}/sherpa-onnx-wasm-main-tts.js`;
+
+          // If a compatible module is already present, don't inject again
+          const moduleReady = () => {
+            const hasModule = typeof w.Module !== "undefined";
+            const hasCreate = typeof w.createOfflineTts === "function";
+            const hasOffline = !!(
+              hasModule &&
+              w.Module &&
+              (w.Module.OfflineTts || w.Module.calledRun)
+            );
+            const hasUtf8 = !!(hasModule && typeof w.Module.lengthBytesUTF8 === "function");
+            const hasMalloc = !!(hasModule && typeof w.Module._malloc === "function");
+            const hasRun = !!(hasModule && w.Module && w.Module.calledRun === true);
+            // Wrapper requires full runtime ready: createOfflineTts + lengthBytesUTF8 + _malloc + calledRun
+            return (
+              hasModule &&
+              (isWrapper
+                ? hasCreate && hasUtf8 && hasMalloc && hasRun
+                : hasCreate || hasOffline || hasMalloc)
+            );
+          };
+
+          if (!moduleReady()) {
+            if (isWrapper) {
+              // Ensure main Emscripten glue is loaded first
+              const existingMain = document.querySelector(
+                'script[data-sherpa-main-glue="true"]'
+              ) as HTMLScriptElement | null;
+              if (!existingMain) {
+                await new Promise<void>((resolve, reject) => {
+                  const sMain = document.createElement("script");
+                  sMain.setAttribute("data-sherpa-main-glue", "true");
+                  sMain.src = mainGlueUrl;
+                  sMain.async = true;
+                  sMain.onload = () => resolve();
+                  sMain.onerror = () =>
+                    reject(new Error(`Failed to load SherpaONNX main glue: ${mainGlueUrl}`));
+                  document.head.appendChild(sMain);
+                });
+              }
+              // Then load the wrapper glue that exposes createOfflineTts
+              const existingWrapper = document.querySelector(
+                'script[data-sherpa-wrapper-glue="true"]'
+              ) as HTMLScriptElement | null;
+              if (!existingWrapper) {
+                await new Promise<void>((resolve, reject) => {
+                  const sWrap = document.createElement("script");
+                  sWrap.setAttribute("data-sherpa-wrapper-glue", "true");
+                  sWrap.src = resolvedScriptUrl;
+                  sWrap.async = true;
+                  sWrap.onload = () => resolve();
+                  sWrap.onerror = () =>
+                    reject(
+                      new Error(`Failed to load SherpaONNX wrapper glue: ${resolvedScriptUrl}`)
+                    );
+                  document.head.appendChild(sWrap);
+                });
+              }
+            } else {
+              // Single-file glue path
+              const existing = document.querySelector(
+                'script[data-sherpa-glue="true"]'
+              ) as HTMLScriptElement | null;
+              if (!existing) {
+                await new Promise<void>((resolve, reject) => {
+                  const s = document.createElement("script");
+                  s.setAttribute("data-sherpa-glue", "true");
+                  s.src = resolvedScriptUrl;
+                  s.async = true;
+                  s.onload = () => resolve();
+                  s.onerror = () =>
+                    reject(new Error(`Failed to load SherpaONNX glue: ${resolvedScriptUrl}`));
+                  document.head.appendChild(s);
+                });
+              }
+            }
           }
 
-          // Wait for glue + Module to be ready. Some upstream builds do not set Module.calledRun,
-          // so treat (createOfflineTts && Module) as sufficient readiness.
+          // Wait for glue + Module to be ready. For wrapper, require createOfflineTts and Module.lengthBytesUTF8
           await new Promise<void>((resolve, reject) => {
-            const giveUpAt = Date.now() + 15000; // 15s
+            const giveUpAt = Date.now() + 25000; // 25s
             const checkReady = () => {
-              const hasCreate = typeof w.createOfflineTts === "function";
               const hasModule = typeof w.Module !== "undefined";
-              if (hasCreate && hasModule) {
+              const hasCreate = typeof w.createOfflineTts === "function";
+              const hasOffline = !!(
+                hasModule &&
+                w.Module &&
+                (w.Module.OfflineTts || w.Module.calledRun)
+              );
+              const hasUtf8 = !!(hasModule && typeof w.Module.lengthBytesUTF8 === "function");
+              const hasMalloc = !!(hasModule && typeof w.Module._malloc === "function");
+              const hasRun = !!(hasModule && w.Module && w.Module.calledRun === true);
+              const ready =
+                hasModule &&
+                (isWrapper
+                  ? hasCreate && hasUtf8 && hasMalloc && hasRun
+                  : hasCreate || hasOffline || hasMalloc);
+              if (ready) {
                 resolve();
                 return;
               }
@@ -465,13 +589,17 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
             checkReady();
           });
 
-          // Now that we know createOfflineTts and Module are available, store them
-          console.log("Storing Module and createOfflineTts");
+          // Now that we know Module is available, store it
+          console.log("Storing Module (and createOfflineTts if present)");
           this.wasmModule = (window as any).Module;
           this.wasmLoaded = true;
 
-          // Store the createOfflineTts function
-          if (this.wasmModule && !this.wasmModule.createOfflineTts) {
+          // Store the createOfflineTts function reference for convenience if present
+          if (
+            this.wasmModule &&
+            !this.wasmModule.createOfflineTts &&
+            typeof (window as any).createOfflineTts === "function"
+          ) {
             this.wasmModule.createOfflineTts = (window as any).createOfflineTts;
           }
 
@@ -485,10 +613,8 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
 
               // Initialize model manager
               if (this.wasmModule) {
-                this.modelManager = new WasmModelManager(
-                  this.wasmModule,
-                  this.enhancedOptions.maxCachedModels!
-                );
+                const maxCached = this.enhancedOptions.maxCachedModels ?? 3;
+                this.modelManager = new WasmModelManager(this.wasmModule, maxCached);
               }
 
               console.log("Enhanced multi-model support initialized successfully");
@@ -568,24 +694,68 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       }
     }
 
+    // If multi-model is enabled, ensure the selected model files are mounted before synthesis
+    if (this.enhancedOptions.enableMultiModel && this.wasmModule) {
+      try {
+        const FS = (this.wasmModule as any).FS;
+        const needModel = (() => {
+          try {
+            return !FS.lookupPath("/model.onnx", { follow: true });
+          } catch {
+            return true;
+          }
+        })();
+        const needTokens = (() => {
+          try {
+            return !FS.lookupPath("/tokens.txt", { follow: true });
+          } catch {
+            return true;
+          }
+        })();
+        if (needModel || needTokens) {
+          // Decide which voice to mount
+          let targetVoice = this.currentVoiceId || this.voiceId;
+          if (!targetVoice && this.modelRepository) {
+            const models = this.modelRepository.getAvailableModels();
+            // Prefer MMS English to avoid CORS issues (then any MMS, then any English, else first)
+            const isEn = (x: any) => (x.language || "").toLowerCase().startsWith("en");
+            const preferred =
+              models.find((m) => m.type === "mms" && isEn(m)) ||
+              models.find((m) => m.type === "mms") ||
+              models.find((m) => isEn(m)) ||
+              models[0];
+            targetVoice = preferred?.id;
+          }
+          if (!targetVoice) {
+            throw new Error("No voice selected and no models available to mount");
+          }
+          console.log("Model files not present; mounting for voice", targetVoice);
+          await this.setVoice(targetVoice);
+        }
+      } catch (e) {
+        console.warn("Could not verify/mount model files before synthesis:", e);
+      }
+    }
 
-    // Enhanced multi-model synthesis
+    // Enhanced multi-model synthesis path (if the enhanced WASM exports are available)
     if (this.enhancedOptions.enableMultiModel && this.wasmModule && this.currentVoiceId) {
       console.log(`Using enhanced multi-model synthesis for voice ${this.currentVoiceId}`);
 
       try {
         if (!this.wasmModule._GenerateAudio) {
-          throw new Error('Enhanced WASM module not loaded - _GenerateAudio not available');
+          throw new Error("Enhanced WASM module not loaded - _GenerateAudio not available");
         }
 
         // Generate audio using the enhanced WASM interface
         const result = this.wasmModule._GenerateAudio(processedText, 0, 1.0); // text, speaker_id, speed
 
         if (!result || !result.samples) {
-          throw new Error('Failed to generate audio with enhanced interface');
+          throw new Error("Failed to generate audio with enhanced interface");
         }
 
-        console.log(`Enhanced synthesis generated ${result.samples.length} samples at ${result.sampleRate}Hz`);
+        console.log(
+          `Enhanced synthesis generated ${result.samples.length} samples at ${result.sampleRate}Hz`
+        );
 
         // Update sample rate if provided
         if (result.sampleRate) {
@@ -594,10 +764,9 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
 
         // Convert to WAV format
         return this._convertAudioFormat(result.samples);
-
       } catch (error) {
-        console.error('Error with enhanced multi-model synthesis:', error);
-        console.log('Falling back to legacy synthesis mode');
+        console.error("Error with enhanced multi-model synthesis:", error);
+        console.log("Falling back to legacy synthesis mode");
         // Fall through to legacy mode
       }
     }
@@ -617,24 +786,50 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
 
       // Check if createOfflineTts is available in the global scope
       const createOfflineTtsFn = (globalWindow as any).createOfflineTts;
-      const moduleObj = (globalWindow as any).Module;
+      // Prefer the stored module instance captured during readiness
+      const moduleObj = (this.wasmModule || (globalWindow as any).Module) as any;
 
       console.log(
         "createOfflineTts available in global scope:",
         typeof createOfflineTtsFn === "function"
       );
-      console.log("Module available in global scope:", typeof moduleObj !== "undefined");
-      console.log("Module.calledRun:", moduleObj?.calledRun);
+      console.log("Module available (stored or global):", !!moduleObj);
+      console.log("Module._malloc exists:", typeof moduleObj?._malloc === "function");
 
-      // Try to use the global createOfflineTts function directly
+      // Try to use the createOfflineTts function directly when we have a real module instance
       if (
         typeof createOfflineTtsFn === "function" &&
-        typeof moduleObj !== "undefined" &&
-        moduleObj.calledRun
+        moduleObj &&
+        typeof moduleObj._malloc === "function"
       ) {
         console.log("Using global createOfflineTts function directly");
 
         try {
+          // Ensure model files are mounted for legacy path too
+          if (this.enhancedOptions.enableMultiModel && this.currentVoiceId) {
+            try {
+              const FS = (this.wasmModule as any).FS;
+              const needModel = (() => {
+                try {
+                  return !FS.lookupPath("/model.onnx", { follow: true });
+                } catch {
+                  return true;
+                }
+              })();
+              const needTokens = (() => {
+                try {
+                  return !FS.lookupPath("/tokens.txt", { follow: true });
+                } catch {
+                  return true;
+                }
+              })();
+              if (needModel || needTokens) {
+                console.log("Legacy path: mounting model files for voice", this.currentVoiceId);
+                await this.setVoice(this.currentVoiceId);
+              }
+            } catch {}
+          }
+
           // Create a new TTS instance directly
           console.log("About to call createOfflineTts...");
           const directTts = createOfflineTtsFn(moduleObj);
@@ -709,11 +904,45 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
             console.log("Module:", (window as any).Module);
 
             try {
-              // Create the TTS instance with default configuration
-              console.log("About to call createOfflineTts...");
-              this.tts = (window as any).createOfflineTts((window as any).Module);
+              // For MMS models, pass a custom config disabling eSpeak dataDir
+              const cfg = this.modelRepository?.getModelConfig(
+                this.currentVoiceId || this.voiceId || ""
+              );
+              const isMms = !!(
+                cfg &&
+                ((cfg as any).type === "mms" || /^mms_/i.test((cfg as any).id || ""))
+              );
+              let passedConfig: any = undefined;
+              if (isMms) {
+                passedConfig = {
+                  offlineTtsModelConfig: {
+                    vits: {
+                      model: "./model.onnx",
+                      lexicon: "",
+                      tokens: "./tokens.txt",
+                      dataDir: "", // disable eSpeak requirement for MMS
+                      dictDir: "",
+                      noiseScale: 0.667,
+                      noiseScaleW: 0.8,
+                      lengthScale: 1.0,
+                    },
+                    numThreads: 1,
+                    debug: true,
+                    provider: "cpu",
+                  },
+                  ruleFsts: "",
+                  ruleFars: "",
+                  maxNumSentences: 1,
+                };
+              }
+
+              console.log(
+                "About to call createOfflineTts...",
+                passedConfig ? "(with custom MMS config)" : "(with default config)"
+              );
+              this.tts = (window as any).createOfflineTts((window as any).Module, passedConfig);
               console.log("createOfflineTts call successful, tts object:", this.tts);
-              console.log("TTS initialized with default configuration");
+              console.log("TTS initialized");
               console.log(`Sample rate: ${this.tts?.sampleRate}`);
               console.log(`Number of speakers: ${this.tts?.numSpeakers}`);
 
@@ -739,7 +968,9 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
           console.log("TTS instance created successfully");
         } catch (error) {
           console.error("Error creating TTS instance:", error);
-          throw new Error(`Failed to create SherpaOnnx TTS instance: ${error instanceof Error ? error.message : String(error)}`);
+          throw new Error(
+            `Failed to create SherpaOnnx TTS instance: ${error instanceof Error ? error.message : String(error)}`
+          );
         }
       }
 
@@ -792,7 +1023,9 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       return audioBytes;
     } catch (error) {
       console.error("Error synthesizing text:", error);
-      throw new Error(`SherpaOnnx synthesis failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `SherpaOnnx synthesis failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -891,27 +1124,35 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
     createOfflineTts: boolean;
     issues: string[];
   } {
-    const globalWindow = (typeof window !== 'undefined' ? window : global) as any;
+    const globalWindow = (typeof window !== "undefined" ? window : global) as any;
     const issues: string[] = [];
+
+    const hasModule = !!this.wasmModule;
+    const winMod = (globalWindow && (globalWindow as any).Module) || null;
+    const hasGlobalModule = !!winMod;
+    const hasCreate = typeof globalWindow.createOfflineTts === "function";
+    const hasOffline = !!(winMod && (winMod.OfflineTts || winMod.calledRun));
 
     if (!this.wasmLoaded) {
       issues.push("WebAssembly module not loaded");
     }
 
-    if (!this.wasmModule) {
+    if (!hasModule && !hasGlobalModule) {
       issues.push("WebAssembly module is null");
     }
 
-    if (typeof globalWindow.createOfflineTts !== "function") {
-      issues.push("createOfflineTts function not available");
+    if (!hasCreate && !hasOffline) {
+      issues.push("No SherpaONNX TTS API found (neither createOfflineTts nor Module.OfflineTts)");
     }
 
+    const ready = this.wasmLoaded && (hasModule || hasGlobalModule) && (hasCreate || hasOffline);
+
     return {
-      isInitialized: issues.length === 0,
+      isInitialized: ready && issues.length === 0 ? true : ready, // consider ready if runtime is present
       wasmLoaded: this.wasmLoaded,
-      wasmModule: !!this.wasmModule,
-      createOfflineTts: typeof globalWindow.createOfflineTts === "function",
-      issues
+      wasmModule: !!(hasModule || hasGlobalModule),
+      createOfflineTts: hasCreate,
+      issues,
     };
   }
 
@@ -924,16 +1165,17 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
 
     let message = "SherpaOnnx WebAssembly TTS is not properly initialized.\n\n";
     message += "Issues found:\n";
-    status.issues.forEach(issue => {
+    for (const issue of status.issues) {
       message += `- ${issue}\n`;
-    });
+    }
 
     message += "\nTroubleshooting steps:\n";
     message += "1. Ensure the SherpaOnnx WebAssembly files are properly loaded\n";
     message += "2. Check that the WebAssembly module initialization completed successfully\n";
     message += "3. Verify that createOfflineTts function is available in the global scope\n";
     message += "4. Check browser console for WebAssembly loading errors\n";
-    message += "5. Ensure you're running in a supported environment (browser with WebAssembly support)\n";
+    message +=
+      "5. Ensure you're running in a supported environment (browser with WebAssembly support)\n";
 
     return message;
   }
@@ -1055,7 +1297,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       case "maxCachedModels":
         return this.enhancedOptions.maxCachedModels;
       case "loadedModels":
-        return this.modelManager ? Array.from(this.modelManager['loadedModels'].keys()) : [];
+        return this.modelManager?.getLoadedModelIds() ?? [];
       case "currentModel":
         return this.modelManager?.getCurrentModel();
       case "availableModels":
@@ -1122,83 +1364,242 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         throw new Error(`No URL found for model ${voiceId}`);
       }
 
-      // Fetch archive
-      console.log(`Fetching model archive: ${cfg.url}`);
-      const res = await fetch(cfg.url);
-      if (!res.ok) throw new Error(`Failed to fetch model: ${res.status} ${res.statusText}`);
-      const archiveBuf = await res.arrayBuffer();
-
-      // Decompress .bz2 if needed
-      let tarBuffer: ArrayBuffer = archiveBuf;
-      if (cfg.compressed) {
-        const compressjsMod: any = await import("compressjs");
-        const Bzip2 = compressjsMod.Bzip2 || compressjsMod.BZ2;
-        if (!Bzip2 || typeof Bzip2.decompressFile !== "function") {
-          throw new Error("Bzip2 decompressor not available");
-        }
-        const outArr: number[] = Bzip2.decompressFile(new Uint8Array(archiveBuf));
-        tarBuffer = new Uint8Array(outArr).buffer;
+      // Build URL and determine if source is an archive (mirror only for archives)
+      const originalUrl = cfg.url;
+      const urlIsArchive = /\.(tar|tar\.bz2)$/i.test(originalUrl);
+      const filename = originalUrl.split("/").pop() || "";
+      const mirrorBase = (
+        this.modelsMirrorUrl ||
+        this.enhancedOptions.modelsMirrorBaseUrl ||
+        ""
+      ).replace(/\/$/, "");
+      const modelUrl = urlIsArchive && mirrorBase ? `${mirrorBase}/${filename}` : originalUrl;
+      const isArchive = urlIsArchive;
+      if (urlIsArchive && mirrorBase) {
+        console.log(`Using mirror for archive: ${modelUrl}`);
+      } else if (!urlIsArchive && mirrorBase) {
+        console.log(`Mirror configured but ignored for non-archive URL: ${originalUrl}`);
       }
 
-      // Extract tar
-      const untarMod: any = await import("js-untar");
-      const untar = untarMod.default || untarMod;
-      const entries: Array<any> = await untar(tarBuffer);
-      console.log(`Extracted ${entries.length} entries from TAR`);
-
-      const M: any = this.wasmModule as any;
+      const M: any =
+        (this.wasmModule as any) ||
+        ((typeof window !== "undefined" ? (window as any) : {}) as any).Module ||
+        {};
       const FS = M.FS;
-      if (!FS) throw new Error("Emscripten FS not available");
 
-      // Ensure /assets exists
-      try { FS.mkdir("/assets"); } catch {}
-      try { FS.mkdir("/assets/espeak-ng-data"); } catch {}
-
-      // Helper to create directories recursively
+      // Helper to create directories recursively (fallback to FS_createPath)
       const mkdirp = (dir: string) => {
-        if (FS.mkdirTree) {
-          try { FS.mkdirTree(dir); return; } catch {}
+        if (!dir || dir === "/") return;
+        if (FS?.mkdirTree) {
+          try {
+            FS.mkdirTree(dir);
+            return;
+          } catch {}
         }
-        const parts = dir.split("/").filter(Boolean);
-        let cur = "";
-        for (const p of parts) {
-          cur += "/" + p;
-          try { FS.mkdir(cur); } catch {}
+        if (FS?.mkdir) {
+          const parts = dir.split("/").filter(Boolean);
+          let cur = "";
+          for (const p of parts) {
+            cur += `/${p}`;
+            try {
+              FS.mkdir(cur);
+            } catch {}
+          }
+          return;
+        }
+        if (typeof M.FS_createPath === "function") {
+          try {
+            M.FS_createPath("/", dir.replace(/^\//, ""), true, true);
+          } catch {}
         }
       };
 
-      // Map archive files to expected /assets layout
-      for (const e of entries) {
-        if (!e || !e.name) continue;
-        const name: string = String(e.name).replace(/^\.\//, "");
-        const lower = name.toLowerCase();
+      const writeFile = (outPath: string, data: Uint8Array) => {
+        if (FS && typeof FS.writeFile === "function") {
+          FS.writeFile(outPath, data);
+          return;
+        }
+        if (typeof M.FS_createDataFile === "function") {
+          const dir = outPath.substring(0, outPath.lastIndexOf("/")) || "/";
+          mkdirp(dir);
+          try {
+            M.FS_createDataFile("/", outPath.replace(/^\//, ""), data, true, true, true);
+            return;
+          } catch {}
+        }
+        throw new Error("No Emscripten FS write mechanism available");
+      };
 
-        // Only write file entries (js-untar uses `buffer` for file data)
-        if (!e.buffer) continue;
+      const pathExists = (p: string): boolean => {
+        try {
+          return !!FS?.lookupPath?.(p, { follow: true });
+        } catch {
+          return false;
+        }
+      };
 
-        let outPath: string | null = null;
-        if (lower.endsWith("/model.onnx") || lower === "model.onnx") {
-          outPath = "/assets/model.onnx";
-        } else if (lower.endsWith("/tokens.txt") || lower === "tokens.txt") {
-          outPath = "/assets/tokens.txt";
-        } else if (lower.includes("/espeak-ng-data/") || lower.startsWith("espeak-ng-data/")) {
-          outPath = "/assets/" + name.substring(name.toLowerCase().indexOf("espeak-ng-data/"));
-        } else if (lower.endsWith("voices.bin") || (lower.includes("voices") && lower.endsWith(".bin"))) {
-          outPath = "/assets/voices.bin";
-        } else if (lower.includes("vocoder") && lower.endsWith(".onnx")) {
-          outPath = "/assets/vocoder.onnx";
+      if (isArchive) {
+        // Fetch archive
+        console.log(`Fetching model archive: ${modelUrl}`);
+        const res = await fetch(modelUrl);
+        if (!res.ok) throw new Error(`Failed to fetch model: ${res.status} ${res.statusText}`);
+        const archiveBuf = await res.arrayBuffer();
+
+        // Decompress .bz2 if needed
+        let tarBuffer: ArrayBuffer = archiveBuf;
+        if (/\.bz2$/i.test(modelUrl) || cfg.compressed) {
+          const compressjsMod: any = await import("compressjs");
+          const Bzip2 = compressjsMod.Bzip2 || compressjsMod.BZ2;
+          if (!Bzip2 || typeof Bzip2.decompressFile !== "function") {
+            throw new Error("Bzip2 decompressor not available");
+          }
+          const outArr: number[] = Bzip2.decompressFile(new Uint8Array(archiveBuf));
+          tarBuffer = new Uint8Array(outArr).buffer;
         }
 
-        if (outPath) {
-          const dir = outPath.substring(0, outPath.lastIndexOf("/"));
-          mkdirp(dir);
-          FS.writeFile(outPath, new Uint8Array(e.buffer));
+        // Extract tar
+        const untarMod: any = await import("js-untar");
+        const untar = untarMod.default || untarMod;
+        const entries: Array<any> = await untar(tarBuffer);
+        console.log(`Extracted ${entries.length} entries from TAR`);
+
+        // Ensure required directories exist (root-level expected by wrapper)
+        mkdirp("/espeak-ng-data");
+
+        // Map archive files to expected root-level paths
+        for (const e of entries) {
+          if (!e || !e.name) continue;
+          const name: string = String(e.name).replace(/^\.\//, "");
+          const lower = name.toLowerCase();
+
+          // Only write file entries (js-untar uses `buffer` for file data)
+          if (!e.buffer) continue;
+
+          let outPath: string | null = null;
+          if (lower.endsWith("/model.onnx") || lower === "model.onnx") {
+            outPath = "/model.onnx";
+          } else if (lower.endsWith("/tokens.txt") || lower === "tokens.txt") {
+            outPath = "/tokens.txt";
+          } else if (lower.includes("/espeak-ng-data/") || lower.startsWith("espeak-ng-data/")) {
+            const suffix = name.substring(name.toLowerCase().indexOf("espeak-ng-data/"));
+            outPath = `/${suffix}`;
+          } else if (
+            lower.endsWith("voices.bin") ||
+            (lower.includes("voices") && lower.endsWith(".bin"))
+          ) {
+            outPath = "/voices.bin";
+          } else if (lower.includes("vocoder") && lower.endsWith(".onnx")) {
+            outPath = "/vocoder.onnx";
+          }
+
+          if (outPath) {
+            const dir = outPath.substring(0, outPath.lastIndexOf("/"));
+            mkdirp(dir);
+            writeFile(outPath, new Uint8Array(e.buffer));
+          }
+        }
+      } else {
+        // Direct-file layout (e.g., MMS on Hugging Face): fetch files individually
+        const base = modelUrl.replace(/\/$/, "");
+        console.log(`Fetching model from directory: ${base}`);
+
+        // Try candidate token paths
+        const tokenCandidates = [`${base}/tokens.txt`, `${base}/tokens`, `${base}/vocab.txt`];
+        let tokensBuf: ArrayBuffer | null = null;
+        for (const u of tokenCandidates) {
+          try {
+            const r = await fetch(u);
+            if (r.ok) {
+              tokensBuf = await r.arrayBuffer();
+              console.log(`Fetched tokens from ${u}`);
+              break;
+            }
+          } catch {}
+        }
+        if (!tokensBuf) throw new Error("Could not locate tokens file in model directory");
+
+        // Try candidate model paths
+        const id = cfg.id || "";
+        const lang = cfg.language || "";
+        const name = (cfg.name || "").toLowerCase();
+        const modelCandidates = [
+          `${base}/model.onnx`,
+          `${base}/${id}.onnx`,
+          `${base}/${lang}.onnx`,
+          `${base}/${name}.onnx`,
+        ];
+        let modelBuf: ArrayBuffer | null = null;
+        for (const u of modelCandidates) {
+          try {
+            const r = await fetch(u);
+            if (r.ok) {
+              modelBuf = await r.arrayBuffer();
+              console.log(`Fetched model from ${u}`);
+              break;
+            }
+          } catch {}
+        }
+        if (!modelBuf) throw new Error("Could not locate model.onnx in model directory");
+
+        // Write to FS
+        mkdirp("/");
+        writeFile("/tokens.txt", new Uint8Array(tokensBuf));
+        writeFile("/model.onnx", new Uint8Array(modelBuf));
+      }
+
+      // Also ensure espeak-ng-data is present; if not, try to fetch from mirror
+      const espeakExists = pathExists("/espeak-ng-data");
+      if (!espeakExists) {
+        const mirrorBase2 = (
+          this.modelsMirrorUrl ||
+          this.enhancedOptions.modelsMirrorBaseUrl ||
+          ""
+        ).replace(/\/$/, "");
+        if (mirrorBase2) {
+          const espeakUrl = `${mirrorBase2}/espeak-ng-data.tar.bz2`;
+          try {
+            console.log(`Fetching espeak-ng-data archive: ${espeakUrl}`);
+            const r2 = await fetch(espeakUrl);
+            if (r2.ok) {
+              const buf2 = await r2.arrayBuffer();
+              const compressjsMod2: any = await import("compressjs");
+              const Bzip22 = compressjsMod2.Bzip2 || compressjsMod2.BZ2;
+              const outArr2: number[] = Bzip22.decompressFile(new Uint8Array(buf2));
+              const tarBuf2 = new Uint8Array(outArr2).buffer;
+              const untarMod2: any = await import("js-untar");
+              const untar2 = untarMod2.default || untarMod2;
+              const entries2: Array<any> = await untar2(tarBuf2);
+              console.log(`Extracted ${entries2.length} espeak entries from TAR`);
+              for (const e of entries2) {
+                if (!e || !e.name || !e.buffer) continue;
+                const name: string = String(e.name).replace(/^\.\//, "");
+                const lower = name.toLowerCase();
+                let outPath: string | null = null;
+                if (lower.includes("/espeak-ng-data/") || lower.startsWith("espeak-ng-data/")) {
+                  const suffix = name.substring(name.toLowerCase().indexOf("espeak-ng-data/"));
+                  outPath = `/${suffix}`;
+                }
+                if (outPath) {
+                  const dir = outPath.substring(0, outPath.lastIndexOf("/"));
+                  mkdirp(dir);
+                  writeFile(outPath, new Uint8Array(e.buffer));
+                }
+              }
+            } else {
+              console.warn("Failed to fetch espeak-ng-data:", r2.status, r2.statusText);
+            }
+          } catch (err) {
+            console.warn("Error fetching espeak-ng-data:", err);
+          }
         }
       }
 
       // Reset TTS so next synthesis uses the new assets
       if (this.tts) {
-        try { if (typeof this.wasmModule._ttsDestroyOffline === "function") this.wasmModule._ttsDestroyOffline(this.tts); } catch {}
+        try {
+          if (typeof this.wasmModule._ttsDestroyOffline === "function")
+            this.wasmModule._ttsDestroyOffline(this.tts);
+        } catch {}
         this.tts = null;
       }
 
@@ -1271,7 +1672,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       wordBoundaries = this.timings.map(([start, end, word]) => ({
         text: word,
         offset: Math.round(start * 10000), // Convert to 100-nanosecond units
-        duration: Math.round((end - start) * 10000)
+        duration: Math.round((end - start) * 10000),
       }));
     }
 
@@ -1306,7 +1707,13 @@ class ModelRepository {
       let voiceModels: any[] = [];
 
       if (isNode) {
-        const modelsJsonPath = pathUtils.join(__dirname, "..", "engines", "sherpaonnx", "merged_models.json");
+        const modelsJsonPath = pathUtils.join(
+          __dirname,
+          "..",
+          "engines",
+          "sherpaonnx",
+          "merged_models.json"
+        );
         if (fileSystem.existsSync(modelsJsonPath)) {
           const modelsJson = fileSystem.readFileSync(modelsJsonPath);
           const modelsData = JSON.parse(modelsJson);
@@ -1327,28 +1734,59 @@ class ModelRepository {
 
       // Convert to our ModelConfig format
       this.modelsIndex = voiceModels
-        .filter(model => ['kokoro', 'matcha', 'vits'].includes(model.model_type))
-        .map(model => ({
-          id: model.id,
-          type: model.model_type as ModelType,
-          name: model.name,
-          language: model.language?.[0]?.lang_code || 'en',
-          gender: 'unknown', // Not specified in merged_models.json
-          sampleRate: model.sample_rate || 22050,
-          url: model.url,
-          compressed: !!model.compression,
-          files: {
-            model: 'model.onnx',
-            tokens: 'tokens.txt',
-            voices: model.model_type === 'kokoro' ? 'voices.bin' : undefined,
-            vocoder: model.model_type === 'matcha' ? 'vocoder.onnx' : undefined
-          },
-          size: Math.round((model.filesize_mb || 64) * 1024 * 1024)
-        }));
+        .map((model) => {
+          // Derive type when missing (MMS entries often have no model_type)
+          let derivedType: ModelType | undefined = undefined;
+          const id: string = model.id || model.model_id || model.name || "";
+          const url: string = model.url || "";
+          const mt: string | undefined = model.model_type;
+          if (mt && ["kokoro", "matcha", "vits", "mms"].includes(mt)) {
+            derivedType = mt as ModelType;
+          } else if (/^mms_/i.test(id) || /mms-tts-multilingual-models-onnx/.test(url)) {
+            derivedType = "mms";
+          } else if (/kokoro/i.test(url) || /voices\.bin$/i.test(url)) {
+            derivedType = "kokoro";
+          } else if (/matcha/i.test(url) || /vocoder\.onnx$/i.test(url)) {
+            derivedType = "matcha";
+          } else if (url) {
+            derivedType = "vits";
+          }
+
+          if (!derivedType) return null;
+
+          // Robust language code extraction
+          const langArr = Array.isArray(model.language) ? model.language : [];
+          const firstLang = langArr.length > 0 ? langArr[0] : {};
+          const langRecord = firstLang as Record<string, string | undefined>;
+          const modelRecord = model as Record<string, string | undefined>;
+          const langCode =
+            langRecord.lang_code ?? langRecord["Iso Code"] ?? modelRecord.language_code ?? "en";
+
+          return {
+            id,
+            type: derivedType,
+            name: model.name || id,
+            language: langCode,
+            gender: "unknown", // Not specified in merged_models.json
+            sampleRate: model.sample_rate || 22050,
+            url,
+            compressed: !!model.compression,
+            files: {
+              model: "model.onnx",
+              tokens: "tokens.txt",
+              voices: derivedType === "kokoro" ? "voices.bin" : undefined,
+              vocoder: derivedType === "matcha" ? "vocoder.onnx" : undefined,
+            },
+            size: Math.round((model.filesize_mb || 64) * 1024 * 1024),
+          } as ModelConfig;
+        })
+        .filter(Boolean) as ModelConfig[];
+
+      console.log(`Loaded ${this.modelsIndex.length} compatible models from merged_models.json`);
 
       console.log(`Loaded ${this.modelsIndex.length} compatible models from merged_models.json`);
     } catch (error) {
-      console.error('Error loading models index:', error);
+      console.error("Error loading models index:", error);
       // Fallback to default models for backward compatibility
       this.modelsIndex = this.getDefaultModels();
     }
@@ -1359,7 +1797,7 @@ class ModelRepository {
   }
 
   getModelConfig(modelId: string): ModelConfig | undefined {
-    return this.modelsIndex.find(model => model.id === modelId);
+    return this.modelsIndex.find((model) => model.id === modelId);
   }
 
   async downloadModelFiles(modelId: string): Promise<ModelFiles> {
@@ -1379,12 +1817,12 @@ class ModelRepository {
 
     const files: ModelFiles = {
       model: mockModelData,
-      tokens: mockTokensData
+      tokens: mockTokensData,
     };
 
-    if (config.type === 'kokoro') {
+    if (config.type === "kokoro") {
       files.voices = new ArrayBuffer(200);
-    } else if (config.type === 'matcha') {
+    } else if (config.type === "matcha") {
       files.vocoder = new ArrayBuffer(800);
     }
 
@@ -1395,18 +1833,18 @@ class ModelRepository {
   private getDefaultModels(): ModelConfig[] {
     return [
       {
-        id: 'piper-en-amy-medium',
-        type: 'vits',
-        name: 'Piper Amy (Medium)',
-        language: 'en-US',
-        gender: 'female',
+        id: "piper-en-amy-medium",
+        type: "vits",
+        name: "Piper Amy (Medium)",
+        language: "en-US",
+        gender: "female",
         sampleRate: 22050,
         files: {
-          model: 'model.onnx',
-          tokens: 'tokens.txt'
+          model: "model.onnx",
+          tokens: "tokens.txt",
         },
-        size: 15000000 // ~15MB
-      }
+        size: 15000000, // ~15MB
+      },
     ];
   }
 }
@@ -1421,17 +1859,16 @@ class WasmModelManager {
   private currentModel?: string;
   private maxCachedModels: number;
 
-  constructor(wasmModule: SherpaOnnxWasmModule, maxCachedModels: number = 3) {
+  constructor(wasmModule: SherpaOnnxWasmModule, maxCachedModels = 3) {
     this.wasmModule = wasmModule;
     this.maxCachedModels = maxCachedModels;
   }
 
   async loadModel(modelId: string, files: ModelFiles, config: ModelConfig): Promise<number> {
-    // Check if already loaded
-    if (this.loadedModels.has(modelId)) {
-      const model = this.loadedModels.get(modelId)!;
-      model.lastUsed = Date.now();
-      return model.handle;
+    const existingModel = this.loadedModels.get(modelId);
+    if (existingModel) {
+      existingModel.lastUsed = Date.now();
+      return existingModel.handle;
     }
 
     // Free memory if needed
@@ -1439,63 +1876,82 @@ class WasmModelManager {
 
     console.log(`Loading ${config.type} model ${modelId} into WASM...`);
 
-    // Allocate memory for model files
-    const modelPtr = this.wasmModule._malloc!(files.model.byteLength);
-    const tokensPtr = this.wasmModule._malloc!(files.tokens.byteLength);
+    const malloc = this.wasmModule._malloc;
+    const free = this.wasmModule._free;
+    const heap = this.wasmModule.HEAPU8;
+
+    if (!malloc || !free || !heap) {
+      throw new Error("WASM memory helpers not available");
+    }
+
+    const allocate = (size: number): number => {
+      const ptr = malloc(size);
+      if (!ptr) {
+        throw new Error(`Failed to allocate ${size} bytes of WASM memory`);
+      }
+      return ptr;
+    };
+
+    const modelPtr = allocate(files.model.byteLength);
+    const tokensPtr = allocate(files.tokens.byteLength);
 
     let voicesPtr = 0;
     let vocoderPtr = 0;
 
     try {
-      // Copy model data to WASM memory
-      this.wasmModule.HEAPU8!.set(new Uint8Array(files.model), modelPtr);
-      this.wasmModule.HEAPU8!.set(new Uint8Array(files.tokens), tokensPtr);
+      heap.set(new Uint8Array(files.model), modelPtr);
+      heap.set(new Uint8Array(files.tokens), tokensPtr);
 
-      // Handle model-specific files
-      if (files.voices && config.type === 'kokoro') {
-        voicesPtr = this.wasmModule._malloc!(files.voices.byteLength);
-        this.wasmModule.HEAPU8!.set(new Uint8Array(files.voices), voicesPtr);
+      if (files.voices && config.type === "kokoro") {
+        voicesPtr = allocate(files.voices.byteLength);
+        heap.set(new Uint8Array(files.voices), voicesPtr);
       }
 
-      if (files.vocoder && config.type === 'matcha') {
-        vocoderPtr = this.wasmModule._malloc!(files.vocoder.byteLength);
-        this.wasmModule.HEAPU8!.set(new Uint8Array(files.vocoder), vocoderPtr);
+      if (files.vocoder && config.type === "matcha") {
+        vocoderPtr = allocate(files.vocoder.byteLength);
+        heap.set(new Uint8Array(files.vocoder), vocoderPtr);
       }
 
-      // Load model based on type
       let modelHandle: number;
 
       switch (config.type) {
-        case 'kokoro':
+        case "kokoro":
           if (!this.wasmModule._LoadKokoroModel) {
-            throw new Error('Kokoro model loading not supported in this WASM build');
+            throw new Error("Kokoro model loading not supported in this WASM build");
           }
           modelHandle = this.wasmModule._LoadKokoroModel(
-            modelPtr, files.model.byteLength,
-            tokensPtr, files.tokens.byteLength,
-            voicesPtr, files.voices?.byteLength || 0
+            modelPtr,
+            files.model.byteLength,
+            tokensPtr,
+            files.tokens.byteLength,
+            voicesPtr,
+            files.voices?.byteLength || 0
           );
           break;
 
-        case 'matcha':
+        case "matcha":
           if (!this.wasmModule._LoadMatchaModel) {
-            throw new Error('Matcha model loading not supported in this WASM build');
+            throw new Error("Matcha model loading not supported in this WASM build");
           }
           modelHandle = this.wasmModule._LoadMatchaModel(
-            modelPtr, files.model.byteLength,
-            tokensPtr, files.tokens.byteLength,
-            vocoderPtr, files.vocoder?.byteLength || 0
+            modelPtr,
+            files.model.byteLength,
+            tokensPtr,
+            files.tokens.byteLength,
+            vocoderPtr,
+            files.vocoder?.byteLength || 0
           );
           break;
 
-        case 'vits':
         default:
           if (!this.wasmModule._LoadVitsModel) {
-            throw new Error('VITS model loading not supported in this WASM build');
+            throw new Error("VITS model loading not supported in this WASM build");
           }
           modelHandle = this.wasmModule._LoadVitsModel(
-            modelPtr, files.model.byteLength,
-            tokensPtr, files.tokens.byteLength
+            modelPtr,
+            files.model.byteLength,
+            tokensPtr,
+            files.tokens.byteLength
           );
           break;
       }
@@ -1504,23 +1960,24 @@ class WasmModelManager {
         throw new Error(`Failed to load ${config.type} model: ${modelHandle}`);
       }
 
-      // Store loaded model info
       this.loadedModels.set(modelId, {
         config,
         handle: modelHandle,
         loaded: true,
-        lastUsed: Date.now()
+        lastUsed: Date.now(),
       });
 
       console.log(`Successfully loaded ${config.type} model ${modelId} with handle ${modelHandle}`);
       return modelHandle;
-
     } finally {
-      // Free temporary memory
-      this.wasmModule._free!(modelPtr);
-      this.wasmModule._free!(tokensPtr);
-      if (voicesPtr) this.wasmModule._free!(voicesPtr);
-      if (vocoderPtr) this.wasmModule._free!(vocoderPtr);
+      free(modelPtr);
+      free(tokensPtr);
+      if (voicesPtr) {
+        free(voicesPtr);
+      }
+      if (vocoderPtr) {
+        free(vocoderPtr);
+      }
     }
   }
 
@@ -1531,7 +1988,7 @@ class WasmModelManager {
     }
 
     if (!this.wasmModule._SwitchToModel) {
-      throw new Error('Model switching not supported in this WASM build');
+      throw new Error("Model switching not supported in this WASM build");
     }
 
     console.log(`Switching to model ${modelId} (handle: ${model.handle})`);
@@ -1547,6 +2004,10 @@ class WasmModelManager {
 
   getCurrentModel(): string | undefined {
     return this.currentModel;
+  }
+
+  getLoadedModelIds(): string[] {
+    return Array.from(this.loadedModels.keys());
   }
 
   isModelLoaded(modelId: string): boolean {

@@ -20,5 +20,10 @@
     // Removed baseUrl and paths
   },
   "include": ["src", "src/types/**/*.d.ts"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "test/**/*.ts"
+  ]
 }

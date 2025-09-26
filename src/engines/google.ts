@@ -304,16 +304,19 @@ export class GoogleTTSClient extends AbstractTTSClient {
     audioStream: ReadableStream<Uint8Array>;
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
-    // Lazy initialization - initialize client on first use
-    if (!this.client) {
-      await this.initializeClient(this.googleCredentials);
-    }
+    // If using API key mode (REST), skip Node client checks
+    if (!this.googleCredentials.apiKey) {
+      // Lazy initialization - initialize client on first use (Node SDK mode)
+      if (!this.client) {
+        await this.initializeClient(this.googleCredentials);
+      }
 
-    // If the client is still not available after initialization, throw an error
-    if (!this.client) {
-      throw new Error(
-        "Google TTS client is not available. Install @google-cloud/text-to-speech to use this engine."
-      );
+      // If the client is still not available after initialization, throw an error
+      if (!this.client) {
+        throw new Error(
+          "Google TTS client is not available. Install @google-cloud/text-to-speech to use this engine."
+        );
+      }
     }
 
     try {

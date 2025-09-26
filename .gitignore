@@ -1,3 +1,4 @@
+examples/vue-browser-demo/dist/*
 dist/*
 googlecreds.json
 espeak-ng-data/*

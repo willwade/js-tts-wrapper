@@ -70,7 +70,7 @@ export async function getEngineConfigs() {
     {
       name: "google",
       factory: () => new GoogleTTSClient({
-        apiKey: process.env.GOOGLECLOUDTTS_API_KEY || process.env.GOOGLECLOUD_API_KEY || '',
+        apiKey: process.env.GOOGLECLOUDTTS_API_KEY || process.env.GOOGLECLOUD_API_KEY || process.env.GOOGLE_KEY || '',
         keyFilename: process.env.GOOGLE_SA_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS || '',
       }),
       description: "Google Cloud TTS"
@@ -102,7 +102,8 @@ export async function getEngineConfigs() {
     {
       name: "sherpaonnx",
       factory: () => new SherpaOnnxTTSClient({
-        noDefaultDownload: true,
+        noDefaultDownload: false,
+        modelId: process.env.SHERPAONNX_MODEL_ID || 'kokoro-en-en-19',
         modelPath: process.env.SHERPAONNX_MODEL_PATH || null
       }),
       description: "SherpaOnnx TTS (Node.js/Server)"
@@ -149,7 +150,7 @@ export async function getEngineConfigs() {
     {
       name: "upliftai",
       factory: () => new UpliftAITTSClient({
-        apiKey: process.env.UPLIFTAI_API_KEY || '',
+        apiKey: process.env.UPLIFTAI_API_KEY || process.env.UPLIFTAI_KEY || '',
       }),
       description: "UpliftAI TTS"
     },
@@ -238,7 +239,7 @@ export function getEngineConfigsCJS() {
       name: "sherpaonnx",
       factory: () => new SherpaOnnxTTSClient({
         noDefaultDownload: false,
-        modelId: "mms_eng",
+        modelId: process.env.SHERPAONNX_MODEL_ID || 'kokoro-en-en-19',
         modelPath: process.env.SHERPAONNX_MODEL_PATH || null
       }),
       description: "SherpaOnnx TTS (Node.js/Server)"

@@ -15,6 +15,8 @@ function isBrowser(): boolean {
  */
 export class EspeakBrowserTTSClient extends AbstractTTSClient {
   private nodeClient?: any;
+  private meSpeak: any | null = null;
+  private meSpeakReady = false;
 
   constructor(credentials: TTSCredentials = {}) {
     super(credentials);
@@ -26,27 +28,106 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
   }
 
   async synthToBytes(text: string, options?: SpeakOptions): Promise<Uint8Array> {
-    // For Node.js environments, delegate to the regular eSpeak client (lazy loaded)
+    // Node.js: delegate to Node client
     if (!isBrowser()) {
       if (!this.nodeClient) {
-        const dynamicImport: any = new Function('m','return import(m)');
+        const dynamicImport: any = new Function("m", "return import(m)");
         const mod = await dynamicImport("./espeak");
         const EspeakNodeTTSClient = (mod as any).EspeakNodeTTSClient || (mod as any).default;
         this.nodeClient = new EspeakNodeTTSClient(this.credentials);
       }
-      console.log("eSpeak-WASM: Delegating to Node.js eSpeak client");
       return await this.nodeClient.synthToBytes(text, options);
     }
 
-    // Browser environment - throw error for now since meSpeak is causing issues
-    throw new Error("eSpeak-WASM browser support is currently disabled due to meSpeak compatibility issues. Use EspeakNodeTTSClient for Node.js environments.");
+    // Browser: use meSpeak (UMD) with embedded config/voice JSONs
+    await this.ensureMeSpeakLoaded();
+
+    const meSpeak = this.meSpeak;
+    if (!meSpeak) throw new Error("eSpeak-WASM: meSpeak failed to load");
+
+    const voiceId = (this.voiceId || "en").toLowerCase();
+    // pick meSpeak voice payload (limited set to keep bundle small)
+    const voicePayload = await this.getVoicePayload(voiceId);
+    if (!meSpeak.isConfigLoaded()) {
+      const { default: configJson } = await import("mespeak/src/mespeak_config.json");
+      meSpeak.loadConfig(configJson);
+    }
+    if (voicePayload && !meSpeak.isVoiceLoaded(voicePayload.voice_id)) {
+      meSpeak.loadVoice(voicePayload);
+      meSpeak.setDefaultVoice(voicePayload.voice_id);
+    }
+
+    // Map SpeakOptions rate/pitch to meSpeak numeric speed/pitch
+    const rateToSpeed: Record<string, number> = {
+      "x-slow": 80,
+      slow: 120,
+      medium: 175,
+      fast: 220,
+      "x-fast": 300,
+    };
+    const pitchMap: Record<string, number> = {
+      "x-low": 10,
+      low: 25,
+      medium: 50,
+      high: 70,
+      "x-high": 90,
+    };
+    const speed = rateToSpeed[(options?.rate || "medium") as string] ?? 175;
+    const pitch = pitchMap[(options?.pitch || "medium") as string] ?? 50;
+
+    // get raw WAV buffer from meSpeak
+    const arr: number[] | null = meSpeak.speak(text, {
+      rawdata: "array",
+      voice: voicePayload?.voice_id || voiceId,
+      speed,
+      pitch,
+    });
+    if (!arr || !arr.length) throw new Error("eSpeak-WASM: synthesis failed");
+    return new Uint8Array(arr);
   }
 
+  private async ensureMeSpeakLoaded(): Promise<void> {
+    if (this.meSpeakReady) return;
+    // mespeak is CommonJS; vite will shim a default export
+    const mod: any = await import("mespeak");
+    this.meSpeak = (mod && (mod.default || mod)) as any;
+    this.meSpeakReady = true;
+  }
 
-
-
-
-
+  // Load a small curated set of English voices inline to avoid URL/CORS
+  private async getVoicePayload(voiceId: string): Promise<any | null> {
+    try {
+      switch (voiceId) {
+        case "en": {
+          const { default: v } = await import("mespeak/voices/en/en.json");
+          return v;
+        }
+        case "en-us": {
+          const { default: v } = await import("mespeak/voices/en/en-us.json");
+          return v;
+        }
+        case "en-rp": {
+          const { default: v } = await import("mespeak/voices/en/en-rp.json");
+          return v;
+        }
+        case "en-sc": {
+          const { default: v } = await import("mespeak/voices/en/en-sc.json");
+          return v;
+        }
+        case "en-wm": {
+          const { default: v } = await import("mespeak/voices/en/en-wm.json");
+          return v;
+        }
+        default: {
+          // Fallback to plain English if requested voice not bundled
+          const { default: v } = await import("mespeak/voices/en/en.json");
+          return v;
+        }
+      }
+    } catch {
+      return null;
+    }
+  }
 
   /**
    * Synthesize text to a byte stream (ReadableStream)
@@ -74,7 +155,7 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
       wordBoundaries = this.timings.map(([start, end, word]) => ({
         text: word,
         offset: Math.round(start * 10000), // Convert to 100-nanosecond units
-        duration: Math.round((end - start) * 10000)
+        duration: Math.round((end - start) * 10000),
       }));
     }
 
@@ -96,7 +177,7 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
     // For Node.js environments, delegate to the regular eSpeak client (lazy loaded)
     if (!isBrowser()) {
       if (!this.nodeClient) {
-        const dynamicImport: any = new Function('m','return import(m)');
+        const dynamicImport: any = new Function("m", "return import(m)");
         const mod = await dynamicImport("./espeak");
         const EspeakNodeTTSClient = (mod as any).EspeakNodeTTSClient || (mod as any).default;
         this.nodeClient = new EspeakNodeTTSClient(this.credentials);
@@ -105,7 +186,7 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
       // Rename them to indicate they're from eSpeak WASM (but actually using Node.js fallback)
       return nodeVoices.map((voice: UnifiedVoice) => ({
         ...voice,
-        name: voice.name.replace('(eSpeak)', '(eSpeak WASM)')
+        name: voice.name.replace("(eSpeak)", "(eSpeak WASM)"),
       }));
     }
     // meSpeak supports many languages, here's a subset of common ones
@@ -189,7 +270,7 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
       details: {
         environment: isBrowser() ? "browser" : "node",
         engine: isBrowser() ? "meSpeak" : "text2wav",
-        note: "Credentials not required for eSpeak"
+        note: "Credentials not required for eSpeak",
       },
     };
   }

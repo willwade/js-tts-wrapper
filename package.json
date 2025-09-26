@@ -41,7 +41,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "npm run build:cjs && npm run build:esm && npm run build:browser && npm run build:bundle && npm run fix:cjs-imports",
+    "build": "npm run clean && npm run build:cjs && npm run build:esm && npm run build:browser && npm run build:bundle && node scripts/minify-browser.mjs && npm run fix:cjs-imports",
     "build:cjs": "node scripts/generate-models-ts.cjs && tsc -p tsconfig.cjs.json && node scripts/create-cjs-package.js",
     "build:esm": "node scripts/generate-models-ts.cjs && tsc -p tsconfig.esm.json && tsc-alias -p tsconfig.esm.json && tsc-esm-fix --target=dist/esm --ext=.js --dirnameVar --filenameVar --sourceMap",
     "build:browser": "node scripts/create-browser-entry.cjs",
@@ -155,19 +155,18 @@
     "ws": "^8.17.1"
   },
   "peerDependencies": {
-    "@aws-sdk/client-polly": "^3.817.0",
+    "@aws-sdk/client-polly": "^3.896.0",
     "@elevenlabs/elevenlabs-js": "^2.1.0",
-    "@google-cloud/text-to-speech": "^6.1.0",
+    "@google-cloud/text-to-speech": "^6.3.0",
     "decompress": "^4.2.1",
     "decompress-bzip2": "^4.0.0",
     "decompress-tarbz2": "^4.1.1",
     "decompress-targz": "^4.1.1",
     "mespeak": "^2.0.2",
-    "microsoft-cognitiveservices-speech-sdk": "^1.44.0",
-    "openai": "^4.103.0",
+    "microsoft-cognitiveservices-speech-sdk": "^1.46.0",
+    "openai": "^4.104.0",
     "pcm-convert": "^1.6.5",
     "say": "^0.16.0",
-    "sherpa-onnx-node": "^1.12.0",
     "sound-play": "^1.1.0",
     "tar-stream": "^3.1.7",
     "text2wav": "^0.0.14"
@@ -305,7 +304,8 @@
     "compressjs": "^1.0.3",
     "js-untar": "^2.0.0",
     "lamejs": "^1.2.1",
-    "sherpa-onnx-node": "^1.12.0",
+    "sherpa-onnx-darwin-arm64": "^1.12.14",
+    "sherpa-onnx-node": "^1.12.14",
     "speechmarkdown-js": "^2.1.0"
   }
 }

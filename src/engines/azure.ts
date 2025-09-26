@@ -168,9 +168,9 @@ export class AzureTTSClient extends AbstractTTSClient {
     const ssml = await this.prepareSSML(text, options);
     const useWordBoundary = options?.useWordBoundary !== false; // Default to true
 
-    // Attempt to load SDK if needed for word boundaries in Node.js
+    // Attempt to load SDK (Node or Browser) if word boundaries requested
     let sdkInstance: any = null;
-    if (useWordBoundary && typeof window === "undefined") {
+    if (useWordBoundary) {
       sdkInstance = await this.loadSDK();
     }
 
@@ -195,12 +195,39 @@ export class AzureTTSClient extends AbstractTTSClient {
       return this.sdkLoadingPromise;
     }
 
-    // Only attempt dynamic import in Node.js environment
+    // Browser: attempt to load from CDN if not present
     if (typeof window !== "undefined") {
-      console.warn("Microsoft Speech SDK dynamic import skipped in browser environment.");
-      return null;
+      const w = window as any;
+      if (w.SpeechSDK) {
+        this.sdk = w.SpeechSDK;
+        return this.sdk;
+      }
+      this.sdkLoadingPromise = new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = 'https://aka.ms/csspeech/jsbrowserpackageraw';
+        script.async = true;
+        script.onload = () => {
+          this.sdk = (window as any).SpeechSDK || null;
+          this.sdkLoadingPromise = null;
+          if (this.sdk) {
+            console.log('Microsoft Speech SDK (browser) loaded successfully.');
+            resolve(this.sdk);
+          } else {
+            console.warn('Speech SDK script loaded but window.SpeechSDK not found. Falling back to REST.');
+            resolve(null);
+          }
+        };
+        script.onerror = () => {
+          console.warn('Failed to load Microsoft Speech SDK (browser). Falling back to REST.');
+          this.sdkLoadingPromise = null;
+          resolve(null);
+        };
+        document.head.appendChild(script);
+      });
+      return this.sdkLoadingPromise;
     }
 
+    // Node: dynamic import
     const dyn: any = new Function('m','return import(m)');
     // @ts-ignore - Suppress module not found error for SDK types during build
     this.sdkLoadingPromise = dyn('microsoft-cognitiveservices-speech-sdk')

@@ -10,5 +10,13 @@
     "lib": ["es2020", "dom"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "test", "examples", "src/engines/sherpaonnx.ts", "src/utils/sherpaonnx-loader.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test",
+    "examples",
+    "src/**/*.test.ts",
+    "src/engines/sherpaonnx.ts",
+    "src/utils/sherpaonnx-loader.ts"
+  ]
 }

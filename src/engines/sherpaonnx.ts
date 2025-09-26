@@ -193,10 +193,10 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
     // Only set up voice if we have a modelId or auto-download is enabled
     if (this.modelId || !credentials?.noDefaultDownload) {
-      this.modelId = this.modelId || "mms_eng"; // Default to English if not specified
+      this.modelId = this.modelId || "kokoro-en-en-19"; // Default to Kokoro English if not specified
 
       // Initialize voice asynchronously (don't await in constructor)
-      this.setVoice(this.modelId).catch(error => {
+      this.setVoice(this.modelId).catch((error) => {
         console.warn(`Failed to initialize SherpaOnnx voice in constructor: ${error.message}`);
       });
     } else {
@@ -415,9 +415,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    * @returns True if this is a Matcha voice
    */
   private isMatchaVoice(modelId: string): boolean {
-    return (
-      this.jsonModels[modelId] && this.jsonModels[modelId].model_type === "matcha"
-    );
+    return this.jsonModels[modelId] && this.jsonModels[modelId].model_type === "matcha";
   }
 
   /**
@@ -453,7 +451,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
             results.push(itemPath);
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // Ignore errors and continue
       }
     };
@@ -497,7 +495,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
             }
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // Ignore errors and continue
       }
       return null;
@@ -513,10 +511,18 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
    */
   private isGitHubModel(modelId: string): boolean {
     const githubPrefixes = [
-      "piper-", "coqui-", "icefall-", "mimic3-", "melo-",
-      "vctk-", "zh-", "ljs-", "cantonese-", "kokoro-"
+      "piper-",
+      "coqui-",
+      "icefall-",
+      "mimic3-",
+      "melo-",
+      "vctk-",
+      "zh-",
+      "ljs-",
+      "cantonese-",
+      "kokoro-",
     ];
-    return githubPrefixes.some(prefix => modelId.startsWith(prefix));
+    return githubPrefixes.some((prefix) => modelId.startsWith(prefix));
   }
 
   /**
@@ -534,12 +540,12 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         if (stat.isDirectory()) {
           // Check if this directory contains .txt files (dict files)
           const subItems = fs.readdirSync(itemPath);
-          if (subItems.some(subItem => subItem.endsWith('.txt'))) {
+          if (subItems.some((subItem) => subItem.endsWith(".txt"))) {
             return itemPath;
           }
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Ignore errors and return empty string
     }
     return "";
@@ -559,7 +565,8 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
     }
 
     // Download vocoder from sherpa-onnx releases
-    const vocoderUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx";
+    const vocoderUrl =
+      "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx";
     console.log(`Downloading vocoder from ${vocoderUrl}`);
 
     try {
@@ -605,8 +612,6 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       throw error;
     }
   }
-
-
 
   /**
    * Download model and token files to voice-specific directory
@@ -726,14 +731,14 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
 
             // Copy lexicon files if they exist
             const lexiconFiles = this.findFilesInDirectory(destinationDir, /lexicon.*\.txt$/);
-            lexiconFiles.forEach((lexiconFile) => {
+            for (const lexiconFile of lexiconFiles) {
               const lexiconName = path.basename(lexiconFile);
               const lexiconDestPath = path.join(destinationDir, lexiconName);
               if (lexiconFile !== lexiconDestPath) {
                 fs.copyFileSync(lexiconFile, lexiconDestPath);
                 console.log(`Copied lexicon file to ${lexiconDestPath}`);
               }
-            });
+            }
 
             // Copy other potential files (dict directory, fst files, etc.)
             const dictDir = this.findDirectoryInDestination(destinationDir, "dict");
@@ -746,14 +751,14 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
             }
 
             const fstFiles = this.findFilesInDirectory(destinationDir, /\.fst$/);
-            fstFiles.forEach((fstFile) => {
+            for (const fstFile of fstFiles) {
               const fstName = path.basename(fstFile);
               const fstDestPath = path.join(destinationDir, fstName);
               if (fstFile !== fstDestPath) {
                 fs.copyFileSync(fstFile, fstDestPath);
                 console.log(`Copied FST file to ${fstDestPath}`);
               }
-            });
+            }
           }
         } else {
           throw new Error("Could not find model.onnx and tokens.txt in the extracted files");
@@ -1441,7 +1446,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
         formattedWordBoundaries = this.timings.map(([start, end, word]) => ({
           text: word,
           offset: Math.round(start * 10000), // Convert to 100-nanosecond units
-          duration: Math.round((end - start) * 10000)
+          duration: Math.round((end - start) * 10000),
         }));
       }
 
