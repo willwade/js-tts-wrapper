@@ -4,7 +4,7 @@
  * to avoid circular dependencies.
  */
 
-import { pauseAudioPlayback, resumeAudioPlayback, stopAudioPlayback } from "../utils/node-audio";
+import { pauseAudioPlayback, resumeAudioPlayback, stopAudioPlayback } from "../utils/node-audio.js";
 
 // Re-export the audio control functions
 export { pauseAudioPlayback, resumeAudioPlayback, stopAudioPlayback };
