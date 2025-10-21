@@ -346,7 +346,7 @@ export abstract class AbstractTTSClient {
         // In Node.js environment, try to use sound-play
         try {
           // Check if Node.js audio playback is available
-          const { isNodeAudioAvailable, playAudioInNode } = await (new Function('m','return import(m)'))('../utils/node-audio');
+          const { isNodeAudioAvailable, playAudioInNode } = await (new Function('m','return import(m)'))('../utils/node-audio.js');
           const audioAvailable = await isNodeAudioAvailable();
 
           // Create estimated word timings if needed (only for text input)
@@ -539,7 +539,7 @@ export abstract class AbstractTTSClient {
         console.log('🔍 Taking Node.js audio path');
         try {
           // Check if Node.js audio playback is available
-          const { isNodeAudioAvailable, playAudioInNode } = await (new Function('m','return import(m)'))('../utils/node-audio');
+          const { isNodeAudioAvailable, playAudioInNode } = await (new Function('m','return import(m)'))('../utils/node-audio.js');
           const audioAvailable = await isNodeAudioAvailable();
           console.log(`🔍 Audio available: ${audioAvailable}`);
 
@@ -676,7 +676,7 @@ export abstract class AbstractTTSClient {
       // Node.js environment - use node-speaker
       try {
         // Import dynamically to avoid circular dependencies
-        import('./node-audio-control').then(nodeAudio => {
+        import('./node-audio-control.js').then(nodeAudio => {
           const paused = nodeAudio.pauseAudioPlayback();
           if (paused) {
             this.audio.isPaused = true;
@@ -704,7 +704,7 @@ export abstract class AbstractTTSClient {
       // Node.js environment - use node-speaker
       try {
         // Import dynamically to avoid circular dependencies
-        import('./node-audio-control').then(nodeAudio => {
+        import('./node-audio-control.js').then(nodeAudio => {
           const resumed = nodeAudio.resumeAudioPlayback();
           if (resumed) {
             this.audio.isPaused = false;
@@ -734,7 +734,7 @@ export abstract class AbstractTTSClient {
       // Node.js environment - use node-speaker
       try {
         // Import dynamically to avoid circular dependencies
-        import('./node-audio-control').then(nodeAudio => {
+        import('./node-audio-control.js').then(nodeAudio => {
           const stopped = nodeAudio.stopAudioPlayback();
           if (stopped) {
             this.audio.isPlaying = false;

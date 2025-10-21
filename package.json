@@ -298,13 +298,15 @@
       "biome format --write"
     ]
   },
+  "optionalDependencies": {
+    "sherpa-onnx-darwin-arm64": "^1.12.14"
+  },
   "dependencies": {
     "@elevenlabs/elevenlabs-js": "^2.1.0",
     "aws-sdk": "^2.1638.0",
     "compressjs": "^1.0.3",
     "js-untar": "^2.0.0",
     "lamejs": "^1.2.1",
-    "sherpa-onnx-darwin-arm64": "^1.12.14",
     "sherpa-onnx-node": "^1.12.14",
     "speechmarkdown-js": "^2.1.0"
   }
