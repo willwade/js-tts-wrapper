@@ -346,7 +346,8 @@ export abstract class AbstractTTSClient {
         // In Node.js environment, try to use sound-play
         try {
           // Check if Node.js audio playback is available
-          const { isNodeAudioAvailable, playAudioInNode } = await (new Function('m','return import(m)'))('../utils/node-audio.js');
+          const nodeAudioModule = await import('../utils/node-audio.js');
+          const { isNodeAudioAvailable, playAudioInNode } = nodeAudioModule;
           const audioAvailable = await isNodeAudioAvailable();
 
           // Create estimated word timings if needed (only for text input)
@@ -539,7 +540,8 @@ export abstract class AbstractTTSClient {
         console.log('🔍 Taking Node.js audio path');
         try {
           // Check if Node.js audio playback is available
-          const { isNodeAudioAvailable, playAudioInNode } = await (new Function('m','return import(m)'))('../utils/node-audio.js');
+          const nodeAudioModule = await import('../utils/node-audio.js');
+          const { isNodeAudioAvailable, playAudioInNode } = nodeAudioModule;
           const audioAvailable = await isNodeAudioAvailable();
           console.log(`🔍 Audio available: ${audioAvailable}`);
 
