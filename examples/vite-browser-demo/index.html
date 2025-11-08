@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SherpaONNX WASM + js-tts-wrapper (Vite demo)</title>
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>js-tts-wrapper · SherpaONNX-WASM Vite Demo</h1>
+        <p>This tiny app loads the browser bundle through Vite and speaks using the hosted SherpaONNX WASM runtime.</p>
+      </header>
+      <section class="panel">
+        <div class="field">
+          <label for="voice-select">Voice</label>
+          <select id="voice-select" disabled>
+            <option>Loading voices…</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="text-input">Text</label>
+          <textarea id="text-input" rows="4">Hello from the SherpaONNX WebAssembly demo running through Vite!</textarea>
+        </div>
+        <div class="actions">
+          <button id="speak-btn" disabled>Speak</button>
+        </div>
+      </section>
+      <section class="panel status">
+        <h2>Status</h2>
+        <output id="status">Initializing…</output>
+        <pre id="log"></pre>
+      </section>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

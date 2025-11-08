@@ -42,6 +42,9 @@ TEST-results.xml
 .envrc
 examples/*.wav
 examples/*.mp3
+examples/node-demo/out/*
+examples/vite-browser-demo/dist/
+examples/vite-browser-demo/dist/assets/*
 
 # Browser build files
 examples/js-tts-wrapper.browser.bundle.js

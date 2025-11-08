@@ -1,3 +1,2 @@
-declare module 'compressjs';
-declare module 'js-untar';
-
+declare module "seek-bzip";
+declare module "js-untar";

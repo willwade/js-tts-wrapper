@@ -14,6 +14,7 @@ import * as SSMLUtils from "../core/ssml-utils";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
 import { fileSystem, isBrowser, isNode, pathUtils } from "../utils/environment";
 import { estimateWordBoundaries } from "../utils/word-timing-estimator";
+import { decompressBzip2 } from "../utils/bzip2";
 
 // Enhanced model type definitions for multi-model support
 export type ModelType = "kokoro" | "matcha" | "vits" | "mms";
@@ -156,6 +157,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
   private modelRepository?: ModelRepository;
   private modelManager?: WasmModelManager;
   private currentVoiceId?: string;
+  private currentVoiceConfig?: ModelConfig;
 
   /**
    * Create a new SherpaOnnx WebAssembly TTS client
@@ -188,9 +190,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
     };
 
     // Initialize multi-model components if enabled
-    if (this.enhancedOptions.enableMultiModel) {
-      this.modelRepository = new ModelRepository(this.mergedModelsUrl);
-    }
+    this.modelRepository = new ModelRepository(this.mergedModelsUrl);
   }
 
   /**
@@ -255,148 +255,48 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    */
   protected async _getVoices(): Promise<UnifiedVoice[]> {
     try {
-      // Enhanced multi-model support
-      if (this.enhancedOptions.enableMultiModel && this.modelRepository) {
-        console.log("Using enhanced multi-model voice repository");
+      if (this.modelRepository) {
+        console.log("Loading voices from model repository");
+        await this.modelRepository.loadModelsIndex();
+        const models = this.modelRepository.getAvailableModels();
 
-        try {
-          const models = this.modelRepository.getAvailableModels();
-
-          return models.map((model) => ({
-            id: model.id,
-            name: model.name,
-            gender: model.gender as any,
-            provider: "sherpaonnx-wasm" as const,
-            languageCodes: [
-              {
-                bcp47: model.language,
-                iso639_3: model.language.split("-")[0],
-                display: model.language,
-              },
-            ],
-          }));
-        } catch (error) {
-          console.error("Error getting voices from enhanced repository:", error);
-          // Fall through to legacy mode
-        }
-      }
-
-      // Legacy voice loading (backward compatibility)
-      console.log("Using legacy voice loading mode");
-
-      // Load the voice models JSON file
-      let voiceModels: any[] = [];
-
-      try {
-        // In Node.js, read from the file system
-        if (isNode) {
-          const modelsJsonPath = pathUtils.join(__dirname, "..", "data", "merged_models.json");
-          if (fileSystem.existsSync(modelsJsonPath)) {
-            const modelsJson = fileSystem.readFileSync(modelsJsonPath);
-            voiceModels = JSON.parse(modelsJson);
-          }
-        } else {
-          // In browser environments, try to fetch from a URL
-          try {
-            const response = await fetch(this.mergedModelsUrl || "./data/merged_models.json");
-            if (response.ok) {
-              const modelsJson = await response.text();
-              voiceModels = JSON.parse(modelsJson);
-            } else {
-              console.warn("Voice models JSON file not available in browser environment.");
-              // Return a default voice for testing
-              return [
+        if (models.length > 0) {
+          return models.map((model) => {
+            const langCode = model.language || "en";
+            const iso = langCode.split("-")[0] || "en";
+            return {
+              id: model.id,
+              name: model.name,
+              gender: (model.gender || "Unknown") as any,
+              provider: "sherpaonnx-wasm" as const,
+              languageCodes: [
                 {
-                  id: "piper_en_US",
-                  name: "Piper English (US)",
-                  gender: "Unknown",
-                  provider: "sherpaonnx-wasm" as const,
-                  languageCodes: [
-                    {
-                      bcp47: "en-US",
-                      iso639_3: "eng",
-                      display: "English (US)",
-                    },
-                  ],
+                  bcp47: langCode,
+                  iso639_3: iso,
+                  display: langCode,
                 },
-              ];
-            }
-          } catch (fetchError) {
-            console.warn("Failed to fetch voice models JSON file:", fetchError);
-            // Return a default voice for testing
-            return [
-              {
-                id: "piper_en_US",
-                name: "Piper English (US)",
-                gender: "Unknown",
-                provider: "sherpaonnx-wasm" as const,
-                languageCodes: [
-                  {
-                    bcp47: "en-US",
-                    iso639_3: "eng",
-                    display: "English (US)",
-                  },
-                ],
-              },
-            ];
-          }
+              ],
+            };
+          });
         }
-      } catch (error) {
-        console.error("Error loading voice models:", error);
       }
 
-      // Normalize merged_models.json which may be an object map (id -> model)
-      const entries: any[] = Array.isArray(voiceModels)
-        ? voiceModels
-        : voiceModels && typeof voiceModels === "object"
-          ? Object.values(voiceModels)
-          : [];
-
-      console.log("Loaded SherpaOnnx model entries:", entries?.length || 0);
-
-      const voices = entries.map((model: any) => {
-        const langCode =
-          model?.language?.[0]?.lang_code ||
-          (typeof model?.language === "string" ? model.language : model?.language_code || "en");
-        const bcp47 = langCode || "en";
-        const iso = bcp47.split("-")[0] || "en";
-        const id = model?.id || model?.model_id || model?.name || "sherpa-model";
-        const name = model?.name || id;
-        return {
-          id,
-          name,
-          gender: (model?.gender || "Unknown") as any,
+      console.warn("Model repository unavailable or empty; falling back to default voice");
+      return [
+        {
+          id: "sherpa_en",
+          name: "Sherpa English",
+          gender: "Unknown",
           provider: "sherpaonnx-wasm" as const,
           languageCodes: [
             {
-              bcp47,
-              iso639_3: iso,
-              display: model?.language_display || bcp47,
+              bcp47: "en-US",
+              iso639_3: "eng",
+              display: "English (US)",
             },
           ],
-        };
-      });
-
-      // If no voices found, return a default voice for backward compatibility
-      if (voices.length === 0) {
-        return [
-          {
-            id: "sherpa_en",
-            name: "Sherpa English",
-            gender: "Unknown",
-            provider: "sherpaonnx-wasm" as const,
-            languageCodes: [
-              {
-                bcp47: "en-US",
-                iso639_3: "eng",
-                display: "English (US)",
-              },
-            ],
-          },
-        ];
-      }
-
-      return voices;
+        },
+      ];
     } catch (error) {
       console.error("Error getting SherpaOnnx WebAssembly voices:", error);
       return [];
@@ -416,27 +316,24 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
     try {
       // In browser environments, load the WebAssembly module
       if (isBrowser) {
-        if (!wasmUrl) {
-          console.warn("No WebAssembly URL provided for browser environment.");
-          this.wasmLoaded = false;
-          return;
+        const requestedUrl = wasmUrl || this.wasmPath || this.wasmBaseUrl || "./sherpaonnx.js";
+        if (!wasmUrl && !this.wasmPath && !this.wasmBaseUrl) {
+          console.warn(
+            "No WebAssembly URL provided for browser environment; defaulting to ./sherpaonnx.js"
+          );
         }
 
-        console.log("Loading WebAssembly module from", wasmUrl);
+        console.log("Loading WebAssembly module from", requestedUrl);
         console.log(
           `Current state: wasmLoaded=${this.wasmLoaded}, wasmModule=${!!this.wasmModule}`
         );
 
         try {
-          // Store the URL for later use
-          this.wasmPath = wasmUrl;
-          console.log("Setting wasmPath to:", this.wasmPath);
-
           // Auto-load JS glue and WASM if not present
           const w = window as any;
           let baseUrl: string | undefined = this.wasmBaseUrl;
           let scriptUrl: string | undefined;
-          const provided = wasmUrl || this.wasmPath || "";
+          const provided = wasmUrl || this.wasmPath || this.wasmBaseUrl || "";
           if (provided) {
             if (/\.js($|\?)/.test(provided)) {
               scriptUrl = provided;
@@ -694,8 +591,8 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       }
     }
 
-    // If multi-model is enabled, ensure the selected model files are mounted before synthesis
-    if (this.enhancedOptions.enableMultiModel && this.wasmModule) {
+    // Ensure the selected model files are mounted before synthesis
+    if (this.wasmModule && this.modelRepository) {
       try {
         const FS = (this.wasmModule as any).FS;
         const needModel = (() => {
@@ -712,7 +609,21 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
             return true;
           }
         })();
-        if (needModel || needTokens) {
+        const needVoices = (() => {
+          try {
+            return !FS.lookupPath("/voices.bin", { follow: true });
+          } catch {
+            return true;
+          }
+        })();
+        const needVocoder = (() => {
+          try {
+            return !FS.lookupPath("/vocoder.onnx", { follow: true });
+          } catch {
+            return true;
+          }
+        })();
+        if (needModel || needTokens || needVoices || needVocoder) {
           // Decide which voice to mount
           let targetVoice = this.currentVoiceId || this.voiceId;
           if (!targetVoice && this.modelRepository) {
@@ -806,7 +717,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
 
         try {
           // Ensure model files are mounted for legacy path too
-          if (this.enhancedOptions.enableMultiModel && this.currentVoiceId) {
+          if (this.currentVoiceId && this.modelRepository) {
             try {
               const FS = (this.wasmModule as any).FS;
               const needModel = (() => {
@@ -832,7 +743,8 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
 
           // Create a new TTS instance directly
           console.log("About to call createOfflineTts...");
-          const directTts = createOfflineTtsFn(moduleObj);
+          const offlineConfig = this.buildOfflineTtsConfig();
+          const directTts = createOfflineTtsFn(moduleObj, offlineConfig);
           console.log("createOfflineTts call successful, tts object:", directTts);
           console.log("TTS initialized with default configuration");
           console.log(`Sample rate: ${directTts?.sampleRate}`);
@@ -904,43 +816,9 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
             console.log("Module:", (window as any).Module);
 
             try {
-              // For MMS models, pass a custom config disabling eSpeak dataDir
-              const cfg = this.modelRepository?.getModelConfig(
-                this.currentVoiceId || this.voiceId || ""
-              );
-              const isMms = !!(
-                cfg &&
-                ((cfg as any).type === "mms" || /^mms_/i.test((cfg as any).id || ""))
-              );
-              let passedConfig: any = undefined;
-              if (isMms) {
-                passedConfig = {
-                  offlineTtsModelConfig: {
-                    vits: {
-                      model: "./model.onnx",
-                      lexicon: "",
-                      tokens: "./tokens.txt",
-                      dataDir: "", // disable eSpeak requirement for MMS
-                      dictDir: "",
-                      noiseScale: 0.667,
-                      noiseScaleW: 0.8,
-                      lengthScale: 1.0,
-                    },
-                    numThreads: 1,
-                    debug: true,
-                    provider: "cpu",
-                  },
-                  ruleFsts: "",
-                  ruleFars: "",
-                  maxNumSentences: 1,
-                };
-              }
-
-              console.log(
-                "About to call createOfflineTts...",
-                passedConfig ? "(with custom MMS config)" : "(with default config)"
-              );
-              this.tts = (window as any).createOfflineTts((window as any).Module, passedConfig);
+              const offlineConfig = this.buildOfflineTtsConfig();
+              console.log("About to call createOfflineTts with derived config");
+              this.tts = (window as any).createOfflineTts((window as any).Module, offlineConfig);
               console.log("createOfflineTts call successful, tts object:", this.tts);
               console.log("TTS initialized");
               console.log(`Sample rate: ${this.tts?.sampleRate}`);
@@ -1337,6 +1215,45 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
   }
 
   /**
+   * Build the OfflineTts configuration object expected by sherpa-onnx-tts.js.
+   * Uses the currently selected voice metadata to decide which model block
+   * (vits/kokoro/matcha) to populate and which auxiliary files to reference.
+   */
+  private buildOfflineTtsConfig(): any {
+    const voiceType = this.currentVoiceConfig?.type ?? "vits";
+    const dataDirDefault = voiceType === "mms" || voiceType === "kokoro" ? "" : "/espeak-ng-data";
+
+    if (voiceType !== "vits" && voiceType !== "mms") {
+      console.warn(
+        `Voice type ${voiceType} is not fully supported by the current SherpaONNX WASM build; falling back to VITS config`
+      );
+    }
+
+    const offlineConfig: any = {
+      offlineTtsModelConfig: {
+        offlineTtsVitsModelConfig: {
+          model: "./model.onnx",
+          lexicon: "",
+          tokens: "./tokens.txt",
+          dataDir: dataDirDefault,
+          dictDir: "",
+          noiseScale: 0.667,
+          noiseScaleW: 0.8,
+          lengthScale: 1.0,
+        },
+        numThreads: 1,
+        debug: this.enhancedOptions.enableMultiModel ? 1 : 0,
+        provider: "cpu",
+      },
+      ruleFsts: "",
+      ruleFars: "",
+      maxNumSentences: 1,
+    };
+
+    return offlineConfig;
+  }
+
+  /**
    * Set the voice to use for synthesis
    * Enhanced with multi-model support while maintaining backward compatibility
    * @param voiceId Voice ID to use
@@ -1347,8 +1264,12 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
     console.log(`Setting voice to ${voiceId}`);
 
     // Enhanced multi-model support (loader-only runtime: fetch, extract, mount into /assets)
-    if (this.enhancedOptions.enableMultiModel && this.modelRepository) {
-      console.log(`Using enhanced multi-model mode for voice ${voiceId}`);
+    if (this.modelRepository) {
+      console.log(
+        this.enhancedOptions.enableMultiModel
+          ? `Using enhanced multi-model mode for voice ${voiceId}`
+          : `Preparing SherpaONNX assets for voice ${voiceId}`
+      );
 
       // Ensure WASM is initialized to access FS
       if (!this.wasmLoaded) {
@@ -1359,10 +1280,12 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
       }
 
       // Resolve model config and URL
+      await this.modelRepository.loadModelsIndex();
       const cfg = this.modelRepository.getModelConfig(voiceId);
       if (!cfg || !cfg.url) {
         throw new Error(`No URL found for model ${voiceId}`);
       }
+      this.currentVoiceConfig = cfg;
 
       // Build URL and determine if source is an archive (mirror only for archives)
       const originalUrl = cfg.url;
@@ -1448,13 +1371,11 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         // Decompress .bz2 if needed
         let tarBuffer: ArrayBuffer = archiveBuf;
         if (/\.bz2$/i.test(modelUrl) || cfg.compressed) {
-          const compressjsMod: any = await import("compressjs");
-          const Bzip2 = compressjsMod.Bzip2 || compressjsMod.BZ2;
-          if (!Bzip2 || typeof Bzip2.decompressFile !== "function") {
-            throw new Error("Bzip2 decompressor not available");
-          }
-          const outArr: number[] = Bzip2.decompressFile(new Uint8Array(archiveBuf));
-          tarBuffer = new Uint8Array(outArr).buffer;
+          const tarBytes = await decompressBzip2(new Uint8Array(archiveBuf));
+          tarBuffer = tarBytes.buffer.slice(
+            tarBytes.byteOffset,
+            tarBytes.byteOffset + tarBytes.byteLength
+          );
         }
 
         // Extract tar
@@ -1562,10 +1483,11 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
             const r2 = await fetch(espeakUrl);
             if (r2.ok) {
               const buf2 = await r2.arrayBuffer();
-              const compressjsMod2: any = await import("compressjs");
-              const Bzip22 = compressjsMod2.Bzip2 || compressjsMod2.BZ2;
-              const outArr2: number[] = Bzip22.decompressFile(new Uint8Array(buf2));
-              const tarBuf2 = new Uint8Array(outArr2).buffer;
+              const tarBytes2 = await decompressBzip2(new Uint8Array(buf2));
+              const tarBuf2 = tarBytes2.buffer.slice(
+                tarBytes2.byteOffset,
+                tarBytes2.byteOffset + tarBytes2.byteLength
+              );
               const untarMod2: any = await import("js-untar");
               const untar2 = untarMod2.default || untarMod2;
               const entries2: Array<any> = await untar2(tarBuf2);
@@ -1696,13 +1618,17 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
 class ModelRepository {
   private modelsIndex: ModelConfig[] = [];
   private modelsUrl?: string;
+  private loadingPromise?: Promise<void>;
 
   constructor(modelsUrl?: string) {
     this.modelsUrl = modelsUrl;
   }
 
   async loadModelsIndex(): Promise<void> {
-    try {
+    if (this.modelsIndex.length > 0) return;
+    if (this.loadingPromise) return this.loadingPromise;
+
+    this.loadingPromise = (async () => {
       // Use the existing merged_models.json loading logic from _getVoices
       let voiceModels: any[] = [];
 
@@ -1783,12 +1709,16 @@ class ModelRepository {
         .filter(Boolean) as ModelConfig[];
 
       console.log(`Loaded ${this.modelsIndex.length} compatible models from merged_models.json`);
-
-      console.log(`Loaded ${this.modelsIndex.length} compatible models from merged_models.json`);
-    } catch (error) {
+    })().catch((error) => {
       console.error("Error loading models index:", error);
       // Fallback to default models for backward compatibility
       this.modelsIndex = this.getDefaultModels();
+    });
+
+    try {
+      await this.loadingPromise;
+    } finally {
+      this.loadingPromise = undefined;
     }
   }
 
