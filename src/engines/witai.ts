@@ -142,10 +142,21 @@ export class WitAITTSClient extends AbstractTTSClient {
   private async prepareText(text: string, options?: SpeakOptions): Promise<string> {
     let processedText = text;
 
+    // If rawSSML is enabled, skip Speech Markdown conversion
+    if (options?.rawSSML) {
+      // WitAI supports SSML, so we can pass SSML directly
+      // If text is not SSML, wrap it in speak tags for consistency
+      if (!SSMLUtils.isSSML(processedText)) {
+        processedText = SSMLUtils.wrapWithSpeakTags(processedText);
+      }
+      return processedText;
+    }
+
     // Check if the input is SpeechMarkdown and useSpeechMarkdown is enabled, convert it to SSML
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
       // Convert SpeechMarkdown to SSML - WitAI supports SSML
-      const ssml = await SpeechMarkdown.toSSML(processedText, "wit-ai");
+      // Note: "ibm-watson" is the correct platform name for WitAI in speechmarkdown-js
+      const ssml = await SpeechMarkdown.toSSML(processedText, "ibm-watson");
       processedText = ssml;
     }
 

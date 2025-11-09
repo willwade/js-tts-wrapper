@@ -704,7 +704,8 @@ export class PlayHTTTSClient extends AbstractTTSClient {
       // Convert from Speech Markdown if requested
       if (_options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
         // Convert to SSML first, then strip SSML tags since PlayHT doesn't support SSML
-        const ssml = await SpeechMarkdown.toSSML(processedText);
+        // Use "w3c" platform for generic SSML (will be stripped anyway)
+        const ssml = await SpeechMarkdown.toSSML(processedText, "w3c");
         processedText = SSMLUtils.stripSSML(ssml);
       }
 

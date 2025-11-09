@@ -135,13 +135,25 @@ export class WatsonTTSClient extends AbstractTTSClient {
     const voice = options?.voice || this.voiceId;
 
     // Check if the input is already SSML
-    const isSSML = SSMLUtils.isSSML(text);
+    let isSSML = SSMLUtils.isSSML(text);
 
     let processedText = text;
 
+    // If rawSSML is enabled, skip Speech Markdown conversion
+    if (options?.rawSSML) {
+      // If the input is already SSML, use it directly
+      if (isSSML) {
+        return processedText;
+      }
+      // Otherwise, wrap in SSML tags
+      return SSMLUtils.wrapWithSpeakTags(processedText);
+    }
+
     // If the input is SpeechMarkdown and useSpeechMarkdown is enabled, convert it to SSML
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
-      processedText = await SpeechMarkdown.toSSML(processedText);
+      // Use "ibm-watson" for Watson (IBM Watson TTS)
+      processedText = await SpeechMarkdown.toSSML(processedText, "ibm-watson");
+      isSSML = true;
     }
 
     // If the input is already SSML, use it directly

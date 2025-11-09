@@ -504,19 +504,76 @@ await tts.speak(ssmlText);
   - **Generative voices**: Limited SSML support (partial tag support)
   - The library automatically detects voice engine types and handles SSML appropriately
 - **Microsoft Azure**: Supports voice-specific SSML elements and custom voice tags
+  - Supports MS-specific tags like `<mstts:express-as>` for emotional styles
+  - The library automatically injects the required `xmlns:mstts` namespace when needed
 - **Google Cloud**: Supports the most comprehensive set of SSML elements
 - **WitAI**: Full SSML support according to W3C specification
 - **SAPI**: Windows-native SSML support with system voice capabilities
 - **eSpeak**: Supports SSML subset including prosody, breaks, and emphasis elements
 
+### Raw SSML Pass-Through
+
+For advanced use cases where you need to use provider-specific SSML features not supported by the library's SSML processing, you can use the `rawSSML` option to bypass Speech Markdown conversion and SSML validation:
+
+```typescript
+// Use raw SSML with provider-specific features
+const azureSSML = `<speak xmlns:mstts="https://www.w3.org/2001/mstts">
+  <mstts:express-as style="friendly" styledegree="0">
+    A very sad day.
+  </mstts:express-as>
+</speak>`;
+
+await tts.speak(azureSSML, { rawSSML: true });
+
+// The library will:
+// 1. Skip Speech Markdown conversion
+// 2. Skip SSML validation and processing
+// 3. Pass the SSML directly to the provider
+// 4. Still ensure basic SSML structure requirements are met
+```
+
+**Note**: When using `rawSSML: true`, you are responsible for ensuring the SSML is valid for your provider. The library will still add required namespaces and attributes where necessary.
+
+### Extending Speech Markdown Support
+
+The library uses the **speechmarkdown-js** library for Speech Markdown conversion. If you need Speech Markdown features that aren't yet supported by the wrapper:
+
+1. **Check speechmarkdown-js documentation** - The library supports many platforms including Azure, Google, Polly, WitAI, and more
+2. **Use `rawSSML` option** - Convert your Speech Markdown to SSML using speechmarkdown-js directly, then pass it with `rawSSML: true`:
+
+```typescript
+import { SpeechMarkdown } from 'speechmarkdown-js';
+
+// Convert Speech Markdown to SSML using speechmarkdown-js directly
+const markdown = "(This is exciting!)[excited:\"1.5\"] with intensity control";
+const ssml = await SpeechMarkdown.toSSML(markdown, "microsoft-azure");
+
+// Pass the generated SSML directly to the provider
+await tts.speak(ssml, { rawSSML: true });
+```
+
+3. **Contribute to speechmarkdown-js** - If you find a feature that should be supported, consider contributing to the [speechmarkdown-js repository](https://github.com/speechmarkdown/speechmarkdown-js)
+
+This approach gives you access to all Speech Markdown features supported by the underlying library while maintaining compatibility with the TTS wrapper.
+
 ## Speech Markdown Support
 
-The library supports Speech Markdown for easier speech formatting across **all engines**:
+The library supports Speech Markdown for easier speech formatting across **all engines**. Speech Markdown is powered by the **[speechmarkdown-js](https://github.com/speechmarkdown/speechmarkdown-js)** library, which provides comprehensive platform-specific support.
 
 ### How Speech Markdown Works
 
-- **SSML-supported engines**: Speech Markdown is converted to SSML, then processed natively
+- **SSML-supported engines**: Speech Markdown is converted to SSML (with platform-specific optimizations), then processed natively
 - **Non-SSML engines**: Speech Markdown is converted to SSML, then SSML tags are stripped to plain text
+
+### Platform-Specific Features
+
+The speechmarkdown-js library supports platform-specific Speech Markdown features:
+
+- **Microsoft Azure**: 33 express-as styles with intensity control, language switching, HD voices
+- **Amazon Polly**: Emotional styles, voice effects, language support
+- **Google Cloud**: Style tags, language support
+- **WitAI**: Full SSML support
+- **And more**: Each platform has optimized Speech Markdown support
 
 ### Usage
 
@@ -525,6 +582,11 @@ The library supports Speech Markdown for easier speech formatting across **all e
 const markdown =
   "Hello [500ms] world! ++This text is emphasized++ (slowly)[rate:\"slow\"] (high)[pitch:\"high\"] (loudly)[volume:\"loud\"]";
 await tts.speak(markdown, { useSpeechMarkdown: true });
+
+// Platform-specific Speech Markdown features
+// Azure: Emotional styles with intensity
+const azureMarkdown = "(This is exciting!)[excited:\"1.5\"]";
+await azureTts.speak(azureMarkdown, { useSpeechMarkdown: true });
 
 // Speech Markdown works with all engines
 const ttsGoogle = new TTSClient('google');
@@ -542,11 +604,12 @@ await ttsElevenLabs.speak(markdown, { useSpeechMarkdown: true }); // Converts to
 - `(text)[rate:"slow"]` - Speech rate control
 - `(text)[pitch:"high"]` - Pitch control
 - `(text)[volume:"loud"]` - Volume control
+- **Platform-specific**: See [speechmarkdown-js documentation](https://github.com/speechmarkdown/speechmarkdown-js) for platform-specific features like Azure's express-as styles
 
 
 ### Node: Enabling Full Speech Markdown Conversion
 
-By default, js-tts-wrapper uses a lightweight built-in fallback for Speech Markdown conversion in Node.js (sufficient for basic patterns like breaks). To enable the full speechmarkdown-js library at runtime in Node, set the environment variable before running your app or tests:
+By default, js-tts-wrapper uses a lightweight built-in fallback for Speech Markdown conversion in Node.js (sufficient for basic patterns like breaks). To enable the full **speechmarkdown-js** library at runtime in Node (which provides platform-specific features like Azure's 33 express-as styles, Polly's emotional styles, etc.), set the environment variable before running your app or tests:
 
 ```bash
 SPEECHMARKDOWN_ENABLE=true npm test
@@ -570,6 +633,49 @@ If the library is not available or the flag is not set, the fallback remains act
 | OpenAI | ✅ Converted | → SSML → Plain text |
 | PlayHT | ✅ Converted | → SSML → Plain text |
 | SherpaOnnx | ✅ Converted | → SSML → Plain text |
+
+### Speech Markdown vs Raw SSML: When to Use Each
+
+The library provides two complementary approaches for controlling speech synthesis:
+
+| Approach | Use Case | Example |
+|----------|----------|---------|
+| **Speech Markdown** | Easy, readable syntax for common features | `(Hello!)[excited:"1.5"]` |
+| **Raw SSML** | Direct control, advanced features, provider-specific tags | `<mstts:express-as style="friendly">Hello!</mstts:express-as>` |
+
+**Speech Markdown Flow:**
+```
+Speech Markdown → speechmarkdown-js → Platform-specific SSML → Provider
+```
+
+**Raw SSML Flow:**
+```
+Raw SSML → Minimal processing → Provider
+```
+
+**When to use Speech Markdown:**
+- You want readable, maintainable code
+- You're using common features (breaks, emphasis, rate, pitch, volume)
+- You want platform-specific optimizations automatically applied
+- You want the same code to work across multiple TTS engines
+
+**When to use Raw SSML with `rawSSML: true`:**
+- You need advanced provider-specific features (e.g., Azure's mstts:dialog for multi-speaker)
+- You're working with SSML generated by other tools
+- You need fine-grained control over SSML structure
+- You want to bypass validation for experimental features
+
+**Combining both approaches:**
+```typescript
+// Use speechmarkdown-js directly for advanced features
+import { SpeechMarkdown } from 'speechmarkdown-js';
+
+const markdown = "(This is exciting!)[excited:\"1.5\"] with (multi-speaker)[mstts:dialog]";
+const ssml = await SpeechMarkdown.toSSML(markdown, "microsoft-azure");
+
+// Pass the result with rawSSML to bypass wrapper validation
+await tts.speak(ssml, { rawSSML: true });
+```
 
 ## Engine-Specific Examples
 

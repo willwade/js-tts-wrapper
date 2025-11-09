@@ -398,10 +398,20 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @returns SSML ready for synthesis
    */
   private async prepareSSML(text: string, options?: GoogleTTSOptions): Promise<string> {
+    // If rawSSML is enabled, skip Speech Markdown conversion
+    if (options?.rawSSML) {
+      // Ensure text is wrapped in SSML
+      if (!SSMLUtils.isSSML(text)) {
+        text = SSMLUtils.wrapWithSpeakTags(text);
+      }
+      return this.addWordTimingMarks(text);
+    }
+
     // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
-      text = await SpeechMarkdown.toSSML(text, "google");
+      text = await SpeechMarkdown.toSSML(text, "google-assistant");
     }
+    // Note: "google-assistant" is the correct platform name for Google in speechmarkdown-js
 
     // If text is already SSML, return it
     if (SSMLUtils.isSSML(text)) {

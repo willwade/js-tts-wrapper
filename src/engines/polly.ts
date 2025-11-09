@@ -240,8 +240,19 @@ export class PollyTTSClient extends AbstractTTSClient {
     // Get the voice ID from options or the current voice
     const voiceId = options?.voice || this.voiceId || "";
 
+    // If rawSSML is enabled, skip Speech Markdown conversion and validation
+    if (options?.rawSSML) {
+      // Ensure text is wrapped in SSML
+      if (!this._isSSML(text)) {
+        text = `<speak>${text}</speak>`;
+      }
+      return text;
+    }
+
     // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
+      // Use "amazon-polly" for standard voices, "amazon-polly-neural" for neural voices
+      // For now, default to "amazon-polly" - can be enhanced to detect voice type
       const ssmlText = await SpeechMarkdown.toSSML(text, "amazon-polly");
       text = ssmlText;
     }

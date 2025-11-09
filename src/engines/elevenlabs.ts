@@ -192,7 +192,8 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
     // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
       // Convert to SSML first, then strip SSML tags
-      const ssml = await SpeechMarkdown.toSSML(processedText);
+      // Use "elevenlabs" platform for ElevenLabs-specific Speech Markdown features
+      const ssml = await SpeechMarkdown.toSSML(processedText, "elevenlabs");
       processedText = this._stripSSML(ssml);
     }
 

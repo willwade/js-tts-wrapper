@@ -304,10 +304,14 @@ export class SAPITTSClient extends AbstractTTSClient {
       // Prepare text for synthesis (handle Speech Markdown and SSML)
       let processedText = text;
 
-      // Convert from Speech Markdown if requested
-      if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
-        const ssmlText = await SpeechMarkdown.toSSML(processedText, "microsoft-azure");
-        processedText = ssmlText;
+      // If rawSSML is enabled, skip Speech Markdown conversion
+      if (!options?.rawSSML) {
+        // Convert from Speech Markdown if requested
+        if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
+          // Use "microsoft-sapi" for SAPI (Windows-specific SSML dialect)
+          const ssmlText = await SpeechMarkdown.toSSML(processedText, "microsoft-sapi");
+          processedText = ssmlText;
+        }
       }
 
       // Always ensure SSML format - wrap plain text in speak tags like other engines
@@ -408,7 +412,8 @@ export class SAPITTSClient extends AbstractTTSClient {
 
       // Convert from Speech Markdown if requested
       if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
-        const ssmlText = await SpeechMarkdown.toSSML(processedText, "microsoft-azure");
+        // Use "microsoft-sapi" for SAPI (Windows-specific SSML dialect)
+        const ssmlText = await SpeechMarkdown.toSSML(processedText, "microsoft-sapi");
         processedText = ssmlText;
       }
 

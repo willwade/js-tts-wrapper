@@ -1272,7 +1272,8 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       // Convert from Speech Markdown if requested
       if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(plainText)) {
         // Convert to SSML first, then strip SSML tags since SherpaOnnx doesn't support SSML
-        const ssml = await SpeechMarkdown.toSSML(plainText);
+        // Use "w3c" platform for generic SSML (will be stripped anyway)
+        const ssml = await SpeechMarkdown.toSSML(plainText, "w3c");
         plainText = this.stripSSML(ssml);
       }
 

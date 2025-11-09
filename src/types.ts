@@ -41,6 +41,13 @@ export interface SpeakOptions {
    * Audio format to use for synthesis
    */
   format?: "mp3" | "wav" | "ogg" | "opus" | "aac" | "flac" | "pcm";
+
+  /**
+   * Raw SSML to pass directly to the provider, bypassing Speech Markdown conversion
+   * This allows users to use provider-specific SSML features that may not be supported
+   * by the Speech Markdown library or the wrapper's SSML processing
+   */
+  rawSSML?: boolean;
 }
 
 /**

@@ -515,11 +515,22 @@ export class AzureTTSClient extends AbstractTTSClient {
    * @returns SSML ready for synthesis
    */
   private async prepareSSML(text: string, options?: AzureTTSOptions): Promise<string> {
+    // If rawSSML is enabled, skip Speech Markdown conversion and validation
+    // This allows users to pass raw SSML with provider-specific features
+    if (options?.rawSSML) {
+      // Ensure text is wrapped in SSML
+      let ssml = SSMLUtils.isSSML(text) ? text : SSMLUtils.wrapWithSpeakTags(text);
+      // Only ensure Azure structure (add namespaces if needed)
+      ssml = this.ensureAzureSSMLStructure(ssml, options?.voice || this.voiceId, options);
+      return ssml;
+    }
+
     // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
       const ssmlText = await SpeechMarkdown.toSSML(text, "microsoft-azure");
       text = ssmlText;
     }
+    // Note: "microsoft-azure" is the correct platform name for Azure in speechmarkdown-js
 
     // Ensure text is wrapped in SSML
     let ssml = SSMLUtils.isSSML(text) ? text : SSMLUtils.wrapWithSpeakTags(text);
@@ -554,12 +565,19 @@ export class AzureTTSClient extends AbstractTTSClient {
    * @returns Properly structured SSML for Azure
    */
   private ensureAzureSSMLStructure(ssml: string, voiceId?: string | null, options?: AzureTTSOptions): string {
+    // Check if SSML contains mstts-specific tags
+    const hasMsttsContent = /mstts:/.test(ssml);
+
     // Ensure required attributes are present
     if (!ssml.includes('version=')) {
       ssml = ssml.replace('<speak', '<speak version="1.0"');
     }
     if (!ssml.includes('xmlns=')) {
       ssml = ssml.replace('<speak', '<speak xmlns="http://www.w3.org/2001/10/synthesis"');
+    }
+    // Add mstts namespace if content contains mstts tags
+    if (hasMsttsContent && !ssml.includes('xmlns:mstts=')) {
+      ssml = ssml.replace('<speak', '<speak xmlns:mstts="https://www.w3.org/2001/mstts"');
     }
     if (!ssml.includes('xml:lang=')) {
       ssml = ssml.replace('<speak', `<speak xml:lang="${this.lang}"`);
