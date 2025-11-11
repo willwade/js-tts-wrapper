@@ -34,35 +34,36 @@ This document explains how to release a new version of the TTS wrapper.
    npm publish
    ```
 
-## Automated Release Process
+## Automated Release Process (Recommended)
 
-The repository is configured with GitHub Actions to automatically test and publish new releases.
+The repository is configured with GitHub Actions to automatically test and publish new releases. The version is determined by the GitHub release tag, not the package.json file.
 
-1. Update the version in `package.json`:
-   ```bash
-   npm version patch  # for bug fixes
-   npm version minor  # for new features
-   npm version major  # for breaking changes
-   ```
-
-2. Push the changes to GitHub:
-   ```bash
-   git push
-   git push --tags
-   ```
-
-3. Create a new release on GitHub:
+1. Create a new release on GitHub:
    - Go to the repository on GitHub
    - Click on "Releases"
    - Click on "Draft a new release"
-   - Select the tag you just pushed
+   - Create a new tag with the desired version (e.g., `v0.1.48`)
    - Add a title and description
    - Click "Publish release"
 
-4. The GitHub Actions workflow will automatically:
+2. The GitHub Actions workflow will automatically:
    - Run tests
+   - Set the package.json version to match the release tag
    - Build the package
    - Publish to npm
+   - Commit the updated package.json version back to the main branch
+
+**Note**: The version in the root `package.json` file is automatically synced after each release, so you don't need to manually update it.
+
+## Syncing Local Package Version
+
+If you need to sync your local `package.json` version with the latest release (useful for development), you can run:
+
+```bash
+npm run sync-version
+```
+
+This script will automatically fetch the latest release version from GitHub and update your local `package.json` file.
 
 ## GitHub Secrets
 

@@ -2,11 +2,11 @@ name: Test and Publish
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   release:
-    types: [ created ]
+    types: [created]
 
 jobs:
   test:
@@ -16,165 +16,176 @@ jobs:
         node-version: [18.x, 20.x]
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set package version from git tag (release only)
-      if: startsWith(github.ref, 'refs/tags/')
-      shell: bash
-      run: |
-        TAG="${GITHUB_REF#refs/tags/}"
-        if [ -z "$TAG" ] || [ "$TAG" = "$GITHUB_REF" ]; then TAG="${{ github.event.release.tag_name }}"; fi
-        TAG_NO_V="${TAG#v}"
-        echo "Setting package.json version to $TAG_NO_V from tag $TAG"
-        npm version "$TAG_NO_V" --no-git-tag-version
+      - uses: actions/checkout@v3
+      - name: Set package version from git tag (release only)
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          if [ -z "$TAG" ] || [ "$TAG" = "$GITHUB_REF" ]; then TAG="${{ github.event.release.tag_name }}"; fi
+          TAG_NO_V="${TAG#v}"
+          echo "Setting package.json version to $TAG_NO_V from tag $TAG"
+          npm version "$TAG_NO_V" --no-git-tag-version
 
-    - name: Verify tag matches package.json version (release only)
-      if: startsWith(github.ref, 'refs/tags/')
-      run: |
-        PKG_VERSION=$(node -p "require('./package.json').version")
-        TAG="${GITHUB_REF#refs/tags/}"
-        TAG_NO_V="${TAG#v}"
-        echo "Tag: $TAG | package.json: $PKG_VERSION"
-        if [ "$TAG_NO_V" != "$PKG_VERSION" ]; then
-          echo "::error::Tag ($TAG) does not match package.json version ($PKG_VERSION)";
-          exit 1;
-        fi
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    - run: npm ci
-    # Install peer dependencies for build
-    - name: Install peer dependencies
-      run: |
-        # Install cloud dependencies for build and testing
-        npm install microsoft-cognitiveservices-speech-sdk@^1.43.1 @google-cloud/text-to-speech@^6.0.1 @aws-sdk/client-polly@^3.799.0 openai@^4.97.0
-        # Install SherpaOnnx dependencies except the platform-specific binary
-        npm install decompress@^4.2.1 decompress-bzip2@^4.0.0 decompress-tarbz2@^4.1.1 decompress-targz@^4.1.1 tar-stream@^3.1.7
-    - run: npm run build
-    - run: npm run lint
-    - run: npm test
-    # Run TTS tests if credentials are available
-    - name: Check Azure credentials
-      id: check_azure
-      run: |
-        if [ -n "${{ secrets.MICROSOFT_TOKEN }}" ] && [ -n "${{ secrets.MICROSOFT_REGION }}" ]; then
-          echo "has_creds=true" >> $GITHUB_OUTPUT
-        else
-          echo "has_creds=false" >> $GITHUB_OUTPUT
-        fi
-    - name: Validate Azure credentials
-      if: steps.check_azure.outputs.has_creds == 'true'
-      id: validate_azure
-      run: |
-        # Test credential validity using our credential validation example
-        if node examples/credential-validation-example.js azure > /dev/null 2>&1; then
-          echo "creds_valid=true" >> $GITHUB_OUTPUT
-        else
-          echo "creds_valid=false" >> $GITHUB_OUTPUT
-          echo "Azure credentials are invalid, skipping tests"
-        fi
-      env:
-        MICROSOFT_TOKEN: ${{ secrets.MICROSOFT_TOKEN }}
-        MICROSOFT_REGION: ${{ secrets.MICROSOFT_REGION }}
-    - name: Run Azure TTS tests
-      if: steps.check_azure.outputs.has_creds == 'true' && steps.validate_azure.outputs.creds_valid == 'true'
-      run: npm run test:azure
-      env:
-        MICROSOFT_TOKEN: ${{ secrets.MICROSOFT_TOKEN }}
-        MICROSOFT_REGION: ${{ secrets.MICROSOFT_REGION }}
+      - name: Verify tag matches package.json version (release only)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAG="${GITHUB_REF#refs/tags/}"
+          TAG_NO_V="${TAG#v}"
+          echo "Tag: $TAG | package.json: $PKG_VERSION"
+          if [ "$TAG_NO_V" != "$PKG_VERSION" ]; then
+            echo "::error::Tag ($TAG) does not match package.json version ($PKG_VERSION)";
+            exit 1;
+          fi
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+      - run: npm ci
+      # Install peer dependencies for build
+      - name: Install peer dependencies
+        run: |
+          # Install cloud dependencies for build and testing
+          npm install microsoft-cognitiveservices-speech-sdk@^1.43.1 @google-cloud/text-to-speech@^6.0.1 @aws-sdk/client-polly@^3.799.0 openai@^4.97.0
+          # Install SherpaOnnx dependencies except the platform-specific binary
+          npm install decompress@^4.2.1 decompress-bzip2@^4.0.0 decompress-tarbz2@^4.1.1 decompress-targz@^4.1.1 tar-stream@^3.1.7
+      - run: npm run build
+      - run: npm run lint
+      - run: npm test
+      # Run TTS tests if credentials are available
+      - name: Check Azure credentials
+        id: check_azure
+        run: |
+          if [ -n "${{ secrets.MICROSOFT_TOKEN }}" ] && [ -n "${{ secrets.MICROSOFT_REGION }}" ]; then
+            echo "has_creds=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_creds=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Validate Azure credentials
+        if: steps.check_azure.outputs.has_creds == 'true'
+        id: validate_azure
+        run: |
+          # Test credential validity using our credential validation example
+          if node examples/credential-validation-example.js azure > /dev/null 2>&1; then
+            echo "creds_valid=true" >> $GITHUB_OUTPUT
+          else
+            echo "creds_valid=false" >> $GITHUB_OUTPUT
+            echo "Azure credentials are invalid, skipping tests"
+          fi
+        env:
+          MICROSOFT_TOKEN: ${{ secrets.MICROSOFT_TOKEN }}
+          MICROSOFT_REGION: ${{ secrets.MICROSOFT_REGION }}
+      - name: Run Azure TTS tests
+        if: steps.check_azure.outputs.has_creds == 'true' && steps.validate_azure.outputs.creds_valid == 'true'
+        run: npm run test:azure
+        env:
+          MICROSOFT_TOKEN: ${{ secrets.MICROSOFT_TOKEN }}
+          MICROSOFT_REGION: ${{ secrets.MICROSOFT_REGION }}
 
-    - name: Check ElevenLabs credentials
-      id: check_elevenlabs
-      run: |
-        if [ -n "${{ secrets.ELEVENLABS_API_KEY }}" ]; then
-          echo "has_creds=true" >> $GITHUB_OUTPUT
-        else
-          echo "has_creds=false" >> $GITHUB_OUTPUT
-        fi
-    - name: Validate ElevenLabs credentials
-      if: steps.check_elevenlabs.outputs.has_creds == 'true'
-      id: validate_elevenlabs
-      run: |
-        # Test credential validity using our credential validation example
-        if node examples/credential-validation-example.js elevenlabs > /dev/null 2>&1; then
-          echo "creds_valid=true" >> $GITHUB_OUTPUT
-        else
-          echo "creds_valid=false" >> $GITHUB_OUTPUT
-          echo "ElevenLabs credentials are invalid or rate limited, skipping tests"
-        fi
-      env:
-        ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
-    - name: Run ElevenLabs tests
-      if: steps.check_elevenlabs.outputs.has_creds == 'true' && steps.validate_elevenlabs.outputs.creds_valid == 'true'
-      run: npm run test:elevenlabs
-      env:
-        ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      - name: Check ElevenLabs credentials
+        id: check_elevenlabs
+        run: |
+          if [ -n "${{ secrets.ELEVENLABS_API_KEY }}" ]; then
+            echo "has_creds=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_creds=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Validate ElevenLabs credentials
+        if: steps.check_elevenlabs.outputs.has_creds == 'true'
+        id: validate_elevenlabs
+        run: |
+          # Test credential validity using our credential validation example
+          if node examples/credential-validation-example.js elevenlabs > /dev/null 2>&1; then
+            echo "creds_valid=true" >> $GITHUB_OUTPUT
+          else
+            echo "creds_valid=false" >> $GITHUB_OUTPUT
+            echo "ElevenLabs credentials are invalid or rate limited, skipping tests"
+          fi
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      - name: Run ElevenLabs tests
+        if: steps.check_elevenlabs.outputs.has_creds == 'true' && steps.validate_elevenlabs.outputs.creds_valid == 'true'
+        run: npm run test:elevenlabs
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
 
-    - name: Check Google credentials
-      id: check_google
-      run: |
-        if [ -n "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" ]; then
-          echo "has_creds=true" >> $GITHUB_OUTPUT
-        else
-          echo "has_creds=false" >> $GITHUB_OUTPUT
-        fi
-    - name: Validate Google credentials
-      if: steps.check_google.outputs.has_creds == 'true'
-      id: validate_google
-      run: |
-        # Create temporary credentials file for validation
-        echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" > google-sa-key.json
-        export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/google-sa-key.json
-        # Test credential validity using our credential validation example
-        if node examples/credential-validation-example.js google > /dev/null 2>&1; then
-          echo "creds_valid=true" >> $GITHUB_OUTPUT
-        else
-          echo "creds_valid=false" >> $GITHUB_OUTPUT
-          echo "Google credentials are invalid, skipping tests"
-        fi
-        rm google-sa-key.json
-    - name: Run Google tests
-      if: steps.check_google.outputs.has_creds == 'true' && steps.validate_google.outputs.creds_valid == 'true'
-      run: |
-        echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" > google-sa-key.json
-        export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/google-sa-key.json
-        npm run test:google
-        rm google-sa-key.json
+      - name: Check Google credentials
+        id: check_google
+        run: |
+          if [ -n "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" ]; then
+            echo "has_creds=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_creds=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Validate Google credentials
+        if: steps.check_google.outputs.has_creds == 'true'
+        id: validate_google
+        run: |
+          # Create temporary credentials file for validation
+          echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" > google-sa-key.json
+          export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/google-sa-key.json
+          # Test credential validity using our credential validation example
+          if node examples/credential-validation-example.js google > /dev/null 2>&1; then
+            echo "creds_valid=true" >> $GITHUB_OUTPUT
+          else
+            echo "creds_valid=false" >> $GITHUB_OUTPUT
+            echo "Google credentials are invalid, skipping tests"
+          fi
+          rm google-sa-key.json
+      - name: Run Google tests
+        if: steps.check_google.outputs.has_creds == 'true' && steps.validate_google.outputs.creds_valid == 'true'
+        run: |
+          echo "${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}" > google-sa-key.json
+          export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/google-sa-key.json
+          npm run test:google
+          rm google-sa-key.json
 
   publish:
     needs: test
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Use Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '20.x'
-        registry-url: 'https://registry.npmjs.org'
-    - name: Set package version from git tag
-      if: startsWith(github.ref, 'refs/tags/')
-      shell: bash
-      run: |
-        TAG="${GITHUB_REF#refs/tags/}"
-        if [ -z "$TAG" ] || [ "$TAG" = "$GITHUB_REF" ]; then TAG="${{ github.event.release.tag_name }}"; fi
-        TAG_NO_V="${TAG#v}"
-        echo "Setting package.json version to $TAG_NO_V from tag $TAG"
-        npm version "$TAG_NO_V" --no-git-tag-version
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20.x"
+          registry-url: "https://registry.npmjs.org"
+      - name: Set package version from git tag
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          if [ -z "$TAG" ] || [ "$TAG" = "$GITHUB_REF" ]; then TAG="${{ github.event.release.tag_name }}"; fi
+          TAG_NO_V="${TAG#v}"
+          echo "Setting package.json version to $TAG_NO_V from tag $TAG"
+          npm version "$TAG_NO_V" --no-git-tag-version
 
-    - run: npm ci
-    # Install peer dependencies for build
-    - name: Install peer dependencies
-      run: |
-        # Install cloud dependencies for build and testing
-        npm install microsoft-cognitiveservices-speech-sdk@^1.43.1 @google-cloud/text-to-speech@^6.0.1 @aws-sdk/client-polly@^3.799.0 openai@^4.97.0
-        # Install SherpaOnnx dependencies except the platform-specific binary
-        npm install decompress@^4.2.1 decompress-bzip2@^4.0.0 decompress-tarbz2@^4.1.1 decompress-targz@^4.1.1 tar-stream@^3.1.7
-    - run: npm run prepublishOnly
-    - name: Publish to npm
-      run: |
-        cd dist
-        npm publish
-      env:
-        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm ci
+      # Install peer dependencies for build
+      - name: Install peer dependencies
+        run: |
+          # Install cloud dependencies for build and testing
+          npm install microsoft-cognitiveservices-speech-sdk@^1.43.1 @google-cloud/text-to-speech@^6.0.1 @aws-sdk/client-polly@^3.799.0 openai@^4.97.0
+          # Install SherpaOnnx dependencies except the platform-specific binary
+          npm install decompress@^4.2.1 decompress-bzip2@^4.0.0 decompress-tarbz2@^4.1.1 decompress-targz@^4.1.1 tar-stream@^3.1.7
+      - run: npm run prepublishOnly
+      - name: Publish to npm
+        run: |
+          cd dist
+          npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # Sync the updated version back to the main branch
+      - name: Commit updated package.json version to main
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add package.json
+          git diff --staged --quiet || git commit -m "chore: sync package.json version to ${{ github.event.release.tag_name }}"
+          git push origin HEAD:main

@@ -1,6 +1,6 @@
 {
   "name": "js-tts-wrapper",
-  "version": "0.1.47",
+  "version": "0.1.58",
   "description": "A JavaScript/TypeScript library that provides a unified API for working with multiple cloud-based Text-to-Speech (TTS) services",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -87,6 +87,7 @@
     "clean": "rimraf dist",
     "prepublishOnly": "npm run clean && npm run build && node scripts/package.cjs",
     "prepare-package": "node scripts/package.cjs",
+    "sync-version": "node scripts/sync-version.js",
     "prepare": "husky",
     "pre-push": "npm run check",
     "install:deps": "echo 'Use npm install js-tts-wrapper[engine] instead. For example: npm install js-tts-wrapper[azure]'",
