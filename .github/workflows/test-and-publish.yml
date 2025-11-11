@@ -146,12 +146,16 @@ jobs:
     needs: test
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Allow writing to repository
+      packages: write # Allow publishing packages
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0 # Fetch full history for proper git operations
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "20.x"
           registry-url: "https://registry.npmjs.org"
@@ -186,6 +190,21 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add package.json
-          git diff --staged --quiet || git commit -m "chore: sync package.json version to ${{ github.event.release.tag_name }}"
-          git push origin HEAD:main
+
+          # Switch to main branch
+          git checkout main
+          git pull origin main
+
+          # Apply the version change
+          TAG="${{ github.event.release.tag_name }}"
+          TAG_NO_V="${TAG#v}"
+          npm version "$TAG_NO_V" --no-git-tag-version
+
+          # Commit and push if there are changes
+          if ! git diff --quiet package.json; then
+            git add package.json
+            git commit -m "chore: sync package.json version to ${{ github.event.release.tag_name }}"
+            git push origin main
+          else
+            echo "No changes to package.json version"
+          fi
