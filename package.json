@@ -309,6 +309,6 @@
     "lamejs": "^1.2.1",
     "seek-bzip": "^2.0.0",
     "sherpa-onnx-node": "^1.12.14",
-    "speechmarkdown-js": "^2.1.0"
+    "speechmarkdown-js": "^2.3.0"
   }
 }
