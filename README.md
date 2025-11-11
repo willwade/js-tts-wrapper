@@ -567,13 +567,14 @@ The library supports Speech Markdown for easier speech formatting across **all e
 
 ### Platform-Specific Features
 
-The speechmarkdown-js library supports platform-specific Speech Markdown features:
+The speechmarkdown-js library ships dedicated formatters for every major provider:
 
-- **Microsoft Azure**: 33 express-as styles with intensity control, language switching, HD voices
-- **Amazon Polly**: Emotional styles, voice effects, language support
-- **Google Cloud**: Style tags, language support
-- **WitAI**: Full SSML support
-- **And more**: Each platform has optimized Speech Markdown support
+- **Microsoft Azure**: Automatic `mstts` namespace injection, inline `<lang>` sections, and 27 `mstts:express-as` styles (excited, chat, newscaster, customerservice, etc.) with optional `styledegree` intensity. Section modifiers such as `#[excited]` are supported as long as you leave a blank line before the section and close it with `#[defaults]` (or another section tag).
+- **Amazon Polly**: Emotional styles and neural/standard voice effects that map cleanly onto Polly’s SSML dialect.
+- **Google Cloud**: Google Assistant style tags, multi-language voices, and automatic `<lang>` handling.
+- **ElevenLabs**: A formatter that emits ElevenLabs’ prompt markup (`<break time="…">`, IPA phonemes, etc.), so you can feed Speech Markdown directly into ElevenLabs if you bypass the wrapper or use `rawSSML`.
+- **WitAI / Microsoft SAPI / IBM Watson / W3C**: Full SSML support for their respective dialects.
+- **And more**: See the [speechmarkdown-js README](https://github.com/speechmarkdown/speechmarkdown-js?tab=readme-ov-file#speechmarkdown-js) for the complete, always up-to-date list.
 
 ### Usage
 
@@ -584,8 +585,16 @@ const markdown =
 await tts.speak(markdown, { useSpeechMarkdown: true });
 
 // Platform-specific Speech Markdown features
-// Azure: Emotional styles with intensity
-const azureMarkdown = "(This is exciting!)[excited:\"1.5\"]";
+// Azure: Section modifiers map to mstts:express-as
+const azureMarkdown = `
+
+#[excited]
+This entire section is excited!
+Multiple sentences work too.
+
+#[defaults]
+Back to the neutral voice.
+`;
 await azureTts.speak(azureMarkdown, { useSpeechMarkdown: true });
 
 // Speech Markdown works with all engines
@@ -594,7 +603,13 @@ const ttsElevenLabs = new TTSClient('elevenlabs');
 
 // Both will handle Speech Markdown appropriately
 await ttsGoogle.speak(markdown, { useSpeechMarkdown: true });     // Converts to SSML
-await ttsElevenLabs.speak(markdown, { useSpeechMarkdown: true }); // Converts to plain text
+await ttsElevenLabs.speak(markdown, { useSpeechMarkdown: true }); // Uses the ElevenLabs formatter (tags are stripped before hitting the API)
+
+// Need ElevenLabs prompt markup?
+// Convert directly and pass through rawSSML or your own API client:
+import { SpeechMarkdown as SMSpeechMarkdown } from "speechmarkdown-js";
+const elevenLabsMarkup = await new SMSpeechMarkdown().toSSML(markdown, { platform: "elevenlabs" });
+await elevenLabsClient.speak(elevenLabsMarkup, { rawSSML: true });
 ```
 
 ### Supported Speech Markdown Elements
