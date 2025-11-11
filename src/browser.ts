@@ -8,6 +8,7 @@
 export { AbstractTTSClient } from "./core/abstract-tts";
 export { SSMLBuilder } from "./ssml/builder";
 export { SpeechMarkdownConverter } from "./markdown/converter-browser";
+export * as SpeechMarkdown from "./markdown/converter-browser";
 
 // Browser-compatible engines
 export { AzureTTSClient } from "./engines/azure";

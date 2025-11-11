@@ -1,6 +1,32 @@
 import { isBrowser } from "../utils/environment";
 import { SpeechMarkdown as SMSpeechMarkdown } from "speechmarkdown-js";
 
+export interface SpeechMarkdownRuntimeConfig {
+  enabled?: boolean;
+}
+
+const runtimeConfig: SpeechMarkdownRuntimeConfig = {};
+
+function isSpeechMarkdownEnabled(): boolean {
+  if (typeof runtimeConfig.enabled === "boolean") {
+    return runtimeConfig.enabled;
+  }
+  return true;
+}
+
+export function configureSpeechMarkdown(options: SpeechMarkdownRuntimeConfig = {}): void {
+  if (typeof options.enabled === "boolean") {
+    runtimeConfig.enabled = options.enabled;
+  }
+}
+
+function convertSpeechMarkdownFallback(markdown: string): string {
+  let out = markdown;
+  out = out.replace(/\[break:\"([^\"]+)\"\]/g, '<break time="$1"/>');
+  out = out.replace(/\[(\d+)m?s\]/g, '<break time="$1ms"/>');
+  return out;
+}
+
 /**
  * Browser-specific Speech Markdown converter that statically imports
  * speechmarkdown-js so it can be bundled into the browser build.
@@ -23,6 +49,10 @@ export class SpeechMarkdownConverter {
   }
 
   async toSSML(markdown: string, platform = "amazon-alexa"): Promise<string> {
+    if (!isSpeechMarkdownEnabled()) {
+      const converted = convertSpeechMarkdownFallback(markdown);
+      return `<speak>${converted}</speak>`;
+    }
     return this.speechMarkdownInstance.toSSML(markdown, { platform });
   }
 
@@ -64,4 +94,3 @@ export function isSpeechMarkdown(text: string): boolean {
 export function getAvailablePlatforms(): string[] {
   return ["amazon-alexa", "google-assistant", "microsoft-azure"];
 }
-

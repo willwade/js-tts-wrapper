@@ -1,6 +1,75 @@
 import { isNode } from "../utils/environment";
 
 /**
+ * Runtime configuration for Speech Markdown conversion.
+ */
+export interface SpeechMarkdownRuntimeConfig {
+  /**
+   * Enable or disable the speechmarkdown-js powered converter.
+   * When disabled, the lightweight fallback converter is used.
+   */
+  enabled?: boolean;
+}
+
+const runtimeConfig: SpeechMarkdownRuntimeConfig = {};
+
+const TRUE_PATTERN = /^(1|true|yes|on)$/i;
+const FALSE_PATTERN = /^(0|false|no|off)$/i;
+
+function parseBooleanFlag(value: unknown): boolean | undefined {
+  if (value === undefined || value === null) return undefined;
+  const text = String(value).trim();
+  if (!text) return undefined;
+  if (TRUE_PATTERN.test(text)) return true;
+  if (FALSE_PATTERN.test(text)) return false;
+  return undefined;
+}
+
+function getEnvEnabledOverride(): boolean | undefined {
+  if (!isNode) return undefined;
+
+  try {
+    const env = (process as any)?.env ?? {};
+    const disableFlag = parseBooleanFlag(env.SPEECHMARKDOWN_DISABLE);
+    if (disableFlag === true) {
+      return false;
+    }
+    if (disableFlag === false) {
+      return true;
+    }
+
+    const enableFlag = parseBooleanFlag(env.SPEECHMARKDOWN_ENABLE);
+    if (enableFlag !== undefined) {
+      return enableFlag;
+    }
+  } catch {
+    // Ignore env parsing errors and fall back to defaults
+  }
+
+  return undefined;
+}
+
+function isSpeechMarkdownEnabled(): boolean {
+  if (typeof runtimeConfig.enabled === "boolean") {
+    return runtimeConfig.enabled;
+  }
+
+  const envOverride = getEnvEnabledOverride();
+  if (typeof envOverride === "boolean") {
+    return envOverride;
+  }
+
+  // Default: enabled everywhere (Node + browser)
+  return true;
+}
+
+export function configureSpeechMarkdown(options: SpeechMarkdownRuntimeConfig = {}): void {
+  if (typeof options.enabled === "boolean") {
+    runtimeConfig.enabled = options.enabled;
+  }
+}
+
+/**
  * Speech Markdown converter using the official speechmarkdown-js library
  *
  * This module provides functions to convert Speech Markdown to SSML
@@ -15,24 +84,11 @@ async function loadSpeechMarkdown() {
   if (speechMarkdownLoaded) return SpeechMarkdown;
 
   try {
-    // Enable in both environments, but gate Node via env flag to keep it opt-in on servers/CI
-    if (isNode) {
-      const enabled = ((): boolean => {
-        try {
-          // Allow true/1/yes/on (case-insensitive)
-          const v = (process as any)?.env?.SPEECHMARKDOWN_ENABLE ?? "";
-          return /^(1|true|yes|on)$/i.test(String(v));
-        } catch {
-          return false;
-        }
-      })();
-
-      if (!enabled) {
-        console.warn(
-          "speechmarkdown-js disabled in Node (set SPEECHMARKDOWN_ENABLE=true to enable). Using built-in fallback."
-        );
-        return null;
-      }
+    if (!isSpeechMarkdownEnabled()) {
+      console.warn(
+        "speechmarkdown-js disabled (set SPEECHMARKDOWN_DISABLE=false or configureSpeechMarkdown({ enabled: true }) to re-enable). Using built-in fallback."
+      );
+      return null;
     }
 
     // Attempt dynamic import in both Node and browser without triggering bundlers to hard-require it
@@ -71,6 +127,11 @@ export class SpeechMarkdownConverter {
   private speechMarkdownInstance: any = null;
 
   private async ensureInitialized() {
+    if (!isSpeechMarkdownEnabled()) {
+      this.speechMarkdownInstance = null;
+      return null;
+    }
+
     if (!this.speechMarkdownInstance) {
       const SpeechMarkdownClass = await loadSpeechMarkdown();
       if (SpeechMarkdownClass) {
@@ -88,6 +149,12 @@ export class SpeechMarkdownConverter {
    * @returns SSML text
    */
   async toSSML(markdown: string, platform = "amazon-alexa"): Promise<string> {
+    if (!isSpeechMarkdownEnabled()) {
+      this.speechMarkdownInstance = null;
+      const converted = convertSpeechMarkdownFallback(markdown);
+      return `<speak>${converted}</speak>`;
+    }
+
     // Attempt to initialize the full converter (no-op if disabled/unavailable)
     await this.ensureInitialized();
     if (this.speechMarkdownInstance) {

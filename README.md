@@ -607,17 +607,29 @@ await ttsElevenLabs.speak(markdown, { useSpeechMarkdown: true }); // Converts to
 - **Platform-specific**: See [speechmarkdown-js documentation](https://github.com/speechmarkdown/speechmarkdown-js) for platform-specific features like Azure's express-as styles
 
 
-### Node: Enabling Full Speech Markdown Conversion
+### Node & CI: Configuring the Speech Markdown Converter
 
-By default, js-tts-wrapper uses a lightweight built-in fallback for Speech Markdown conversion in Node.js (sufficient for basic patterns like breaks). To enable the full **speechmarkdown-js** library at runtime in Node (which provides platform-specific features like Azure's 33 express-as styles, Polly's emotional styles, etc.), set the environment variable before running your app or tests:
+The full **speechmarkdown-js** converter now loads by default in both Node and browser environments. If you need to opt out (for very small lambda bundles or for deterministic tests), you can:
 
 ```bash
+# Disable globally
+SPEECHMARKDOWN_DISABLE=true npm test
+
+# Or force-enable/disable explicitly
+SPEECHMARKDOWN_ENABLE=false npm test
 SPEECHMARKDOWN_ENABLE=true npm test
-# or on Windows PowerShell
-$env:SPEECHMARKDOWN_ENABLE="true"; npm test
 ```
 
-If the library is not available or the flag is not set, the fallback remains active and tests still pass for the basic features.
+Or disable/enable programmatically:
+
+```ts
+import { SpeechMarkdown } from "js-tts-wrapper";
+
+SpeechMarkdown.configureSpeechMarkdown({ enabled: false }); // fallback-only
+SpeechMarkdown.configureSpeechMarkdown({ enabled: true });  // ensure full parser
+```
+
+When disabled, js-tts-wrapper falls back to the lightweight built-in converter (suitable for basic `[break]` patterns). Re-enable it to regain advanced tags (Azure express-as, Polly styles, google:style, etc.).
 
 ### Engine Compatibility
 
