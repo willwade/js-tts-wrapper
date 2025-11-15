@@ -639,6 +639,14 @@ SpeechMarkdown.configureSpeechMarkdown({ enabled: false }); // fallback-only
 SpeechMarkdown.configureSpeechMarkdown({ enabled: true });  // ensure full parser
 ```
 
+Alternatively, you can import the function directly:
+
+```ts
+import { configureSpeechMarkdown } from "js-tts-wrapper";
+
+configureSpeechMarkdown({ enabled: true }); // ensure full parser
+```
+
 When disabled, js-tts-wrapper falls back to the lightweight built-in converter (suitable for basic `[break]` patterns). Re-enable it to regain advanced tags (Azure express-as, Polly styles, google:style, etc.).
 
 ### Engine Compatibility
