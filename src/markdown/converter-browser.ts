@@ -76,8 +76,8 @@ export function isSpeechMarkdown(text: string): boolean {
   const patterns = [
     /\[\d+m?s\]/,
     /\[break:"[^"\]]+"\]/,
-    /\+\+.*?\+\+/, 
-    /\+.*?\+/, 
+    /\+\+.*?\+\+/,
+    /\+.*?\+/,
     /~.*?~/,
     /-.*?-/,
     /\(.*?\)\[emphasis(:"(strong|moderate|reduced|none)")?\]/,

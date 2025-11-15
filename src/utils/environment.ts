@@ -28,7 +28,7 @@ export const fileSystem = {
   readFile: async (path: string): Promise<string> => {
     if (isNode) {
       // Node.js implementation
-      const fs = await (new Function('m','return import(m)'))('node:fs/promises');
+      const fs = await new Function("m", "return import(m)")("node:fs/promises");
       return fs.readFile(path, "utf-8");
     }
     // Browser implementation - fetch from URL
@@ -48,7 +48,7 @@ export const fileSystem = {
     if (isNode) {
       // Node.js implementation
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const fs = (new Function('n','return require(n)'))('node' + ':fs');
+      const fs = new Function("n", "return require(n)")("node" + ":fs");
       return fs.readFileSync(path, "utf-8");
     }
     throw new Error("Synchronous file reading is not supported in browsers");
@@ -63,7 +63,7 @@ export const fileSystem = {
   writeFile: async (path: string, data: string | Uint8Array): Promise<void> => {
     if (isNode) {
       // Node.js implementation
-      const fs = await (new Function('m','return import(m)'))('node:fs/promises');
+      const fs = await new Function("m", "return import(m)")("node:fs/promises");
       return fs.writeFile(path, data);
     }
     // Browser implementation - download file
@@ -91,7 +91,7 @@ export const fileSystem = {
     if (isNode) {
       // Node.js implementation
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const fs = (new Function('n','return require(n)'))('node' + ':fs');
+      const fs = new Function("n", "return require(n)")("node" + ":fs");
       fs.writeFileSync(path, data);
     } else {
       throw new Error("Synchronous file writing is not supported in browsers");
@@ -106,7 +106,7 @@ export const fileSystem = {
   exists: async (path: string): Promise<boolean> => {
     if (isNode) {
       // Node.js implementation
-      const fs = await (new Function('m','return import(m)'))('node:fs/promises');
+      const fs = await new Function("m", "return import(m)")("node:fs/promises");
       try {
         await fs.access(path);
         return true;
@@ -133,7 +133,7 @@ export const fileSystem = {
     if (isNode) {
       // Node.js implementation
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const fs = (new Function('n','return require(n)'))('node' + ':fs');
+      const fs = new Function("n", "return require(n)")("node" + ":fs");
       return fs.existsSync(path);
     }
     throw new Error("Synchronous file existence check is not supported in browsers");
@@ -153,7 +153,7 @@ export const pathUtils = {
     if (isNode) {
       // Node.js implementation
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const path = (new Function('n','return require(n)'))('node' + ':path');
+      const path = new Function("n", "return require(n)")("node" + ":path");
       return path.join(...paths);
     }
     // Browser implementation
@@ -169,7 +169,7 @@ export const pathUtils = {
     if (isNode) {
       // Node.js implementation
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const nodePath = (new Function('n','return require(n)'))('node' + ':path');
+      const nodePath = new Function("n", "return require(n)")("node" + ":path");
       return nodePath.dirname(path);
     }
     // Browser implementation
@@ -185,7 +185,7 @@ export const pathUtils = {
     if (isNode) {
       // Node.js implementation
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const nodePath = (new Function('n','return require(n)'))('node' + ':path');
+      const nodePath = new Function("n", "return require(n)")("node" + ":path");
       return nodePath.basename(path);
     }
     // Browser implementation
@@ -201,7 +201,7 @@ export const pathUtils = {
     if (isNode) {
       // Node.js implementation
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const nodePath = (new Function('n','return require(n)'))('node' + ':path');
+      const nodePath = new Function("n", "return require(n)")("node" + ":path");
       return nodePath.extname(path);
     }
     // Browser implementation

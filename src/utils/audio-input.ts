@@ -108,7 +108,7 @@ export async function readAudioFile(filename: string): Promise<Uint8Array> {
   }
 
   try {
-    const fs = await (new Function('m','return import(m)'))('node:fs/promises');
+    const fs = await new Function("m", "return import(m)")("node:fs/promises");
     const buffer = await fs.readFile(filename);
     return new Uint8Array(buffer);
   } catch (error) {

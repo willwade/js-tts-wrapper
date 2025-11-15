@@ -92,7 +92,7 @@ async function loadSpeechMarkdown() {
     }
 
     // Attempt dynamic import in both Node and browser without triggering bundlers to hard-require it
-    const dynamicImport: any = new Function('m', 'return import(m)');
+    const dynamicImport: any = new Function("m", "return import(m)");
     const module = await dynamicImport("speechmarkdown-js");
     // Prefer named export, but tolerate default exports
     SpeechMarkdown = module?.SpeechMarkdown ?? module?.default?.SpeechMarkdown ?? module?.default;
@@ -118,7 +118,6 @@ function convertSpeechMarkdownFallback(markdown: string): string {
   out = out.replace(/\[(\d+)m?s\]/g, '<break time="$1ms"/>');
   return out;
 }
-
 
 /**
  * SpeechMarkdownConverter class for converting Speech Markdown to SSML

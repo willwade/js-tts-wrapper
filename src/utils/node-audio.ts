@@ -35,8 +35,8 @@ export async function isNodeAudioAvailable(): Promise<boolean> {
 
   try {
     // Try to load required modules
-    const childProcess = await (new Function('m','return import(m)'))('node:child_process');
-    const fs = await (new Function('m','return import(m)'))('node:fs');
+    const childProcess = await new Function("m", "return import(m)")("node:child_process");
+    const fs = await new Function("m", "return import(m)")("node:fs");
 
     // Store for later use
     audioState.childProcess = childProcess;
@@ -351,12 +351,12 @@ export async function playAudioInNode(
   try {
     // Load required modules if not already loaded
     if (!audioState.childProcess || !audioState.fs) {
-      audioState.childProcess = await (new Function('m','return import(m)'))('node:child_process');
-      audioState.fs = await (new Function('m','return import(m)'))('node:fs');
+      audioState.childProcess = await new Function("m", "return import(m)")("node:child_process");
+      audioState.fs = await new Function("m", "return import(m)")("node:fs");
     }
 
-    const os = await (new Function('m','return import(m)'))('node:os');
-    const path = await (new Function('m','return import(m)'))('node:path');
+    const os = await new Function("m", "return import(m)")("node:os");
+    const path = await new Function("m", "return import(m)")("node:path");
 
     // Detect the audio format to determine the correct file extension
     const detectedFormat = detectAudioFormat(audioBytes);
