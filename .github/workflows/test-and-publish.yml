@@ -191,6 +191,9 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
+          # Stash any local changes before switching branches
+          git stash push -m "Temporary stash before branch switch"
+
           # Switch to main branch
           git checkout main
           git pull origin main
@@ -202,7 +205,7 @@ jobs:
 
           # Commit and push if there are changes
           if ! git diff --quiet package.json; then
-            git add package.json
+            git add package.json package-lock.json
             git commit -m "chore: sync package.json version to ${{ github.event.release.tag_name }}"
             git push origin main
           else
