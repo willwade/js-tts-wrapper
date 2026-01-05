@@ -42,36 +42,84 @@ export type SupportedBrowserTTS =
   | "mock";
 
 export function createBrowserTTSClient(engine: SupportedBrowserTTS, credentials?: TTSCredentials) {
+  const applyProperties = (client: any) => {
+    if (!credentials || typeof (client as any)?.setProperty !== "function") {
+      return client;
+    }
+
+    const rawProps =
+      (credentials as any).properties ??
+      (credentials as any).propertiesJson ??
+      (credentials as any).propertiesJSON;
+
+    let parsedProps: Record<string, unknown> | null = null;
+    if (typeof rawProps === "string") {
+      try {
+        parsedProps = JSON.parse(rawProps);
+      } catch (error) {
+        console.warn("Failed to parse properties JSON passed to browser factory:", error);
+      }
+    } else if (rawProps && typeof rawProps === "object") {
+      parsedProps = rawProps as Record<string, unknown>;
+    }
+
+    if (parsedProps) {
+      for (const [key, value] of Object.entries(parsedProps)) {
+        try {
+          client.setProperty(key, value);
+        } catch (error) {
+          console.warn(`Failed to apply property '${key}' in browser factory:`, error);
+        }
+      }
+    }
+
+    return client;
+  };
+
   switch (engine) {
     case "azure":
-      return new AzureTTSClient(credentials as { subscriptionKey: string; region: string });
+      return applyProperties(
+        new AzureTTSClient(credentials as { subscriptionKey: string; region: string })
+      );
     case "google":
-      return new GoogleTTSClient(credentials as import("./engines/google").GoogleTTSCredentials);
+      return applyProperties(
+        new GoogleTTSClient(credentials as import("./engines/google").GoogleTTSCredentials)
+      );
     case "polly":
-      return new PollyTTSClient(credentials as import("./engines/polly").PollyTTSCredentials);
+      return applyProperties(
+        new PollyTTSClient(credentials as import("./engines/polly").PollyTTSCredentials)
+      );
     case "elevenlabs":
-      return new ElevenLabsTTSClient(
-        credentials as import("./engines/elevenlabs").ElevenLabsCredentials
+      return applyProperties(
+        new ElevenLabsTTSClient(credentials as import("./engines/elevenlabs").ElevenLabsCredentials)
       );
     case "openai":
-      return new OpenAITTSClient(credentials as import("./engines/openai").OpenAITTSCredentials);
+      return applyProperties(
+        new OpenAITTSClient(credentials as import("./engines/openai").OpenAITTSCredentials)
+      );
     case "playht":
-      return new PlayHTTTSClient(credentials as import("./engines/playht").PlayHTTTSCredentials);
+      return applyProperties(
+        new PlayHTTTSClient(credentials as import("./engines/playht").PlayHTTTSCredentials)
+      );
     case "watson":
-      return new WatsonTTSClient(credentials as import("./engines/watson").WatsonTTSCredentials);
+      return applyProperties(
+        new WatsonTTSClient(credentials as import("./engines/watson").WatsonTTSCredentials)
+      );
     case "witai":
-      return new WitAITTSClient(credentials as import("./engines/witai").WitAITTSCredentials);
+      return applyProperties(
+        new WitAITTSClient(credentials as import("./engines/witai").WitAITTSCredentials)
+      );
     case "upliftai":
-      return new UpliftAITTSClient(
-        credentials as import("./engines/upliftai").UpliftAITTSCredentials
+      return applyProperties(
+        new UpliftAITTSClient(credentials as import("./engines/upliftai").UpliftAITTSCredentials)
       );
     case "sherpaonnx-wasm":
-      return new SherpaOnnxWasmTTSClient(credentials as any);
+      return applyProperties(new SherpaOnnxWasmTTSClient(credentials as any));
     case "espeak-wasm":
-      return new EspeakBrowserTTSClient(credentials as any);
+      return applyProperties(new EspeakBrowserTTSClient(credentials as any));
     case "mock":
       if (MockTTSClient) {
-        return new MockTTSClient();
+        return applyProperties(new MockTTSClient());
       }
       throw new Error(
         "MockTTSClient is not available. This is only available in development/testing environments."

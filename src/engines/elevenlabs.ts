@@ -12,6 +12,11 @@ const fetch = getFetch();
 export interface ElevenLabsTTSOptions extends SpeakOptions {
   format?: "mp3" | "wav"; // Define formats supported by this client logic (maps to pcm)
   useTimestamps?: boolean; // Enable character-level timing data
+  model?: string; // Override model per request
+  modelId?: string; // Alias for model
+  outputFormat?: string; // Override output_format per request
+  voiceSettings?: Record<string, unknown>; // Override voice_settings per request
+  requestOptions?: Record<string, unknown>; // Additional request payload overrides
 }
 
 /**
@@ -22,6 +27,20 @@ export interface ElevenLabsCredentials extends TTSCredentials {
    * ElevenLabs API key
    */
   apiKey?: string;
+  /**
+   * Optional default model selection
+   */
+  model?: string;
+  modelId?: string;
+  /**
+   * Override default output format (e.g. mp3_44100_128)
+   */
+  outputFormat?: string;
+  /**
+   * Pass-through configuration as object or JSON string
+   */
+  properties?: Record<string, unknown> | string;
+  propertiesJson?: string;
 }
 
 /**
@@ -57,12 +76,252 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
   private baseUrl = "https://api.elevenlabs.io/v1";
 
   /**
+   * Default model to use for synthesis
+   */
+  private modelId: string;
+
+  /**
+   * Default output format for requests
+   */
+  private outputFormat = "mp3_44100_128";
+
+  /**
+   * Request-level overrides provided via credentials/properties
+   */
+  private requestOverrides: Record<string, unknown> = {};
+
+  /**
    * Create a new ElevenLabs TTS client
    * @param credentials ElevenLabs credentials
    */
   constructor(credentials: ElevenLabsCredentials = {}) {
     super(credentials);
     this.apiKey = credentials.apiKey || process.env.ELEVENLABS_API_KEY || "";
+    this.modelId =
+      (credentials as any).modelId || (credentials as any).model || "eleven_multilingual_v2";
+
+    if (typeof (credentials as any).outputFormat === "string") {
+      this.outputFormat = (credentials as any).outputFormat;
+    }
+
+    this.applyCredentialProperties(credentials);
+  }
+
+  /**
+   * Apply any configuration passed through credentials (including JSON strings)
+   */
+  private applyCredentialProperties(credentials: ElevenLabsCredentials): void {
+    const directProps: Record<string, unknown>[] = [];
+
+    if (typeof (credentials as any).output_format === "string") {
+      directProps.push({ output_format: (credentials as any).output_format });
+    }
+
+    const rawProps =
+      (credentials as any).properties ??
+      (credentials as any).propertiesJson ??
+      (credentials as any).propertiesJSON;
+
+    if (rawProps) {
+      if (typeof rawProps === "string") {
+        try {
+          const parsed = JSON.parse(rawProps);
+          if (parsed && typeof parsed === "object") {
+            directProps.push(parsed as Record<string, unknown>);
+          }
+        } catch (error) {
+          console.warn("Failed to parse ElevenLabs properties JSON:", error);
+        }
+      } else if (typeof rawProps === "object") {
+        directProps.push(rawProps as Record<string, unknown>);
+      }
+    }
+
+    for (const props of directProps) {
+      for (const [key, value] of Object.entries(props)) {
+        this.setProperty(key, value);
+      }
+    }
+  }
+
+  /**
+   * Resolve the model ID for a request
+   */
+  private resolveModelId(
+    options?: ElevenLabsTTSOptions,
+    extraOverrides: Record<string, unknown> = {}
+  ): string {
+    return (
+      options?.model ||
+      options?.modelId ||
+      (options?.requestOptions as any)?.model_id ||
+      (extraOverrides as any)?.model_id ||
+      (extraOverrides as any)?.model ||
+      this.modelId
+    );
+  }
+
+  /**
+   * Resolve the output format for a request
+   */
+  private resolveOutputFormat(
+    options?: ElevenLabsTTSOptions,
+    extraOverrides: Record<string, unknown> = {}
+  ): string {
+    return (
+      options?.outputFormat ||
+      (options?.requestOptions as any)?.output_format ||
+      (extraOverrides as any)?.output_format ||
+      (this.requestOverrides as any).output_format ||
+      this.outputFormat
+    );
+  }
+
+  /**
+   * Merge default and override voice settings
+   */
+  private resolveVoiceSettings(
+    options?: ElevenLabsTTSOptions,
+    extraOverrides: Record<string, unknown> = {}
+  ): Record<string, unknown> {
+    const defaultVoiceSettings = {
+      stability: 0.5,
+      similarity_boost: 0.75,
+      use_speaker_boost: true,
+      style: 0,
+      speed: typeof this.properties.rate === "number" ? this.properties.rate : 1.0,
+    };
+
+    const overridesFromCredentials =
+      (this.requestOverrides as any).voice_settings &&
+      typeof (this.requestOverrides as any).voice_settings === "object"
+        ? (this.requestOverrides as any).voice_settings
+        : {};
+
+    const overridesFromOptions =
+      options?.voiceSettings && typeof options.voiceSettings === "object"
+        ? options.voiceSettings
+        : {};
+
+    const overridesFromRequestOptions =
+      options?.requestOptions && typeof (options.requestOptions as any).voice_settings === "object"
+        ? (options.requestOptions as any).voice_settings
+        : {};
+
+    const overridesFromExtra =
+      extraOverrides && typeof (extraOverrides as any).voice_settings === "object"
+        ? (extraOverrides as any).voice_settings
+        : {};
+
+    return {
+      ...defaultVoiceSettings,
+      ...overridesFromCredentials,
+      ...overridesFromRequestOptions,
+      ...overridesFromOptions,
+      ...overridesFromExtra,
+    };
+  }
+
+  /**
+   * Remove voice_settings from an overrides object to avoid double-merging
+   */
+  private withoutVoiceSettings(overrides?: Record<string, unknown>): Record<string, unknown> {
+    if (!overrides || typeof overrides !== "object") return {};
+    const { voice_settings, ...rest } = overrides as Record<string, unknown>;
+    return rest;
+  }
+
+  /**
+   * Build a request payload honoring defaults and user overrides
+   */
+  private buildRequestPayload(
+    text: string,
+    options?: ElevenLabsTTSOptions,
+    extraOverrides: Record<string, unknown> = {}
+  ): Record<string, unknown> {
+    const payload: Record<string, unknown> = {
+      text,
+      model_id: this.resolveModelId(options, extraOverrides),
+      output_format: this.resolveOutputFormat(options, extraOverrides),
+      voice_settings: this.resolveVoiceSettings(options, extraOverrides),
+    };
+
+    const merged = {
+      ...payload,
+      ...this.withoutVoiceSettings(this.requestOverrides),
+      ...this.withoutVoiceSettings(options?.requestOptions),
+      ...this.withoutVoiceSettings(extraOverrides),
+    };
+
+    // Ensure required fields are preserved
+    merged.text = text;
+    merged.model_id = this.resolveModelId(options, merged);
+    merged.output_format = this.resolveOutputFormat(options, merged);
+    merged.voice_settings = this.resolveVoiceSettings(options, merged);
+
+    return merged;
+  }
+
+  /**
+   * Set default model ID
+   */
+  setModelId(modelId: string): void {
+    if (modelId) {
+      this.modelId = modelId;
+    }
+  }
+
+  /**
+   * Get a property value
+   */
+  getProperty(property: string): any {
+    switch (property) {
+      case "model":
+      case "model_id":
+      case "modelId":
+        return this.modelId;
+      case "outputFormat":
+      case "output_format":
+        return this.resolveOutputFormat();
+      default:
+        return super.getProperty(property);
+    }
+  }
+
+  /**
+   * Set a property value
+   */
+  setProperty(property: string, value: any): void {
+    switch (property) {
+      case "model":
+      case "model_id":
+      case "modelId":
+        this.setModelId(String(value));
+        break;
+      case "outputFormat":
+      case "output_format":
+        if (typeof value === "string") {
+          this.outputFormat = value;
+        }
+        break;
+      case "voice_settings":
+        if (value && typeof value === "object") {
+          this.requestOverrides.voice_settings = value as Record<string, unknown>;
+        }
+        break;
+      case "voice":
+      case "voiceId":
+        if (typeof value === "string") {
+          this.setVoice(value);
+        }
+        break;
+      default:
+        super.setProperty(property, value);
+        if (!["rate", "pitch", "volume"].includes(property) && value !== undefined) {
+          this.requestOverrides[property] = value;
+        }
+        break;
+    }
   }
 
   /**
@@ -96,24 +355,16 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
   private async _quotaProbe(): Promise<boolean> {
     try {
       const voiceId = this.voiceId || "21m00Tcm4TlvDq8ikWAM"; // Rachel
+      const payload = this.buildRequestPayload("hello", undefined, {
+        output_format: "mp3_44100_64", // keep tiny
+      });
       const requestOptions = {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "xi-api-key": this.apiKey,
         },
-        body: JSON.stringify({
-          text: "hello",
-          model_id: "eleven_monolingual_v1",
-          output_format: "mp3_44100_64", // keep tiny
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            use_speaker_boost: true,
-            style: 0,
-            speed: 1.0,
-          },
-        }),
+        body: JSON.stringify(payload),
       } as const;
 
       const response = await fetch(`${this.baseUrl}/text-to-speech/${voiceId}`, requestOptions);
@@ -132,7 +383,9 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
           return false;
         }
         // Other failures count as invalid
-        console.error(`ElevenLabs quota probe failed: ${response.status} ${response.statusText} - ${errorText}`);
+        console.error(
+          `ElevenLabs quota probe failed: ${response.status} ${response.statusText} - ${errorText}`
+        );
         return false;
       }
       // success
@@ -148,7 +401,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    * @returns Array of required credential field names
    */
   protected getRequiredCredentials(): string[] {
-    return ['apiKey'];
+    return ["apiKey"];
   }
 
   /**
@@ -227,11 +480,11 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
 
       if (useTimestamps) {
         // Use the with-timestamps endpoint for timing data
-        const timestampResponse = await this.synthWithTimestamps(preparedText, voiceId);
+        const timestampResponse = await this.synthWithTimestamps(preparedText, voiceId, options);
 
         // Decode base64 audio data
         const audioBase64 = timestampResponse.audio_base64;
-        const audioBuffer = Buffer.from(audioBase64, 'base64');
+        const audioBuffer = Buffer.from(audioBase64, "base64");
         audioData = new Uint8Array(audioBuffer);
 
         // Convert character timing to word boundaries and store for events
@@ -242,32 +495,22 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
           );
 
           // Store timing data for word boundary events
-          this.timings = wordBoundaries.map(wb => [
+          this.timings = wordBoundaries.map((wb) => [
             wb.offset / 10000, // Convert from 100-nanosecond units to seconds
             (wb.offset + wb.duration) / 10000,
-            wb.text
+            wb.text,
           ]);
         }
       } else {
         // Use the regular endpoint (no timing data)
+        const payload = this.buildRequestPayload(preparedText, options);
         const requestOptions = {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "xi-api-key": this.apiKey,
           },
-          body: JSON.stringify({
-            text: preparedText,
-            model_id: "eleven_monolingual_v1",
-            output_format: "mp3_44100_128",
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.75,
-              use_speaker_boost: true,
-              style: 0,
-              speed: typeof this.properties.rate === "number" ? this.properties.rate : 1.0,
-            },
-          }),
+          body: JSON.stringify(payload),
         };
 
         const response = await fetch(`${this.baseUrl}/text-to-speech/${voiceId}`, requestOptions);
@@ -277,7 +520,9 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
           console.error(
             `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
           );
-          const err = new Error(`Failed to synthesize speech: ${response.status} ${response.statusText} - ${errorText}`);
+          const err = new Error(
+            `Failed to synthesize speech: ${response.status} ${response.statusText} - ${errorText}`
+          );
           (err as any).status = response.status;
           throw err;
         }
@@ -329,11 +574,11 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
 
       if (useTimestamps) {
         // Use the with-timestamps endpoint for timing data
-        const timestampResponse = await this.synthWithTimestamps(preparedText, voiceId);
+        const timestampResponse = await this.synthWithTimestamps(preparedText, voiceId, options);
 
         // Decode base64 audio data
         const audioBase64 = timestampResponse.audio_base64;
-        const audioBuffer = Buffer.from(audioBase64, 'base64');
+        const audioBuffer = Buffer.from(audioBase64, "base64");
         audioData = new Uint8Array(audioBuffer);
 
         // Convert character timing to word boundaries
@@ -345,24 +590,14 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
         }
       } else {
         // Use the regular streaming endpoint (no timing data)
+        const payload = this.buildRequestPayload(preparedText, options);
         const requestOptions = {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "xi-api-key": this.apiKey,
           },
-          body: JSON.stringify({
-            text: preparedText,
-            model_id: "eleven_monolingual_v1",
-            output_format: "mp3_44100_128",
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.75,
-              use_speaker_boost: true,
-              style: 0,
-              speed: typeof this.properties.rate === "number" ? this.properties.rate : 1.0,
-            },
-          }),
+          body: JSON.stringify(payload),
         };
 
         const response = await fetch(
@@ -375,7 +610,9 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
           console.error(
             `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
           );
-          const err = new Error(`Failed to synthesize speech stream: ${response.status} ${response.statusText} - ${errorText}`);
+          const err = new Error(
+            `Failed to synthesize speech stream: ${response.status} ${response.statusText} - ${errorText}`
+          );
           (err as any).status = response.status;
           throw err;
         }
@@ -408,30 +645,22 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    * Call ElevenLabs API with timestamps endpoint
    * @param text Text to synthesize
    * @param voiceId Voice ID to use
+   * @param options Synthesis options
    * @returns Promise resolving to timestamp response
    */
   private async synthWithTimestamps(
     text: string,
-    voiceId: string
+    voiceId: string,
+    options?: ElevenLabsTTSOptions
   ): Promise<ElevenLabsTimestampResponse> {
+    const payload = this.buildRequestPayload(text, options);
     const requestOptions = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "xi-api-key": this.apiKey,
       },
-      body: JSON.stringify({
-        text: text,
-        model_id: "eleven_monolingual_v1",
-        output_format: "mp3_44100_128",
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          use_speaker_boost: true,
-          style: 0,
-          speed: typeof this.properties.rate === "number" ? this.properties.rate : 1.0,
-        },
-      }),
+      body: JSON.stringify(payload),
     };
 
     const response = await fetch(
@@ -444,12 +673,14 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       console.error(
         `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
       );
-      const err = new Error(`Failed to synthesize speech with timestamps: ${response.status} ${response.statusText} - ${errorText}`);
+      const err = new Error(
+        `Failed to synthesize speech with timestamps: ${response.status} ${response.statusText} - ${errorText}`
+      );
       (err as any).status = response.status;
       throw err;
     }
 
-    return await response.json() as ElevenLabsTimestampResponse;
+    return (await response.json()) as ElevenLabsTimestampResponse;
   }
 
   /**
@@ -467,14 +698,15 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
     // Split text into words while preserving positions
     const words: Array<{ word: string; startIndex: number; endIndex: number }> = [];
     const wordRegex = /\S+/g;
-    let match;
+    let match: RegExpExecArray | null = wordRegex.exec(text);
 
-    while ((match = wordRegex.exec(text)) !== null) {
+    while (match !== null) {
       words.push({
         word: match[0],
         startIndex: match.index,
-        endIndex: match.index + match[0].length - 1
+        endIndex: match.index + match[0].length - 1,
       });
+      match = wordRegex.exec(text);
     }
 
     // Convert each word to boundary data using character timing
@@ -484,16 +716,17 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       const endCharIndex = wordInfo.endIndex;
 
       // Make sure we have timing data for these character positions
-      if (startCharIndex < alignment.character_start_times_seconds.length &&
-          endCharIndex < alignment.character_end_times_seconds.length) {
-
+      if (
+        startCharIndex < alignment.character_start_times_seconds.length &&
+        endCharIndex < alignment.character_end_times_seconds.length
+      ) {
         const startTime = alignment.character_start_times_seconds[startCharIndex];
         const endTime = alignment.character_end_times_seconds[endCharIndex];
 
         wordBoundaries.push({
           text: wordInfo.word,
           offset: Math.round(startTime * 10000), // Convert to 100-nanosecond units
-          duration: Math.round((endTime - startTime) * 10000)
+          duration: Math.round((endTime - startTime) * 10000),
         });
       }
     }
@@ -510,7 +743,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
   async startPlaybackWithCallbacks(
     text: string,
     callback: WordBoundaryCallback,
-    options?: SpeakOptions
+    options?: ElevenLabsTTSOptions
   ): Promise<void> {
     // Register the callback
     this.on("boundary", callback);
@@ -518,7 +751,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
     // Enable timestamps for better word boundary accuracy
     const enhancedOptions = {
       ...options,
-      useTimestamps: true
+      useTimestamps: true,
     };
 
     // Start playback
@@ -609,7 +842,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
   private async convertMp3ToWav(mp3Data: Uint8Array): Promise<Uint8Array> {
     try {
       // Import the audio converter utility (Node-only) using a truly dynamic import
-      const dyn: any = new Function('m','return import(m)');
+      const dyn: any = new Function("m", "return import(m)");
       const { convertAudioFormat } = await dyn("../utils/audio-converter");
 
       // Convert MP3 to WAV
