@@ -35,6 +35,13 @@ describe("SpeechMarkdown", () => {
       expect(googleResult).toContain("<break");
       expect(microsoftResult).toContain("<break");
     });
+
+    it("should strip ElevenLabs audio tags for non-ElevenLabs platforms", async () => {
+      const markdown = "Hello [sarcastically] world";
+      const result = await SpeechMarkdown.toSSML(markdown, "amazon-alexa");
+      expect(result).not.toContain("[sarcastically]");
+      expect(result).not.toContain("sarcastically");
+    });
   });
 
   describe("isSpeechMarkdown", () => {
@@ -60,6 +67,10 @@ describe("SpeechMarkdown", () => {
 
     it("should detect volume", () => {
       expect(SpeechMarkdown.isSpeechMarkdown("Hello (loud)[volume:\"loud\"] world")).toBe(true);
+    });
+
+    it("should detect ElevenLabs audio tags", () => {
+      expect(SpeechMarkdown.isSpeechMarkdown("Hello [sarcastically] world")).toBe(true);
     });
 
     it("should return false for plain text", () => {
