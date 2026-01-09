@@ -573,6 +573,8 @@ The speechmarkdown-js library ships dedicated formatters for every major provide
 
 ### Usage
 
+Note: ElevenLabs audio tags like `[sarcastically]` are preserved only for ElevenLabs; other engines strip them when `useSpeechMarkdown` is enabled.
+
 ```typescript
 // Use Speech Markdown with any engine
 const markdown =
