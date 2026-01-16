@@ -15,6 +15,7 @@ import * as SSMLUtils from "./ssml-utils";
 import { isBrowser, isNode } from "../utils/environment";
 import type { AudioFormat } from "../utils/audio-converter";
 import { detectAudioFormat } from "../utils/audio-input";
+import * as SpeechMarkdown from "../markdown/converter";
 
 /**
  * Abstract base class for all TTS clients
@@ -158,16 +159,17 @@ export abstract class AbstractTTSClient {
    * @returns Promise resolving to audio bytes in the requested format
    */
   async synthToBytesWithConversion(text: string, options?: SpeakOptions): Promise<Uint8Array> {
+    const normalizedOptions = this.normalizeSpeechMarkdownOptions(text, options);
     // Get audio from the engine's native implementation
-    const nativeAudioBytes = await this.synthToBytes(text, options);
+    const nativeAudioBytes = await this.synthToBytes(text, normalizedOptions);
 
     // If no format specified, return native audio
-    if (!options?.format) {
+    if (!normalizedOptions?.format) {
       return nativeAudioBytes;
     }
 
     // Check if conversion is needed and available
-    const requestedFormat = options.format as AudioFormat;
+    const requestedFormat = normalizedOptions.format as AudioFormat;
     const nativeFormat = this.detectNativeFormat(nativeAudioBytes);
 
     // If already in requested format, return as-is
@@ -415,7 +417,8 @@ export abstract class AbstractTTSClient {
       if (typeof input === "string") {
         // Traditional text input - use streaming synthesis
         text = input;
-        const streamResult = await this.synthToBytestream(text, options);
+        const normalizedOptions = this.normalizeSpeechMarkdownOptions(text, options);
+        const streamResult = await this.synthToBytestream(text, normalizedOptions);
 
         // Get audio stream and word boundaries
         const audioStream = streamResult.audioStream;
@@ -441,7 +444,7 @@ export abstract class AbstractTTSClient {
         }
 
         // Apply format conversion if needed (for streaming, we convert the final buffer)
-        if (options?.format) {
+        if (normalizedOptions?.format) {
           if (!isNode) {
             // Browser: no conversion; just detect MIME from bytes
             mimeType = detectAudioFormat(audioBytes);
@@ -449,7 +452,7 @@ export abstract class AbstractTTSClient {
             try {
             const { isAudioConversionAvailable, convertAudioFormat } = await (new Function('m','return import(m)'))('../utils/audio-converter');
             if (isAudioConversionAvailable()) {
-              const conversionResult = await convertAudioFormat(audioBytes, options.format as AudioFormat);
+              const conversionResult = await convertAudioFormat(audioBytes, normalizedOptions.format as AudioFormat);
               audioBytes = conversionResult.audioBytes;
               mimeType = conversionResult.mimeType;
             } else {
@@ -829,6 +832,25 @@ export abstract class AbstractTTSClient {
    */
   protected _stripSSML(ssml: string): string {
     return SSMLUtils.stripSSML(ssml);
+  }
+
+  /**
+   * Normalize Speech Markdown options to auto-enable conversion when detected.
+   */
+  protected normalizeSpeechMarkdownOptions(text: string, options?: SpeakOptions): SpeakOptions | undefined {
+    if (options?.useSpeechMarkdown !== undefined) {
+      return options;
+    }
+    if (options?.rawSSML) {
+      return options;
+    }
+    if (SSMLUtils.isSSML(text)) {
+      return options;
+    }
+    if (!SpeechMarkdown.isSpeechMarkdown(text)) {
+      return options;
+    }
+    return { ...options, useSpeechMarkdown: true };
   }
 
   // --- Event system ---
