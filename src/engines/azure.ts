@@ -121,6 +121,7 @@ export class AzureTTSClient extends AbstractTTSClient {
    */
   async synthToBytes(text: string, options?: AzureTTSOptions): Promise<Uint8Array> {
     const ssml = await this.prepareSSML(text, options);
+    console.debug(`${this.constructor.name}.synthToBytes - TTS text ${ssml}, Options: ${JSON.stringify(options)}`);
 
     try {
       const response = await fetch(
@@ -518,6 +519,7 @@ export class AzureTTSClient extends AbstractTTSClient {
     // If rawSSML is enabled, skip Speech Markdown conversion and validation
     // This allows users to pass raw SSML with provider-specific features
     if (options?.rawSSML) {
+      console.debug("Using raw SSML as provided, skipping conversion and validation.");
       // Ensure text is wrapped in SSML
       let ssml = SSMLUtils.isSSML(text) ? text : SSMLUtils.wrapWithSpeakTags(text);
       // Only ensure Azure structure (add namespaces if needed)
@@ -527,6 +529,7 @@ export class AzureTTSClient extends AbstractTTSClient {
 
     // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(text)) {
+      console.debug("Converting Speech Markdown to SSML for Azure.");
       const ssmlText = await SpeechMarkdown.toSSML(text, "microsoft-azure");
       text = ssmlText;
     }
