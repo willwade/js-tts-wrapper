@@ -82,7 +82,7 @@ export class WitAITTSClient extends AbstractTTSClient {
       }
 
       const voices = await response.json();
-      console.log("WitAI Raw Voices Response:", JSON.stringify(voices, null, 2));
+      //console.debug("WitAI Raw Voices Response:", JSON.stringify(voices, null, 2));
 
       const standardizedVoices = [];
 
@@ -99,7 +99,7 @@ export class WitAITTSClient extends AbstractTTSClient {
             styles: voice.styles || [],
           };
           standardizedVoices.push(standardizedVoice);
-          console.log("WitAI Standardized Voice:", standardizedVoice);
+          //console.log("WitAI Standardized Voice:", standardizedVoice);
         }
       }
 
@@ -144,6 +144,7 @@ export class WitAITTSClient extends AbstractTTSClient {
 
     // If rawSSML is enabled, skip Speech Markdown conversion
     if (options?.rawSSML) {
+      console.debug("Using raw SSML as provided, skipping conversion and validation.");
       // WitAI supports SSML, so we can pass SSML directly
       // If text is not SSML, wrap it in speak tags for consistency
       if (!SSMLUtils.isSSML(processedText)) {
@@ -154,6 +155,7 @@ export class WitAITTSClient extends AbstractTTSClient {
 
     // Check if the input is SpeechMarkdown and useSpeechMarkdown is enabled, convert it to SSML
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
+      console.debug("Converting Speech Markdown to SSML for WitAI.");
       // Convert SpeechMarkdown to SSML - WitAI supports SSML
       // Note: "ibm-watson" is the correct platform name for WitAI in speechmarkdown-js
       const ssml = await SpeechMarkdown.toSSML(processedText, "ibm-watson");
@@ -194,6 +196,7 @@ export class WitAITTSClient extends AbstractTTSClient {
     try {
       // Prepare text for synthesis (strip SSML/Markdown if present)
       const preparedText = await this.prepareText(text, options);
+      console.debug(`${this.constructor.name}.synthToBytes - TTS text ${preparedText}, Options: ${JSON.stringify(options)}`);
 
       // Use provided voice or the one set with setVoice
       let voice = options?.voice || this.voiceId;
@@ -224,7 +227,7 @@ export class WitAITTSClient extends AbstractTTSClient {
         style: "default", // Add a default style
       };
 
-      console.log("WitAI TTS Request:", {
+      console.debug("WitAI TTS Request:", {
         url: `${this.baseUrl}/synthesize?v=${this.apiVersion}`,
         headers: headers,
         data: data,

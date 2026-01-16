@@ -93,7 +93,23 @@ async function loadSpeechMarkdown() {
 
     // Attempt dynamic import in both Node and browser without triggering bundlers to hard-require it
     const dynamicImport: any = new Function("m", "return import(m)");
-    const module = await dynamicImport("speechmarkdown-js");
+    let module = await dynamicImport("speechmarkdown-js");
+    if (!module && isNode) {
+      try {
+        const { createRequire } = await (new Function("m", "return import(m)"))("node:module");
+        let metaUrl: string | undefined;
+        try {
+          metaUrl = new Function("return import.meta.url")();
+        } catch {
+          metaUrl = undefined;
+        }
+        const fallbackFilename = `${process.cwd().replace(/\\/g, "/")}/index.js`;
+        const requireFn = createRequire(metaUrl ?? fallbackFilename);
+        module = requireFn("speechmarkdown-js");
+      } catch {
+        // ignore and fall back
+      }
+    }
     // Prefer named export, but tolerate default exports
     SpeechMarkdown = module?.SpeechMarkdown ?? module?.default?.SpeechMarkdown ?? module?.default;
     if (!SpeechMarkdown) {
