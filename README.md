@@ -579,6 +579,8 @@ const markdown =
   "Hello [500ms] world! ++This text is emphasized++ (slowly)[rate:\"slow\"] (high)[pitch:\"high\"] (loudly)[volume:\"loud\"]";
 await tts.speak(markdown, { useSpeechMarkdown: true });
 
+// If you omit useSpeechMarkdown, the wrapper auto-enables it when Speech Markdown syntax is detected.
+
 // Platform-specific Speech Markdown features
 // Azure: Section modifiers map to mstts:express-as
 const azureMarkdown = `
