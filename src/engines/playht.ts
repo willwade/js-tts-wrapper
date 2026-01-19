@@ -617,7 +617,8 @@ export class PlayHTTTSClient extends AbstractTTSClient {
     if (typeof window !== "undefined") {
       // Browser environment
       const mimeType = "audio/mpeg";
-      const blob = new Blob([audioBytes], { type: mimeType });
+      const blobBytes = Uint8Array.from(audioBytes);
+      const blob = new Blob([blobBytes], { type: mimeType });
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

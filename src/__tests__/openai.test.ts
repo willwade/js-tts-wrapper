@@ -6,6 +6,8 @@ import type { SpeechCreateParams } from 'openai/resources/audio/speech';
 import type { Response } from 'openai/core';
 import { OpenAITTSClient } from "../engines/openai"; 
 
+const nodeModulesPath = path.resolve(process.cwd(), "node_modules");
+
 const mockListResponse = {
   data: [
     { id: 'tts-1', object: 'model', created: 1, owned_by: 'openai' },
@@ -59,7 +61,12 @@ describe("OpenAITTSClient", () => {
   let mockStream: any; 
 
   beforeEach(() => {
-    mock({}); 
+    mock(
+      {
+        node_modules: mock.load(nodeModulesPath),
+      },
+      { createCwd: true, createTmp: true }
+    );
 
     mockStream = {
       write: jest.fn(),

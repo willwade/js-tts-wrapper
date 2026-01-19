@@ -1373,10 +1373,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
         let tarBuffer: ArrayBuffer = archiveBuf;
         if (/\.bz2$/i.test(modelUrl) || cfg.compressed) {
           const tarBytes = await decompressBzip2(new Uint8Array(archiveBuf));
-          tarBuffer = tarBytes.buffer.slice(
-            tarBytes.byteOffset,
-            tarBytes.byteOffset + tarBytes.byteLength
-          );
+          tarBuffer = tarBytes.slice().buffer;
         }
 
         // Extract tar
@@ -1663,7 +1660,7 @@ class ModelRepository {
       this.modelsIndex = voiceModels
         .map((model) => {
           // Derive type when missing (MMS entries often have no model_type)
-          let derivedType: ModelType | undefined = undefined;
+          let derivedType: ModelType | undefined;
           const id: string = model.id || model.model_id || model.name || "";
           const url: string = model.url || "";
           const mt: string | undefined = model.model_type;

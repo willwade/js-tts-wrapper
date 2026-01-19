@@ -67,7 +67,8 @@ export const fileSystem = {
       return fs.writeFile(path, data);
     }
     // Browser implementation - download file
-    const blob = new Blob([data], { type: "application/octet-stream" });
+    const blobData = typeof data === "string" ? data : Uint8Array.from(data);
+    const blob = new Blob([blobData], { type: "application/octet-stream" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
