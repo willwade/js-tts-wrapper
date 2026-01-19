@@ -91,25 +91,65 @@ async function loadSpeechMarkdown() {
       return null;
     }
 
-    // Attempt dynamic import in both Node and browser without triggering bundlers to hard-require it
-    const dynamicImport: any = new Function("m", "return import(m)");
-    let module = await dynamicImport("speechmarkdown-js");
-    if (!module && isNode) {
+    let module: any = null;
+
+    // In Node.js environments, try require() first as it's more reliable in bundled contexts
+    if (isNode) {
       try {
-        const { createRequire } = await new Function("m", "return import(m)")("node:module");
-        let metaUrl: string | undefined;
-        try {
-          metaUrl = new Function("return import.meta.url")();
-        } catch {
-          metaUrl = undefined;
+        // Try to use require directly (works in most Node.js bundled contexts)
+        const requireFn = typeof require !== "undefined" ? require : undefined;
+        if (requireFn) {
+          module = requireFn("speechmarkdown-js");
         }
-        const fallbackFilename = `${process.cwd().replace(/\\/g, "/")}/index.js`;
-        const requireFn = createRequire(metaUrl ?? fallbackFilename);
-        module = requireFn("speechmarkdown-js");
       } catch {
-        // ignore and fall back
+        // require failed, try dynamic import below
+      }
+
+      // If require didn't work, try createRequire with better fallback handling
+      if (!module) {
+        try {
+          const { createRequire } = await new Function("m", "return import(m)")("node:module");
+          let metaUrl: string | undefined;
+
+          // Try multiple methods to get a valid URL for createRequire
+          try {
+            metaUrl = new Function("return import.meta.url")();
+          } catch {
+            // import.meta.url not available, try alternatives
+            metaUrl = undefined;
+          }
+
+          // Use multiple fallback strategies for createRequire
+          const fallbackPaths = [
+            metaUrl,
+            typeof __filename !== "undefined" ? `file://${__filename}` : undefined,
+            `${process.cwd().replace(/\\/g, "/")}/index.js`,
+            `${process.cwd().replace(/\\/g, "/")}/package.json`,
+          ].filter(Boolean);
+
+          for (const fallbackPath of fallbackPaths) {
+            try {
+              const requireFn = createRequire(fallbackPath as string);
+              module = requireFn("speechmarkdown-js");
+              if (module) break;
+            } catch {}
+          }
+        } catch {
+          // createRequire failed, will try dynamic import next
+        }
       }
     }
+
+    // If Node.js methods didn't work or we're in a browser, try dynamic import
+    if (!module) {
+      try {
+        const dynamicImport: any = new Function("m", "return import(m)");
+        module = await dynamicImport("speechmarkdown-js");
+      } catch {
+        // Dynamic import failed
+      }
+    }
+
     // Prefer named export, but tolerate default exports
     SpeechMarkdown = module?.SpeechMarkdown ?? module?.default?.SpeechMarkdown ?? module?.default;
     if (!SpeechMarkdown) {
