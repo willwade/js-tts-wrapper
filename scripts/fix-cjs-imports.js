@@ -35,7 +35,7 @@ function findJsFiles(dir) {
 /**
  * Fix import.meta usage in CJS files
  */
-function fixImportMetaInCjs(filePath) {
+export function fixImportMetaInCjs(filePath) {
   let content = fs.readFileSync(filePath, 'utf8');
   let hasChanges = false;
 
@@ -49,12 +49,12 @@ function fixImportMetaInCjs(filePath) {
   // Replace direct import.meta.url usage
   const importMetaUrlPattern = /import\.meta\.url/g;
   if (importMetaUrlPattern.test(content)) {
-    content = content.replace(importMetaUrlPattern, '"file://" + __filename');
+    content = content.replace(importMetaUrlPattern, "'file://' + __filename");
     hasChanges = true;
   }
 
   // Fix the specific pattern found in espeak-wasm.js: "file://" + __filename condition
-  const importMetaConditionPattern2 = /typeof\s+import\.meta\s+!==\s+'undefined'\s+&&\s+"file:\/\/"\s+\+\s+__filename/g;
+  const importMetaConditionPattern2 = /typeof\s+import\.meta\s+!==\s+'undefined'\s+&&\s+['"]file:\/\/['"]\s+\+\s+__filename/g;
   if (importMetaConditionPattern2.test(content)) {
     content = content.replace(importMetaConditionPattern2, 'false /* import.meta not available in CJS */');
     hasChanges = true;
@@ -73,12 +73,15 @@ function fixImportMetaInCjs(filePath) {
   }
 }
 
-// Find all JS files in the CJS directory
-const jsFiles = findJsFiles(cjsDir);
+const isCli = process.argv[1] === fileURLToPath(import.meta.url);
+if (isCli) {
+  // Find all JS files in the CJS directory
+  const jsFiles = findJsFiles(cjsDir);
 
-// Fix import.meta usage in each file
-for (const file of jsFiles) {
-  fixImportMetaInCjs(file);
+  // Fix import.meta usage in each file
+  for (const file of jsFiles) {
+    fixImportMetaInCjs(file);
+  }
+
+  console.log(`Fixed import.meta usage in ${jsFiles.length} files`);
 }
-
-console.log(`Fixed import.meta usage in ${jsFiles.length} files`);
