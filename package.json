@@ -91,7 +91,7 @@
     "prepare": "husky",
     "pre-push": "npm run check",
     "install:deps": "echo 'Use npm install js-tts-wrapper[engine] instead. For example: npm install js-tts-wrapper[azure]'",
-    "install:azure": "npm install @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk",
+    "install:azure": "npm install microsoft-cognitiveservices-speech-sdk",
     "install:google": "npm install @google-cloud/text-to-speech",
     "install:polly": "npm install @aws-sdk/client-polly",
     "install:openai": "npm install openai",
@@ -100,11 +100,11 @@
     "install:node-audio": "npm install sound-play",
     "install:node-speaker": "npm install pcm-convert",
     "install:sherpaonnx": "node scripts/install-sherpaonnx-platform.cjs",
-    "install:sherpaonnx-manual": "npm install sherpa-onnx-node@^1.12.0 decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream",
+    "install:sherpaonnx-manual": "npm install sherpa-onnx-node@^1.12.23 decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream",
     "install:espeak": "npm install text2wav",
     "install:espeak-wasm": "npm install mespeak",
     "install:system": "npm install say",
-    "install:all-dev": "npm install openai @google-cloud/text-to-speech @azure/cognitiveservices-speechservices microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly @elevenlabs/elevenlabs-js node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream text2wav mespeak say sound-play pcm-convert",
+    "install:all-dev": "npm install openai @google-cloud/text-to-speech microsoft-cognitiveservices-speech-sdk @aws-sdk/client-polly @elevenlabs/elevenlabs-js node-fetch@2 sherpa-onnx-node decompress decompress-bzip2 decompress-tarbz2 decompress-targz tar-stream text2wav mespeak say sound-play pcm-convert",
     "smoke:bundle": "node scripts/bundle-smoke.mjs"
   },
   "keywords": [
@@ -128,44 +128,55 @@
     "cross-platform"
   ],
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
-    "@rollup/plugin-commonjs": "^28.0.3",
+    "@aws-sdk/client-polly": "^3.971.0",
+    "@biomejs/biome": "^2.3.11",
+    "@google-cloud/text-to-speech": "^6.4.0",
+    "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-json": "^6.1.0",
-    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-terser": "^0.4.4",
-    "@rollup/plugin-typescript": "^12.1.2",
-    "@types/jest": "^29.5.14",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "@types/jest": "^30.0.0",
     "@types/mock-fs": "^4.13.4",
-    "@types/node-fetch": "^2.6.12",
-    "cross-env": "^7.0.3",
-    "dotenv": "^16.4.7",
+    "@types/node-fetch": "^2.6.13",
+    "cross-env": "^10.1.0",
+    "decompress": "^4.2.1",
+    "decompress-bzip2": "^4.0.0",
+    "decompress-tarbz2": "^4.1.1",
+    "decompress-targz": "^4.1.1",
+    "dotenv": "^17.2.3",
     "husky": "^9.1.7",
-    "jest": "^29.7.0",
-    "lint-staged": "^15.5.0",
+    "jest": "^30.2.0",
+    "lint-staged": "^16.2.7",
+    "mespeak": "^2.0.2",
+    "microsoft-cognitiveservices-speech-sdk": "^1.47.0",
     "mock-fs": "^5.5.0",
+    "openai": "^6.16.0",
     "pcm-convert": "^1.6.5",
-    "rimraf": "^6.0.1",
-    "rollup": "^4.39.0",
+    "rimraf": "^6.1.2",
+    "rollup": "^4.55.2",
+    "say": "^0.16.0",
     "sinon": "^21.0.1",
     "sound-play": "^1.1.0",
-    "ts-jest": "^29.3.2",
-    "tsc-alias": "^1.8.15",
+    "tar-stream": "^3.1.7",
+    "text2wav": "^0.0.14",
+    "ts-jest": "^29.4.6",
+    "tsc-alias": "^1.8.16",
     "tsc-esm-fix": "^3.1.2",
     "tslib": "^2.8.1",
-    "typescript": "^5.8.3",
-    "ws": "^8.17.1"
+    "typescript": "^5.9.3",
+    "ws": "^8.19.0"
   },
   "peerDependencies": {
-    "@aws-sdk/client-polly": "^3.896.0",
-    "@elevenlabs/elevenlabs-js": "^2.1.0",
-    "@google-cloud/text-to-speech": "^6.3.0",
+    "@aws-sdk/client-polly": "^3.971.0",
+    "@google-cloud/text-to-speech": "^6.4.0",
     "decompress": "^4.2.1",
     "decompress-bzip2": "^4.0.0",
     "decompress-tarbz2": "^4.1.1",
     "decompress-targz": "^4.1.1",
     "mespeak": "^2.0.2",
-    "microsoft-cognitiveservices-speech-sdk": "^1.46.0",
-    "openai": "^4.104.0",
+    "microsoft-cognitiveservices-speech-sdk": "^1.47.0",
+    "openai": "^6.16.0",
     "pcm-convert": "^1.6.5",
     "say": "^0.16.0",
     "sound-play": "^1.1.0",
@@ -224,22 +235,22 @@
   },
   "dependencyGroups": {
     "azure": {
-      "microsoft-cognitiveservices-speech-sdk": "^1.43.1"
+      "microsoft-cognitiveservices-speech-sdk": "^1.47.0"
     },
     "google": {
-      "@google-cloud/text-to-speech": "^6.0.1"
+      "@google-cloud/text-to-speech": "^6.4.0"
     },
     "elevenlabs": {
-      "@elevenlabs/elevenlabs-js": "^2.1.0"
+      "@elevenlabs/elevenlabs-js": "^2.32.0"
     },
     "playht": {
       "node-fetch": "^2.0.0"
     },
     "polly": {
-      "@aws-sdk/client-polly": "^3.782.0"
+      "@aws-sdk/client-polly": "^3.971.0"
     },
     "openai": {
-      "openai": "^4.93.0"
+      "openai": "^6.16.0"
     },
     "witai": {},
     "espeak": {
@@ -256,7 +267,7 @@
       "pcm-convert": "^1.6.5"
     },
     "sherpaonnx": {
-      "sherpa-onnx-node": "^1.12.0",
+      "sherpa-onnx-node": "^1.12.23",
       "decompress": "^4.2.1",
       "decompress-bzip2": "^4.0.0",
       "decompress-tarbz2": "^4.1.1",
@@ -264,19 +275,19 @@
       "tar-stream": "^3.1.7"
     },
     "cloud": {
-      "microsoft-cognitiveservices-speech-sdk": "^1.43.1",
-      "@google-cloud/text-to-speech": "^6.0.1",
-      "@aws-sdk/client-polly": "^3.782.0",
-      "openai": "^4.93.0"
+      "microsoft-cognitiveservices-speech-sdk": "^1.47.0",
+      "@google-cloud/text-to-speech": "^6.4.0",
+      "@aws-sdk/client-polly": "^3.971.0",
+      "openai": "^6.16.0"
     },
     "all": {
-      "microsoft-cognitiveservices-speech-sdk": "^1.43.1",
-      "@google-cloud/text-to-speech": "^6.0.1",
-      "@aws-sdk/client-polly": "^3.782.0",
-      "openai": "^4.93.0",
-      "@elevenlabs/elevenlabs-js": "^2.1.0",
+      "microsoft-cognitiveservices-speech-sdk": "^1.47.0",
+      "@google-cloud/text-to-speech": "^6.4.0",
+      "@aws-sdk/client-polly": "^3.971.0",
+      "openai": "^6.16.0",
+      "@elevenlabs/elevenlabs-js": "^2.32.0",
       "node-fetch": "^2.0.0",
-      "sherpa-onnx-node": "^1.12.0",
+      "sherpa-onnx-node": "^1.12.23",
       "decompress": "^4.2.1",
       "decompress-bzip2": "^4.0.0",
       "decompress-tarbz2": "^4.1.1",
@@ -300,15 +311,16 @@
     ]
   },
   "optionalDependencies": {
-    "sherpa-onnx-darwin-arm64": "^1.12.14"
+    "sherpa-onnx-darwin-arm64": "^1.12.23"
   },
   "dependencies": {
-    "@elevenlabs/elevenlabs-js": "^2.1.0",
+    "@elevenlabs/elevenlabs-js": "^2.32.0",
     "buffer": "^6.0.3",
     "js-untar": "^2.0.0",
     "lamejs": "^1.2.1",
+    "node-fetch": "^2.7.0",
     "seek-bzip": "^2.0.0",
-    "sherpa-onnx-node": "^1.12.14",
+    "sherpa-onnx-node": "^1.12.23",
     "speechmarkdown-js": "^2.3.0"
   }
 }

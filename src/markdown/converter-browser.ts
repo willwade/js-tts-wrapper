@@ -22,7 +22,7 @@ export function configureSpeechMarkdown(options: SpeechMarkdownRuntimeConfig = {
 
 function convertSpeechMarkdownFallback(markdown: string): string {
   let out = markdown;
-  out = out.replace(/\[break:\"([^\"]+)\"\]/g, '<break time="$1"/>');
+  out = out.replace(/\[break:"([^"]+)"\]/g, '<break time="$1"/>');
   out = out.replace(/\[(\d+)m?s\]/g, '<break time="$1ms"/>');
   return out;
 }

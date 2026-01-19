@@ -96,7 +96,7 @@ async function loadSpeechMarkdown() {
     let module = await dynamicImport("speechmarkdown-js");
     if (!module && isNode) {
       try {
-        const { createRequire } = await (new Function("m", "return import(m)"))("node:module");
+        const { createRequire } = await new Function("m", "return import(m)")("node:module");
         let metaUrl: string | undefined;
         try {
           metaUrl = new Function("return import.meta.url")();
@@ -129,7 +129,7 @@ async function loadSpeechMarkdown() {
 function convertSpeechMarkdownFallback(markdown: string): string {
   let out = markdown;
   // [break:"500ms"] -> <break time="500ms"/>
-  out = out.replace(/\[break:\"([^\"]+)\"\]/g, '<break time="$1"/>');
+  out = out.replace(/\[break:"([^"]+)"\]/g, '<break time="$1"/>');
   // [500ms] or [500s] -> <break time="500ms"/>
   out = out.replace(/\[(\d+)m?s\]/g, '<break time="$1ms"/>');
   return out;

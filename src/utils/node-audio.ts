@@ -79,7 +79,6 @@ export async function isNodeAudioAvailable(): Promise<boolean> {
  * @returns Object containing audio format information
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// @ts-ignore
 function _unusedParseWavHeader(audioBytes: Uint8Array): {
   sampleRate: number;
   numChannels: number;
@@ -156,7 +155,6 @@ function _unusedParseWavHeader(audioBytes: Uint8Array): {
  * @returns Uint8Array containing the WAV file
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// @ts-ignore
 function _unusedCreateWavFile(
   audioBytes: Uint8Array,
   sampleRate: number,
@@ -222,6 +220,10 @@ function _unusedCreateWavFile(
 
   return wavFile;
 }
+
+// Keep unused helpers reachable for TS noUnusedLocals without exporting them.
+void _unusedParseWavHeader;
+void _unusedCreateWavFile;
 
 /**
  * Create a WAV header for raw PCM audio data
