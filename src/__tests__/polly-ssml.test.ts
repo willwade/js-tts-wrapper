@@ -41,6 +41,11 @@ describe("Polly SSML Engine Detection and Handling", () => {
 
   beforeAll(async () => {
     try {
+      if (!process.env.POLLY_AWS_KEY_ID || !process.env.POLLY_AWS_ACCESS_KEY) {
+        console.log("Polly: Credentials not available, skipping SSML engine tests");
+        runTests = false;
+        return;
+      }
       // Create client with real credentials if available, otherwise mock
       const credentials = {
         region: process.env.POLLY_REGION || "us-east-1",

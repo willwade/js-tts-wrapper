@@ -403,12 +403,14 @@ function isServiceIssue(error: any): boolean {
          errorMessage.includes('service unavailable') ||
          errorMessage.includes('temporarily unavailable') ||
          errorMessage.includes('server error') ||
+         errorMessage.includes('404') ||
          // Network-layer issues we should treat as transient/unreliable in CI
          errorMessage.includes('terminated') ||
          errorMessage.includes('econnreset') ||
          errorMessage.includes('und_err_socket') ||
          errorMessage.includes('socket') ||
          errorStatus === 429 ||  // Rate limit
+         errorStatus === 404 ||  // Not found (e.g., API feature not enabled)
          errorStatus === 500 ||  // Server error
          errorStatus === 502 ||  // Bad gateway
          errorStatus === 503 ||  // Service unavailable
