@@ -394,8 +394,9 @@ export class OpenAITTSClient extends AbstractTTSClient {
       throw new Error("textToSpeech with file output is not supported in the browser. Use synthToBytes or synthToBytestream instead.");
     }
     // Node.js only
-    const fs = await import("node:fs");
-    const path = await import("node:path");
+    const importNodeBuiltin = async (name: string) => import(`node:${name}`);
+    const fs = await importNodeBuiltin("fs");
+    const path = await importNodeBuiltin("path");
     try {
       // Create output directory if it doesn't exist
       const outputDir = options.outputDir || ".";
@@ -437,8 +438,9 @@ export class OpenAITTSClient extends AbstractTTSClient {
     if (typeof window !== "undefined") {
       throw new Error("textToSpeechStreaming with file output is not supported in the browser. Use synthToBytes or synthToBytestream instead.");
     }
-    const fs = await import("node:fs");
-    const path = await import("node:path");
+    const importNodeBuiltin = async (name: string) => import(`node:${name}`);
+    const fs = await importNodeBuiltin("fs");
+    const path = await importNodeBuiltin("path");
     try {
       // Create output directory if it doesn't exist
       const outputDir = options.outputDir || ".";
