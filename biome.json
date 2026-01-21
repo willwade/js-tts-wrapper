@@ -6,26 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "ignoreUnknown": true,
-    "includes": [
-      "**",
-      "!**/node_modules/**/*",
-      "!**/dist/**/*",
-      "!**/coverage/**/*",
-      "!**/scripts/**/*",
-      "!**/examples/**/*",
-      "!**/load-env.js",
-      "!**/run-tts-tests.js",
-      "!src/core/language-utils.ts",
-      "!src/engines/azure.ts",
-      "!src/core/abstract-tts.ts",
-      "!src/engines/google.ts",
-      "!src/engines/openai.ts",
-      "!src/engines/playht.ts",
-      "!src/engines/polly.ts",
-      "!src/utils/sherpaonnx-loader.js",
-      "!src/__tests__/**/*"
-    ]
+    "ignoreUnknown": true
   },
   "formatter": {
     "enabled": true,
@@ -33,7 +14,7 @@
     "indentWidth": 2,
     "lineWidth": 100
   },
-  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "assists": { "actions": { "source": { "useSortedKeys": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {

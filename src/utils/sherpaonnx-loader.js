@@ -104,7 +104,7 @@ async function loadSherpaOnnxNode() {
       // For ESM
       return await import("sherpa-onnx-node");
     }
-  } catch (error) {
+  } catch (_error) {
     // If loading fails, provide helpful error message
     console.warn(
       "Failed to load sherpa-onnx-node directly. " +
@@ -141,7 +141,7 @@ function canRunSherpaOnnx() {
 
     // Check if the platform-specific library is installed
     return !!findSherpaOnnxLibraryPath();
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }
