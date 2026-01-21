@@ -394,10 +394,8 @@ export class OpenAITTSClient extends AbstractTTSClient {
       throw new Error("textToSpeech with file output is not supported in the browser. Use synthToBytes or synthToBytestream instead.");
     }
     // Node.js only
-    const { createRequire } = await (new Function('m','return import(m)'))('node:module');
-    const r = createRequire(process.cwd() + "/noop.js");
-    const fs = r('node:fs');
-    const path = r('node:path');
+    const fs = await import("node:fs");
+    const path = await import("node:path");
     try {
       // Create output directory if it doesn't exist
       const outputDir = options.outputDir || ".";
@@ -439,10 +437,8 @@ export class OpenAITTSClient extends AbstractTTSClient {
     if (typeof window !== "undefined") {
       throw new Error("textToSpeechStreaming with file output is not supported in the browser. Use synthToBytes or synthToBytestream instead.");
     }
-    const { createRequire } = await (new Function('m','return import(m)'))('node:module');
-    const r = createRequire(process.cwd() + "/noop.js");
-    const fs = r('node:fs');
-    const path = r('node:path');
+    const fs = await import("node:fs");
+    const path = await import("node:path");
     try {
       // Create output directory if it doesn't exist
       const outputDir = options.outputDir || ".";
