@@ -175,6 +175,12 @@ function convertSpeechMarkdownFallback(markdown: string): string {
   return out;
 }
 
+const ELEVENLABS_AUDIO_TAG_PATTERN = /\[[A-Za-z][A-Za-z\s-]*\]/g;
+
+function stripElevenLabsAudioTags(text: string): string {
+  return text.replace(ELEVENLABS_AUDIO_TAG_PATTERN, "");
+}
+
 /**
  * SpeechMarkdownConverter class for converting Speech Markdown to SSML
  */
@@ -204,19 +210,21 @@ export class SpeechMarkdownConverter {
    * @returns SSML text
    */
   async toSSML(markdown: string, platform = "amazon-alexa"): Promise<string> {
+    const normalized = platform === "elevenlabs" ? markdown : stripElevenLabsAudioTags(markdown);
+
     if (!isSpeechMarkdownEnabled()) {
       this.speechMarkdownInstance = null;
-      const converted = convertSpeechMarkdownFallback(markdown);
+      const converted = convertSpeechMarkdownFallback(normalized);
       return `<speak>${converted}</speak>`;
     }
 
     // Attempt to initialize the full converter (no-op if disabled/unavailable)
     await this.ensureInitialized();
     if (this.speechMarkdownInstance) {
-      return this.speechMarkdownInstance.toSSML(markdown, { platform });
+      return this.speechMarkdownInstance.toSSML(normalized, { platform });
     }
     // Fallback: minimal conversion
-    const converted = convertSpeechMarkdownFallback(markdown);
+    const converted = convertSpeechMarkdownFallback(normalized);
     return `<speak>${converted}</speak>`;
   }
 
@@ -279,6 +287,7 @@ export function isSpeechMarkdown(text: string): boolean {
   const patterns = [
     /\[\d+m?s\]/, // Breaks: [500ms]
     /\[break:"[^"\]]+"\]/, // Breaks with quotes: [break:"weak"] or [break:"500ms"]
+    /\[[A-Za-z][A-Za-z\s-]*\]/, // ElevenLabs audio tags: [sarcastically]
     /\+\+.*?\+\+/, // Strong emphasis: ++text++
     /\+.*?\+/, // Moderate emphasis: +text+
     /~.*?~/, // No emphasis: ~text~
