@@ -99,6 +99,14 @@ I can make text ++important++ or use very emphasised and slightly emphasised.
       expect(googleResult).toContain("<break");
       expect(microsoftResult).toContain("<break");
     });
+
+    it("should use full parser for advanced modifiers not covered by fallback", async () => {
+      const markdown = "(test)[number]";
+      const result = await SpeechMarkdown.toSSML(markdown, "google-assistant");
+
+      expect(result).toContain("<say-as");
+      expect(result).not.toContain("[number]");
+    });
   });
 
   describe("isSpeechMarkdown", () => {
