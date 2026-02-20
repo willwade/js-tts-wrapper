@@ -158,7 +158,12 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
+          node-version: "24.x"
+      - name: Ensure npm trusted publishing version
+        run: |
+          npm install -g npm@^11.5.1
+          node -v
+          npm -v
       - name: Set package version from git tag
         if: startsWith(github.ref, 'refs/tags/')
         shell: bash
