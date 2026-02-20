@@ -93,58 +93,20 @@ async function loadSpeechMarkdown() {
 
     let module: any = null;
 
-    // In Node.js environments, try require() first as it's more reliable in bundled contexts
     if (isNode) {
       try {
-        // Try to use require directly (works in most Node.js bundled contexts)
         const requireFn = typeof require !== "undefined" ? require : undefined;
         if (requireFn) {
           module = requireFn("speechmarkdown-js");
         }
       } catch {
-        // require failed, try dynamic import below
-      }
-
-      // If require didn't work, try createRequire with better fallback handling
-      if (!module) {
-        try {
-          const { createRequire } = await new Function("m", "return import(m)")("node:module");
-          let metaUrl: string | undefined;
-
-          // Try multiple methods to get a valid URL for createRequire
-          try {
-            metaUrl = new Function("return import.meta.url")();
-          } catch {
-            // import.meta.url not available, try alternatives
-            metaUrl = undefined;
-          }
-
-          // Use multiple fallback strategies for createRequire
-          const fallbackPaths = [
-            metaUrl,
-            typeof __filename !== "undefined" ? `file://${__filename}` : undefined,
-            `${process.cwd().replace(/\\/g, "/")}/index.js`,
-            `${process.cwd().replace(/\\/g, "/")}/package.json`,
-          ].filter(Boolean);
-
-          for (const fallbackPath of fallbackPaths) {
-            try {
-              const requireFn = createRequire(fallbackPath as string);
-              module = requireFn("speechmarkdown-js");
-              if (module) break;
-            } catch {}
-          }
-        } catch {
-          // createRequire failed, will try dynamic import next
-        }
+        // Fallback to dynamic import below
       }
     }
 
-    // If Node.js methods didn't work or we're in a browser, try dynamic import
     if (!module) {
       try {
-        const dynamicImport: any = new Function("m", "return import(m)");
-        module = await dynamicImport("speechmarkdown-js");
+        module = await import("speechmarkdown-js");
       } catch {
         // Dynamic import failed
       }
@@ -172,6 +134,20 @@ function convertSpeechMarkdownFallback(markdown: string): string {
   out = out.replace(/\[break:"([^"]+)"\]/g, '<break time="$1"/>');
   // [500ms] or [500s] -> <break time="500ms"/>
   out = out.replace(/\[(\d+)m?s\]/g, '<break time="$1ms"/>');
+  // ++text++ -> <emphasis level="strong">text</emphasis>
+  out = out.replace(/\+\+([\s\S]+?)\+\+/g, '<emphasis level="strong">$1</emphasis>');
+  // (text)[rate:'x-slow'] or (text)[rate:"x-slow"] -> prosody rate
+  out = out.replace(/\(([\s\S]+?)\)\[rate:['"]([^'"]+)['"]\]/g, '<prosody rate="$2">$1</prosody>');
+  // (text)[pitch:'high'] or (text)[pitch:"high"] -> prosody pitch
+  out = out.replace(
+    /\(([\s\S]+?)\)\[pitch:['"]([^'"]+)['"]\]/g,
+    '<prosody pitch="$2">$1</prosody>'
+  );
+  // (text)[volume:'loud'] or (text)[volume:"loud"] -> prosody volume
+  out = out.replace(
+    /\(([\s\S]+?)\)\[volume:['"]([^'"]+)['"]\]/g,
+    '<prosody volume="$2">$1</prosody>'
+  );
   return out;
 }
 

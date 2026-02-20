@@ -10,6 +10,7 @@ import { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm.js";
 import { WatsonTTSClient } from "./engines/watson.js";
 import { WitAITTSClient } from "./engines/witai.js";
 import { UpliftAITTSClient } from "./engines/upliftai.js";
+import { ModelsLabTTSClient } from "./engines/modelslab.js";
 import type { TTSCredentials } from "./types";
 
 // Import MockTTSClient for testing
@@ -37,6 +38,7 @@ export type SupportedBrowserTTS =
   | "watson"
   | "witai"
   | "upliftai"
+  | "modelslab"
   | "sherpaonnx-wasm"
   | "espeak-wasm"
   | "mock";
@@ -112,6 +114,10 @@ export function createBrowserTTSClient(engine: SupportedBrowserTTS, credentials?
     case "upliftai":
       return applyProperties(
         new UpliftAITTSClient(credentials as import("./engines/upliftai").UpliftAITTSCredentials)
+      );
+    case "modelslab":
+      return applyProperties(
+        new ModelsLabTTSClient(credentials as import("./engines/modelslab").ModelsLabTTSCredentials)
       );
     case "sherpaonnx-wasm":
       return applyProperties(new SherpaOnnxWasmTTSClient(credentials as any));
