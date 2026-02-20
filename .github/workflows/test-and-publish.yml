@@ -181,8 +181,13 @@ jobs:
       - run: npm run prepublishOnly
       - name: Publish to npm
         run: |
+          # Enforce OIDC trusted publishing path (no token-based npm auth)
+          unset NODE_AUTH_TOKEN
+          unset NPM_TOKEN
+          echo "NODE_AUTH_TOKEN present? ${NODE_AUTH_TOKEN:+yes}${NODE_AUTH_TOKEN:-no}"
+          echo "NPM_TOKEN present? ${NPM_TOKEN:+yes}${NPM_TOKEN:-no}"
           cd dist
-          npm publish --provenance
+          npm publish --provenance --access public
 
       # Sync the updated version back to the main branch
       - name: Commit updated package.json version to main
