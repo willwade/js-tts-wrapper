@@ -149,6 +149,7 @@ jobs:
     permissions:
       contents: write # Allow writing to repository
       packages: write # Allow publishing packages
+      id-token: write # Required for npm trusted publishing (OIDC)
     steps:
       - uses: actions/checkout@v4
         with:
@@ -181,9 +182,7 @@ jobs:
       - name: Publish to npm
         run: |
           cd dist
-          npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          npm publish --provenance
 
       # Sync the updated version back to the main branch
       - name: Commit updated package.json version to main
