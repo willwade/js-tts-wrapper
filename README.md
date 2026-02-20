@@ -47,6 +47,7 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 | `elevenlabs` | `ElevenLabsTTSClient` | Both | ElevenLabs | `node-fetch@2` (Node.js only) |
 | `watson` | `WatsonTTSClient` | Both | IBM Watson | None (uses fetch API) |
 | `openai` | `OpenAITTSClient` | Both | OpenAI | `openai` |
+| `modelslab` | `ModelsLabTTSClient` | Both | ModelsLab | None (uses fetch API) |
 | `upliftai` | `UpliftAITTSClient` | Both | UpLiftAI | None (uses fetch API) |
 | `playht` | `PlayHTTTSClient` | Both | PlayHT | `node-fetch@2` (Node.js only) |
 | `polly` | `PollyTTSClient` | Both | Amazon Web Services | `@aws-sdk/client-polly` |
@@ -252,7 +253,7 @@ async function runExample() {
 runExample().catch(console.error);
 ```
 
-The factory supports all engines: `'azure'`, `'google'`, `'polly'`, `'elevenlabs'`, `'openai'`, `'playht'`, `'watson'`, `'witai'`, `'sherpaonnx'`, `'sherpaonnx-wasm'`, `'espeak'`, `'espeak-wasm'`, `'sapi'`, etc.
+The factory supports all engines: `'azure'`, `'google'`, `'polly'`, `'elevenlabs'`, `'openai'`, `'modelslab'`, `'playht'`, `'watson'`, `'witai'`, `'sherpaonnx'`, `'sherpaonnx-wasm'`, `'espeak'`, `'espeak-wasm'`, `'sapi'`, etc.
 
 ## Core Functionality
 
@@ -468,6 +469,7 @@ The following engines **automatically strip SSML tags** and convert to plain tex
 - **ElevenLabs** - SSML tags are removed, plain text is synthesized
 - **OpenAI** - SSML tags are removed, plain text is synthesized
 - **PlayHT** - SSML tags are removed, plain text is synthesized
+- **ModelsLab** - SSML tags are removed, plain text is synthesized
 - **SherpaOnnx/SherpaOnnx-WASM** - SSML tags are removed, plain text is synthesized
 
 ### Usage Examples
