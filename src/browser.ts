@@ -23,6 +23,7 @@ export { WitAITTSClient } from "./engines/witai";
 export { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm";
 export { EspeakBrowserTTSClient } from "./engines/espeak-wasm";
 export { UpliftAITTSClient } from "./engines/upliftai";
+export { ModelsLabTTSClient } from "./engines/modelslab";
 
 // Browser-compatible factory (excludes server-only engines)
 export { createBrowserTTSClient } from "./factory-browser";
