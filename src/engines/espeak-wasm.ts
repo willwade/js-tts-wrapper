@@ -6,6 +6,10 @@ function isBrowser(): boolean {
   return typeof window !== "undefined" && typeof document !== "undefined";
 }
 
+function runtimeImport(specifier: string): Promise<any> {
+  return new Function("m", "return import(m)")(specifier);
+}
+
 // Removed meSpeak interface - no longer used
 
 /**
@@ -31,8 +35,7 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
     // Node.js: delegate to Node client
     if (!isBrowser()) {
       if (!this.nodeClient) {
-        const dynamicImport: any = new Function("m", "return import(m)");
-        const mod = await dynamicImport("./espeak");
+        const mod = await runtimeImport("./espeak");
         const EspeakNodeTTSClient = (mod as any).EspeakNodeTTSClient || (mod as any).default;
         this.nodeClient = new EspeakNodeTTSClient(this.credentials);
       }
@@ -49,7 +52,7 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
     // pick meSpeak voice payload (limited set to keep bundle small)
     const voicePayload = await this.getVoicePayload(voiceId);
     if (!meSpeak.isConfigLoaded()) {
-      const { default: configJson } = await import("mespeak/src/mespeak_config.json");
+      const { default: configJson } = await runtimeImport("mespeak/src/mespeak_config.json");
       meSpeak.loadConfig(configJson);
     }
     if (voicePayload && !meSpeak.isVoiceLoaded(voicePayload.voice_id)) {
@@ -88,9 +91,15 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
 
   private async ensureMeSpeakLoaded(): Promise<void> {
     if (this.meSpeakReady) return;
-    // mespeak is CommonJS; vite will shim a default export
-    const mod: any = await import("mespeak");
-    this.meSpeak = (mod && (mod.default || mod)) as any;
+    try {
+      // mespeak is optional and should only be resolved when this engine is actually used.
+      const mod: any = await runtimeImport("mespeak");
+      this.meSpeak = (mod && (mod.default || mod)) as any;
+    } catch (error) {
+      throw new Error(
+        `eSpeak-WASM requires the optional 'mespeak' package at runtime. ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
     this.meSpeakReady = true;
   }
 
@@ -99,28 +108,28 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
     try {
       switch (voiceId) {
         case "en": {
-          const { default: v } = await import("mespeak/voices/en/en.json");
+          const { default: v } = await runtimeImport("mespeak/voices/en/en.json");
           return v;
         }
         case "en-us": {
-          const { default: v } = await import("mespeak/voices/en/en-us.json");
+          const { default: v } = await runtimeImport("mespeak/voices/en/en-us.json");
           return v;
         }
         case "en-rp": {
-          const { default: v } = await import("mespeak/voices/en/en-rp.json");
+          const { default: v } = await runtimeImport("mespeak/voices/en/en-rp.json");
           return v;
         }
         case "en-sc": {
-          const { default: v } = await import("mespeak/voices/en/en-sc.json");
+          const { default: v } = await runtimeImport("mespeak/voices/en/en-sc.json");
           return v;
         }
         case "en-wm": {
-          const { default: v } = await import("mespeak/voices/en/en-wm.json");
+          const { default: v } = await runtimeImport("mespeak/voices/en/en-wm.json");
           return v;
         }
         default: {
           // Fallback to plain English if requested voice not bundled
-          const { default: v } = await import("mespeak/voices/en/en.json");
+          const { default: v } = await runtimeImport("mespeak/voices/en/en.json");
           return v;
         }
       }
@@ -177,8 +186,7 @@ export class EspeakBrowserTTSClient extends AbstractTTSClient {
     // For Node.js environments, delegate to the regular eSpeak client (lazy loaded)
     if (!isBrowser()) {
       if (!this.nodeClient) {
-        const dynamicImport: any = new Function("m", "return import(m)");
-        const mod = await dynamicImport("./espeak");
+        const mod = await runtimeImport("./espeak");
         const EspeakNodeTTSClient = (mod as any).EspeakNodeTTSClient || (mod as any).default;
         this.nodeClient = new EspeakNodeTTSClient(this.credentials);
       }

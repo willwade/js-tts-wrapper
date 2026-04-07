@@ -18,7 +18,7 @@ const banner = `/**
 
 const jsContent = `${banner}export * from "./${esmModulePath}";
 `;
-const dtsContent = `${banner}export * from "./${esmTypePath}";
+const dtsContent = `${banner}export * from "./${esmModulePath}";
 `;
 
 fs.writeFileSync(jsStubPath, jsContent, 'utf8');

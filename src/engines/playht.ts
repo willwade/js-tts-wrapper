@@ -1,8 +1,8 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import * as SpeechMarkdown from "../markdown/converter";
 import * as SSMLUtils from "../core/ssml-utils";
-import { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
-import { estimateWordBoundaries, WordBoundary } from "../utils/word-timing-estimator";
+import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
+import { estimateWordBoundaries, type WordBoundary } from "../utils/word-timing-estimator";
 import { getFetch } from "../utils/fetch-utils";
 // Node-only imports moved inside Node-only code paths below for browser compatibility.
 
@@ -81,7 +81,8 @@ export class PlayHTTTSClient extends AbstractTTSClient {
     this.userId = credentials.userId || process.env.PLAYHT_USER_ID || "";
 
     // Set default values
-    this.voice = "s3://voice-cloning-zero-shot/d9ff78ba-d016-47f6-b0ef-dd630f59414e/female-cs/manifest.json";
+    this.voice =
+      "s3://voice-cloning-zero-shot/d9ff78ba-d016-47f6-b0ef-dd630f59414e/female-cs/manifest.json";
     this.voiceEngine = "PlayHT2.0"; // Use PlayHT2.0 for cloned voices
     this.outputFormat = "mp3"; // Use MP3 as default for better compatibility
   }
@@ -111,7 +112,7 @@ export class PlayHTTTSClient extends AbstractTTSClient {
    * @returns Array of required credential field names
    */
   protected getRequiredCredentials(): string[] {
-    return ['apiKey', 'userId'];
+    return ["apiKey", "userId"];
   }
 
   /**
@@ -125,7 +126,7 @@ export class PlayHTTTSClient extends AbstractTTSClient {
         method: "GET",
         headers: {
           accept: "application/json",
-          "AUTHORIZATION": this.apiKey,
+          AUTHORIZATION: this.apiKey,
           "X-USER-ID": this.userId,
         },
       });
@@ -141,7 +142,7 @@ export class PlayHTTTSClient extends AbstractTTSClient {
         method: "GET",
         headers: {
           accept: "application/json",
-          "AUTHORIZATION": this.apiKey,
+          AUTHORIZATION: this.apiKey,
           "X-USER-ID": this.userId,
         },
       });
@@ -224,8 +225,8 @@ export class PlayHTTTSClient extends AbstractTTSClient {
   setVoice(voiceId: string): void {
     // If the voice ID contains a '#' character, it's a modified ID to handle duplicates
     // Extract the original ID (everything before the '#')
-    if (voiceId.includes('#')) {
-      const originalId = voiceId.split('#')[0];
+    if (voiceId.includes("#")) {
+      const originalId = voiceId.split("#")[0];
       this.voice = originalId;
       console.log(`Using original voice ID: ${originalId} (from modified ID: ${voiceId})`);
     } else {
@@ -242,10 +243,10 @@ export class PlayHTTTSClient extends AbstractTTSClient {
    */
   private autoDetectVoiceEngine(voiceId: string): void {
     // Extract the original voice ID if it has a '#' suffix
-    const originalVoiceId = voiceId.includes('#') ? voiceId.split('#')[0] : voiceId;
+    const originalVoiceId = voiceId.includes("#") ? voiceId.split("#")[0] : voiceId;
 
     // Cloned voices (s3:// URLs) work better with PlayHT2.0
-    if (originalVoiceId.startsWith('s3://')) {
+    if (originalVoiceId.startsWith("s3://")) {
       this.voiceEngine = "PlayHT2.0";
       console.log(`Auto-detected cloned voice, using PlayHT2.0 engine`);
     } else {
@@ -336,11 +337,13 @@ export class PlayHTTTSClient extends AbstractTTSClient {
   async textToSpeech(text: string, options: PlayHTTTSOptions = {}): Promise<string> {
     try {
       if (typeof window !== "undefined") {
-        throw new Error("File output is not supported in the browser. Use synthToBytes or synthToBytestream instead.");
+        throw new Error(
+          "File output is not supported in the browser. Use synthToBytes or synthToBytestream instead."
+        );
       }
-      const dyn: any = new Function('m','return import(m)');
-      const fs = await dyn('node:fs');
-      const path = await dyn('node:path');
+      const dyn: any = new Function("m", "return import(m)");
+      const fs = await dyn("node:fs");
+      const path = await dyn("node:path");
       // Create output directory if it doesn't exist
       const outputDir = options.outputDir || ".";
       if (!fs.existsSync(outputDir)) {
@@ -356,7 +359,7 @@ export class PlayHTTTSClient extends AbstractTTSClient {
         headers: {
           accept: "application/json",
           "content-type": "application/json",
-          "AUTHORIZATION": this.apiKey,
+          AUTHORIZATION: this.apiKey,
           "X-USER-ID": this.userId,
         },
         body: JSON.stringify({
@@ -424,11 +427,13 @@ export class PlayHTTTSClient extends AbstractTTSClient {
   async textToSpeechStreaming(text: string, options: PlayHTTTSOptions = {}): Promise<string> {
     try {
       if (typeof window !== "undefined") {
-        throw new Error("File output is not supported in the browser. Use synthToBytes or synthToBytestream instead.");
+        throw new Error(
+          "File output is not supported in the browser. Use synthToBytes or synthToBytestream instead."
+        );
       }
-      const dyn: any = new Function('m','return import(m)');
-      const fs = await dyn('node:fs');
-      const path = await dyn('node:path');
+      const dyn: any = new Function("m", "return import(m)");
+      const fs = await dyn("node:fs");
+      const path = await dyn("node:path");
       // Create output directory if it doesn't exist
       const outputDir = options.outputDir || ".";
       if (!fs.existsSync(outputDir)) {
@@ -445,7 +450,7 @@ export class PlayHTTTSClient extends AbstractTTSClient {
         headers: {
           accept: "application/json",
           "content-type": "application/json",
-          "AUTHORIZATION": this.apiKey,
+          AUTHORIZATION: this.apiKey,
           "X-USER-ID": this.userId,
         },
         body: JSON.stringify({
@@ -458,7 +463,9 @@ export class PlayHTTTSClient extends AbstractTTSClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`PlayHT API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`);
+        console.error(
+          `PlayHT API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
+        );
         throw new Error(`Failed to convert text to speech with streaming: ${response.statusText}`);
       }
 
@@ -484,14 +491,14 @@ export class PlayHTTTSClient extends AbstractTTSClient {
         console.log(`Polling for streaming result (attempt ${attempts}/${maxAttempts})...`);
 
         // Wait for the polling interval
-        await new Promise(resolve => setTimeout(resolve, pollingInterval));
+        await new Promise((resolve) => setTimeout(resolve, pollingInterval));
 
         // Get the job status
         const statusResponse = await fetch(jobStatusUrl, {
           method: "GET",
           headers: {
             accept: "application/json",
-            "AUTHORIZATION": this.apiKey,
+            AUTHORIZATION: this.apiKey,
             "X-USER-ID": this.userId,
           },
         });
@@ -504,12 +511,20 @@ export class PlayHTTTSClient extends AbstractTTSClient {
         console.log(`Streaming job status: ${statusData.status}`);
 
         // Check if the job is completed (using multiple possible status strings and URL paths)
-        const isSuccessStatus = statusData.status === "completed" || statusData.status === "complete" || statusData.status === "SUCCESS";
+        const isSuccessStatus =
+          statusData.status === "completed" ||
+          statusData.status === "complete" ||
+          statusData.status === "SUCCESS";
         let potentialUrl = null;
 
         if (statusData.output && statusData.output.url) {
           potentialUrl = statusData.output.url;
-        } else if (statusData.metadata && statusData.metadata.output && Array.isArray(statusData.metadata.output) && statusData.metadata.output.length > 0) {
+        } else if (
+          statusData.metadata &&
+          statusData.metadata.output &&
+          Array.isArray(statusData.metadata.output) &&
+          statusData.metadata.output.length > 0
+        ) {
           potentialUrl = statusData.metadata.output[0];
         }
 
@@ -526,7 +541,9 @@ export class PlayHTTTSClient extends AbstractTTSClient {
       }
 
       if (!audioUrl) {
-        throw new Error(`Timed out waiting for streaming job to complete after ${maxAttempts} attempts`);
+        throw new Error(
+          `Timed out waiting for streaming job to complete after ${maxAttempts} attempts`
+        );
       }
 
       // Download the audio file
@@ -611,7 +628,7 @@ export class PlayHTTTSClient extends AbstractTTSClient {
     }
 
     // Use MP3 as the native format
-    const audioBytes = await this.synthToBytes(text, { ...options, format: 'mp3' });
+    const audioBytes = await this.synthToBytes(text, { ...options, format: "mp3" });
 
     // Handle file saving (use requested filename but MP3 content)
     if (typeof window !== "undefined") {
@@ -637,8 +654,8 @@ export class PlayHTTTSClient extends AbstractTTSClient {
       });
     } else {
       // Node.js environment
-      const dyn: any = new Function('m','return import(m)');
-      const fs = await dyn('node:fs');
+      const dyn: any = new Function("m", "return import(m)");
+      const fs = await dyn("node:fs");
       // Use the requested filename as-is (even if it has .wav extension)
       const outputPath = filename.endsWith(`.${format}`) ? filename : `${filename}.${format}`;
       fs.writeFileSync(outputPath, Buffer.from(audioBytes));
@@ -651,20 +668,20 @@ export class PlayHTTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Promise resolving to audio bytes
    */
-  async synthToBytes(text: string, options?: PlayHTTTSOptions): Promise<Buffer> {
+  async synthToBytes(text: string, options?: PlayHTTTSOptions): Promise<Uint8Array> {
     try {
-      console.debug('PlayHT synthToBytes: Calling synthToBytestream internally...');
+      console.debug("PlayHT synthToBytes: Calling synthToBytestream internally...");
 
       // For PlayHT, we'll always use MP3 as the native format for better compatibility
       const audioStream = await this.synthToBytestream(text, options);
 
       if (!audioStream) {
-        throw new Error('synthToBytestream returned null, cannot generate Buffer.');
+        throw new Error("synthToBytestream returned null, cannot generate Buffer.");
       }
 
-      console.debug('PlayHT synthToBytes: Buffering stream...');
+      console.debug("PlayHT synthToBytes: Buffering stream...");
       // Helper function to read the entire stream into a Buffer
-      const streamToBuffer = async (stream: ReadableStream<Uint8Array>): Promise<Buffer> => {
+      const streamToBuffer = async (stream: ReadableStream<Uint8Array>): Promise<Uint8Array> => {
         const reader = stream.getReader();
         const chunks: Uint8Array[] = [];
         let totalLength = 0;
@@ -677,7 +694,7 @@ export class PlayHTTTSClient extends AbstractTTSClient {
           totalLength += value.length;
         }
         return Buffer.concat(chunks, totalLength);
-      }
+      };
 
       const buffer = await streamToBuffer(audioStream.audioStream);
       console.debug(`PlayHT synthToBytes: Buffering complete (${buffer.length} bytes).`);
@@ -694,7 +711,10 @@ export class PlayHTTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Promise resolving to an object containing the audio stream and an empty word boundaries array.
    */
-  async synthToBytestream(text: string, _options: SpeakOptions = {}): Promise<{
+  async synthToBytestream(
+    text: string,
+    _options: SpeakOptions = {}
+  ): Promise<{
     audioStream: ReadableStream<Uint8Array>;
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
@@ -717,16 +737,16 @@ export class PlayHTTTSClient extends AbstractTTSClient {
 
       // PlayHT works best with MP3 format, especially for cloned voices
       // Use MP3 as the native format regardless of what's requested
-      const nativeFormat = 'mp3';
-      const acceptHeader = 'audio/mpeg';
+      const nativeFormat = "mp3";
+      const acceptHeader = "audio/mpeg";
 
       const response = await fetch("https://api.play.ht/api/v2/tts/stream", {
         method: "POST",
         headers: {
-          'accept': acceptHeader,
-          'content-type': 'application/json',
-          'AUTHORIZATION': this.apiKey,
-          'X-USER-ID': this.userId,
+          accept: acceptHeader,
+          "content-type": "application/json",
+          AUTHORIZATION: this.apiKey,
+          "X-USER-ID": this.userId,
         },
         body: JSON.stringify({
           text: processedText, // Use processed text with Speech Markdown/SSML handling
@@ -739,17 +759,23 @@ export class PlayHTTTSClient extends AbstractTTSClient {
 
       if (!response.ok) {
         // Attempt to read error response body for more details
-        let errorBody = '';
+        let errorBody = "";
         try {
           errorBody = await response.text();
-        } catch (e) { /* Ignore error reading body */ }
-        console.error(`PlayHT Streaming API error: ${response.status} ${response.statusText}\nResponse Body: ${errorBody}`);
-        throw new Error(`Failed to stream text to speech: ${response.status} ${response.statusText}`);
+        } catch (e) {
+          /* Ignore error reading body */
+        }
+        console.error(
+          `PlayHT Streaming API error: ${response.status} ${response.statusText}\nResponse Body: ${errorBody}`
+        );
+        throw new Error(
+          `Failed to stream text to speech: ${response.status} ${response.statusText}`
+        );
       }
 
       // The response body is the audio stream
       if (!response.body) {
-        throw new Error('PlayHT Streaming API did not return a response body stream.');
+        throw new Error("PlayHT Streaming API did not return a response body stream.");
       }
 
       // Return the stream along with an empty word boundaries array

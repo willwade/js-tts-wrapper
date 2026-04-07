@@ -6,7 +6,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
 // Paths
 const rootDir = path.resolve(__dirname, '..');
@@ -22,6 +21,36 @@ if (!fs.existsSync(distDir)) {
 // Read the package.json file
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 
+function rewriteDistPath(value) {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  if (value.startsWith('./dist/')) {
+    return `./${value.slice('./dist/'.length)}`;
+  }
+
+  if (value.startsWith('dist/')) {
+    return `./${value.slice('dist/'.length)}`;
+  }
+
+  return value;
+}
+
+function rewriteDistPathsDeep(value) {
+  if (Array.isArray(value)) {
+    return value.map(rewriteDistPathsDeep);
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nestedValue]) => [key, rewriteDistPathsDeep(nestedValue)])
+    );
+  }
+
+  return rewriteDistPath(value);
+}
+
 // Create a new package.json for the dist directory
 const distPackageJson = {
   name: packageJson.name,
@@ -29,81 +58,34 @@ const distPackageJson = {
   description: packageJson.description,
   main: 'cjs/index.js',
   module: 'esm/index.js',
+  browser: rewriteDistPath(packageJson.browser || 'dist/js-tts-wrapper.browser.js'),
   types: 'index.d.ts',
   author: packageJson.author,
   license: packageJson.license,
   repository: packageJson.repository,
   keywords: packageJson.keywords || ['tts', 'text-to-speech', 'azure', 'google', 'elevenlabs'],
-  type: "module",
-  exports: {
-    ".": {
-      "types": "./index.d.ts",
-      "require": "./cjs/index.js",
-      "import": "./esm/index.js",
-      "default": "./esm/index.js"
-    },
-    "./browser": {
-      "types": "./browser.d.ts",
-      "require": "./browser.js",
-      "import": "./browser.js",
-      "default": "./browser.js"
-    }
-  },
+  type: packageJson.type || 'module',
+  exports: rewriteDistPathsDeep(packageJson.exports || {}),
   dependencies: {
-    // Include only runtime dependencies
     ...(packageJson.dependencies || {})
   },
+  optionalDependencies: {
+    ...(packageJson.optionalDependencies || {})
+  },
   peerDependencies: {
-    // Optional dependencies that users can install if they need specific engines
-    '@google-cloud/text-to-speech': '^6.0.1',
-    '@azure/cognitiveservices-speechservices': '^1.0.0',
-    'microsoft-cognitiveservices-speech-sdk': '^1.43.1',
-    '@aws-sdk/client-polly': '^3.799.0',
-    'openai': '^4.97.0',
-    'sherpa-onnx-node': '^1.11.3',
-    'decompress': '^4.2.1',
-    'decompress-bzip2': '^4.0.0',
-    'decompress-tarbz2': '^4.1.1',
-    'decompress-targz': '^4.1.1',
-    'tar-stream': '^3.1.7'
+    ...(packageJson.peerDependencies || {})
   },
   peerDependenciesMeta: {
-    '@aws-sdk/client-polly': {
-      optional: true
-    },
-    '@azure/cognitiveservices-speechservices': {
-      optional: true
-    },
-    '@google-cloud/text-to-speech': {
-      optional: true
-    },
-    'decompress': {
-      optional: true
-    },
-    'decompress-bzip2': {
-      optional: true
-    },
-    'decompress-tarbz2': {
-      optional: true
-    },
-    'decompress-targz': {
-      optional: true
-    },
-    'microsoft-cognitiveservices-speech-sdk': {
-      optional: true
-    },
-    'openai': {
-      optional: true
-    },
-    'sherpa-onnx-node': {
-      optional: true
-    },
-    'tar-stream': {
-      optional: true
-    }
+    ...(packageJson.peerDependenciesMeta || {})
+  },
+  dependencyGroups: {
+    ...(packageJson.dependencyGroups || {})
+  },
+  overrides: {
+    ...(packageJson.overrides || {})
   },
   engines: {
-    node: '>=14.0.0'
+    ...(packageJson.engines || { node: '>=14.0.0' })
   }
 };
 
