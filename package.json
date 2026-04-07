@@ -22,6 +22,11 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "browser": {
+        "import": "./dist/browser.js",
+        "require": "./dist/js-tts-wrapper.browser.umd.js",
+        "default": "./dist/browser.js"
+      },
       "require": "./dist/cjs/index.js",
       "import": "./dist/esm/index.js",
       "default": "./dist/esm/index.js"
