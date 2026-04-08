@@ -58,6 +58,13 @@ export class PollyTTSClient extends AbstractTTSClient {
   constructor(credentials: PollyTTSCredentials) {
     super(credentials);
 
+    this._models = [
+      { id: "generative", features: ["streaming", "ssml", "word-boundary-events"] },
+      { id: "long-form", features: ["streaming", "ssml", "word-boundary-events"] },
+      { id: "neural", features: ["streaming", "ssml", "word-boundary-events"] },
+      { id: "standard", features: ["streaming", "ssml", "word-boundary-events"] },
+    ];
+
     // Set the default sample rate for PCM format to match the Python implementation
     // The Python implementation uses wav.setparams((1, 2, 16000, 0, "NONE", "NONE"))
     this.sampleRate = 16000; // Default sample rate for Polly PCM format

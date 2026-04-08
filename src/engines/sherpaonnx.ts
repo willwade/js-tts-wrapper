@@ -163,6 +163,8 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
   constructor(credentials: SherpaOnnxTTSCredentials) {
     super(credentials);
 
+    this._models = [{ id: "sherpaonnx", features: ["open-source", "word-boundary-events"] }];
+
     // Initialize instance variables with proper null/undefined checking
     this.modelPath = credentials?.modelPath || null;
     this.modelId = credentials?.modelId || null;

@@ -28,6 +28,7 @@ export class AzureTTSClient extends AbstractTTSClient {
    */
   constructor(credentials: AzureTTSCredentials) {
     super(credentials);
+    this._models = [{ id: "azure", features: ["streaming", "ssml", "word-boundary-events"] }];
     // Type assertion is safe here due to the AzureTTSCredentials interface
     this.subscriptionKey = credentials.subscriptionKey as string;
     this.region = credentials.region as string;

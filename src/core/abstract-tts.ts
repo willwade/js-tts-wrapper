@@ -2,6 +2,8 @@ import * as SpeechMarkdown from "../markdown/converter";
 import { SSMLBuilder } from "../ssml/builder";
 import type {
   CredentialsCheckResult,
+  ModelFeature,
+  ModelInfo,
   PropertyType,
   SimpleCallback,
   SpeakInput,
@@ -66,6 +68,8 @@ export abstract class AbstractTTSClient {
    * Word timings for the current audio
    */
   protected timings: Array<[number, number, string]> = [];
+
+  protected _models: ModelInfo[] = [];
 
   /**
    * Capability signaling for UIs to filter providers without hardcoding names
@@ -1095,6 +1099,22 @@ export abstract class AbstractTTSClient {
    * Override in subclasses to provide engine-specific requirements
    * @returns Array of required credential field names
    */
+  getModels(): ModelInfo[] {
+    return this._models;
+  }
+
+  hasFeature(feature: ModelFeature, modelId?: string): boolean {
+    const target = modelId || this._getCurrentModelId();
+    if (!target) return false;
+    const model = this._models.find((m) => m.id === target);
+    if (!model) return false;
+    return model.features.includes(feature);
+  }
+
+  protected _getCurrentModelId(): string {
+    return (this as any).model || "";
+  }
+
   protected getRequiredCredentials(): string[] {
     return []; // Default: no credentials required
   }

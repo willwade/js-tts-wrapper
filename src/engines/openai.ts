@@ -140,6 +140,11 @@ export class OpenAITTSClient extends AbstractTTSClient {
    */
   constructor(credentials: OpenAITTSCredentials = {}) {
     super(credentials);
+    this._models = [
+      { id: "gpt-4o-mini-tts", features: ["streaming", "audio-tags"] },
+      { id: "tts-1", features: ["streaming"] },
+      { id: "tts-1-hd", features: ["streaming"] },
+    ];
     this.credentials = credentials;
 
     // Don't initialize client here, load it on demand

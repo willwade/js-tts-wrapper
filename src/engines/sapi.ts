@@ -42,6 +42,8 @@ export class SAPITTSClient extends AbstractTTSClient {
   constructor(credentials: SAPITTSCredentials = {}) {
     super(credentials);
 
+    this._models = [{ id: "sapi", features: ["ssml"] }];
+
     // Validate Windows environment
     this.validateEnvironment();
 

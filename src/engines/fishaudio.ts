@@ -36,6 +36,9 @@ export class FishAudioTTSClient extends AbstractTTSClient {
     this.baseUrl = credentials.baseURL || "https://api.fish.audio";
     this.model = (credentials as any).model || "s2-pro";
     this.voiceId = "";
+    this._models = [
+      { id: "s2-pro", features: ["streaming", "audio-tags", "inline-voice-cloning"] },
+    ];
     this.sampleRate = 44100;
 
     this.applyCredentialProperties(credentials);

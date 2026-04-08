@@ -108,6 +108,10 @@ export class CartesiaTTSClient extends AbstractTTSClient {
       encoding: "pcm_f32le",
       sample_rate: 44100,
     };
+    this._models = [
+      { id: "sonic-3", features: ["streaming", "audio-tags", "inline-voice-cloning"] },
+      { id: "sonic-2", features: ["streaming"] },
+    ];
     this.sampleRate = 44100;
 
     this.applyCredentialProperties(credentials);

@@ -27,6 +27,8 @@ export class WitAITTSClient extends AbstractTTSClient {
   constructor(credentials: WitAITTSCredentials) {
     super(credentials);
 
+    this._models = [{ id: "witai", features: ["streaming", "ssml"] }];
+
     if (!credentials.token) {
       throw new Error("An API token for Wit.ai must be provided");
     }

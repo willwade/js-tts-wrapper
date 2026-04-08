@@ -29,6 +29,9 @@ export class ResembleTTSClient extends AbstractTTSClient {
     this.apiKey = credentials.apiKey || process.env.RESEMBLE_API_KEY || "";
     this.baseUrl = credentials.baseURL || "https://f.cluster.resemble.ai";
     this.voiceId = "";
+    this._models = [
+      { id: "default", features: ["streaming", "inline-voice-cloning", "open-source"] },
+    ];
     this.sampleRate = 22050;
 
     this.applyCredentialProperties(credentials);

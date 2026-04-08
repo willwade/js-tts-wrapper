@@ -66,6 +66,12 @@ export class MistralTTSClient extends AbstractTTSClient {
     this.model = (credentials as any).model || "voxtral-mini-tts-2603";
     this.voiceId = "";
     this.responseFormat = "mp3";
+    this._models = [
+      {
+        id: "voxtral-mini-tts-2603",
+        features: ["streaming", "inline-voice-cloning", "open-source"],
+      },
+    ];
     this.sampleRate = 24000;
 
     this.applyCredentialProperties(credentials);

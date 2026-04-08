@@ -115,6 +115,8 @@ export class EspeakNodeTTSClient extends AbstractTTSClient {
   constructor(credentials: TTSCredentials = {}) {
     super(credentials);
 
+    this._models = [{ id: "espeak-ng", features: ["open-source"] }];
+
     // Set a default voice for eSpeak TTS
     this.voiceId = "en"; // Default English voice
   }

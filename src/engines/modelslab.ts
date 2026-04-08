@@ -119,6 +119,7 @@ export class ModelsLabTTSClient extends AbstractTTSClient {
 
   constructor(credentials: ModelsLabTTSCredentials = {}) {
     super(credentials);
+    this._models = [{ id: "modelslab", features: [] }];
     this.apiKey =
       credentials.apiKey ||
       (typeof process !== "undefined" ? (process.env.MODELSLAB_API_KEY ?? "") : "");

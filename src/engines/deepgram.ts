@@ -71,6 +71,11 @@ export class DeepgramTTSClient extends AbstractTTSClient {
     this.model = (credentials as any).model || "aura-2";
     this.voiceId = "aura-2-apollo-en";
 
+    this._models = [
+      { id: "aura-2", features: ["streaming"] },
+      { id: "aura", features: ["streaming"] },
+    ];
+
     this.applyCredentialProperties(credentials);
   }
 

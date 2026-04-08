@@ -65,6 +65,15 @@ export class GoogleTTSClient extends AbstractTTSClient {
   constructor(credentials: GoogleTTSCredentials) {
     super(credentials);
 
+    this._models = [
+      { id: "studio", features: ["streaming", "ssml", "word-boundary-events"] },
+      { id: "standard", features: ["streaming", "ssml", "word-boundary-events"] },
+      { id: "waveNet", features: ["streaming", "ssml", "word-boundary-events"] },
+      { id: "journey", features: ["streaming", "ssml"] },
+      { id: "neural2", features: ["streaming", "ssml", "word-boundary-events"] },
+      { id: "polyglot", features: ["streaming", "ssml"] },
+    ];
+
     // Store the credentials for later use
     this.googleCredentials = credentials;
     this.client = null;

@@ -97,6 +97,31 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    */
   constructor(credentials: ElevenLabsCredentials = {}) {
     super(credentials);
+    this._models = [
+      {
+        id: "eleven_v3",
+        features: [
+          "audio-tags",
+          "inline-voice-cloning",
+          "word-boundary-events",
+          "character-boundary-events",
+        ],
+      },
+      { id: "eleven_turbo_v2_5", features: ["word-boundary-events", "character-boundary-events"] },
+      { id: "eleven_turbo_v2", features: ["word-boundary-events", "character-boundary-events"] },
+      {
+        id: "eleven_monolingual_v1",
+        features: ["word-boundary-events", "character-boundary-events"],
+      },
+      {
+        id: "eleven_multilingual_v1",
+        features: ["word-boundary-events", "character-boundary-events"],
+      },
+      {
+        id: "eleven_multilingual_v2",
+        features: ["word-boundary-events", "character-boundary-events"],
+      },
+    ];
     this.apiKey = credentials.apiKey || process.env.ELEVENLABS_API_KEY || "";
     this.modelId =
       (credentials as any).modelId || (credentials as any).model || "eleven_multilingual_v2";

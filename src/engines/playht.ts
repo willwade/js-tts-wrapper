@@ -77,6 +77,11 @@ export class PlayHTTTSClient extends AbstractTTSClient {
   constructor(credentials: PlayHTTTSCredentials = {}) {
     super(credentials);
 
+    this._models = [
+      { id: "playht", features: ["streaming"] },
+      { id: "playht2.5-turbo", features: ["streaming"] },
+    ];
+
     // Set credentials
     this.apiKey = credentials.apiKey || process.env.PLAYHT_API_KEY || "";
     this.userId = credentials.userId || process.env.PLAYHT_USER_ID || "";

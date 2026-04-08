@@ -44,6 +44,7 @@ export class XaiTTSClient extends AbstractTTSClient {
     this.model = (credentials as any).model || "grok-tts";
     this.voiceId = "avalon-47";
     this.language = "auto";
+    this._models = [{ id: "grok-tts", features: ["streaming", "audio-tags"] }];
     this.sampleRate = 24000;
 
     this.applyCredentialProperties(credentials);

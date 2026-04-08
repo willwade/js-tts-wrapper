@@ -40,6 +40,7 @@ export class UnrealSpeechTTSClient extends AbstractTTSClient {
     this.apiKey = credentials.apiKey || process.env.UNREAL_SPEECH_API_KEY || "";
     this.baseUrl = credentials.baseURL || "https://api.v8.unrealspeech.com";
     this.voiceId = "Sierra";
+    this._models = [{ id: "default", features: ["streaming"] }];
     this.sampleRate = 24000;
 
     this.applyCredentialProperties(credentials);

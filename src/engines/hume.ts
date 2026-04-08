@@ -51,6 +51,10 @@ export class HumeTTSClient extends AbstractTTSClient {
     this.baseUrl = credentials.baseURL || "https://api.hume.ai/v0";
     this.model = (credentials as any).model || "octave-2";
     this.voiceId = "aac4caff-e2e1-4088-9d58-a29c5d22dce6";
+    this._models = [
+      { id: "octave-2", features: ["streaming", "inline-voice-cloning"] },
+      { id: "octave-1", features: ["streaming"] },
+    ];
     this.sampleRate = 24000;
 
     this.applyCredentialProperties(credentials);

@@ -93,6 +93,7 @@ export class UpliftAITTSClient extends AbstractTTSClient {
    */
   constructor(credentials: UpliftAITTSCredentials = {}) {
     super(credentials);
+    this._models = [{ id: "upliftai", features: [] }];
     this.apiKey = credentials.apiKey || process.env.UPLIFTAI_API_KEY || "";
     this.outputFormat = "MP3_22050_128"; // Default format
   }

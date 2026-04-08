@@ -51,6 +51,10 @@ export class MurfTTSClient extends AbstractTTSClient {
     this.baseUrl = credentials.baseURL || "https://api.murf.ai/v1";
     this.model = (credentials as any).model || "GEN2";
     this.voiceId = "en-US-natalie";
+    this._models = [
+      { id: "GEN2", features: ["streaming"] },
+      { id: "FALCON", features: ["streaming"] },
+    ];
     this.sampleRate = 24000;
 
     this.applyCredentialProperties(credentials);
