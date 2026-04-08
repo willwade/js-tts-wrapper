@@ -4,6 +4,7 @@ import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { base64ToUint8Array } from "../utils/base64-utils";
 import { getFetch } from "../utils/fetch-utils";
+import { toIso639_3, toLanguageDisplay } from "../utils/language-utils";
 
 const fetch = getFetch();
 
@@ -29,33 +30,33 @@ export class MistralTTSClient extends AbstractTTSClient {
   private responseFormat: string;
 
   static readonly VOICES = [
-    { id: "Amalthea", name: "Amalthea", gender: "Unknown" as const, language: "en" },
-    { id: "Achan", name: "Achan", gender: "Unknown" as const, language: "en" },
-    { id: "Brave", name: "Brave", gender: "Unknown" as const, language: "en" },
-    { id: "Contessa", name: "Contessa", gender: "Unknown" as const, language: "en" },
-    { id: "Daintree", name: "Daintree", gender: "Unknown" as const, language: "en" },
-    { id: "Eugora", name: "Eugora", gender: "Unknown" as const, language: "en" },
-    { id: "Fornax", name: "Fornax", gender: "Unknown" as const, language: "en" },
-    { id: "Griffin", name: "Griffin", gender: "Unknown" as const, language: "en" },
-    { id: "Hestia", name: "Hestia", gender: "Unknown" as const, language: "en" },
-    { id: "Irving", name: "Irving", gender: "Unknown" as const, language: "en" },
-    { id: "Jasmine", name: "Jasmine", gender: "Unknown" as const, language: "en" },
-    { id: "Kestra", name: "Kestra", gender: "Unknown" as const, language: "en" },
-    { id: "Lorentz", name: "Lorentz", gender: "Unknown" as const, language: "en" },
-    { id: "Mara", name: "Mara", gender: "Unknown" as const, language: "en" },
-    { id: "Nettle", name: "Nettle", gender: "Unknown" as const, language: "en" },
-    { id: "Orin", name: "Orin", gender: "Unknown" as const, language: "en" },
-    { id: "Puck", name: "Puck", gender: "Unknown" as const, language: "en" },
-    { id: "Quinn", name: "Quinn", gender: "Unknown" as const, language: "en" },
-    { id: "Rune", name: "Rune", gender: "Unknown" as const, language: "en" },
-    { id: "Simbe", name: "Simbe", gender: "Unknown" as const, language: "en" },
-    { id: "Tertia", name: "Tertia", gender: "Unknown" as const, language: "en" },
-    { id: "Umbriel", name: "Umbriel", gender: "Unknown" as const, language: "en" },
-    { id: "Vesta", name: "Vesta", gender: "Unknown" as const, language: "en" },
-    { id: "Wystan", name: "Wystan", gender: "Unknown" as const, language: "en" },
-    { id: "Xeno", name: "Xeno", gender: "Unknown" as const, language: "en" },
-    { id: "Yara", name: "Yara", gender: "Unknown" as const, language: "en" },
-    { id: "Zephyr", name: "Zephyr", gender: "Unknown" as const, language: "en" },
+    { id: "Amalthea", name: "Amalthea", gender: "Unknown" as const, language: "en-US" },
+    { id: "Achan", name: "Achan", gender: "Unknown" as const, language: "en-US" },
+    { id: "Brave", name: "Brave", gender: "Unknown" as const, language: "en-US" },
+    { id: "Contessa", name: "Contessa", gender: "Unknown" as const, language: "en-US" },
+    { id: "Daintree", name: "Daintree", gender: "Unknown" as const, language: "en-US" },
+    { id: "Eugora", name: "Eugora", gender: "Unknown" as const, language: "en-US" },
+    { id: "Fornax", name: "Fornax", gender: "Unknown" as const, language: "en-US" },
+    { id: "Griffin", name: "Griffin", gender: "Unknown" as const, language: "en-US" },
+    { id: "Hestia", name: "Hestia", gender: "Unknown" as const, language: "en-US" },
+    { id: "Irving", name: "Irving", gender: "Unknown" as const, language: "en-US" },
+    { id: "Jasmine", name: "Jasmine", gender: "Unknown" as const, language: "en-US" },
+    { id: "Kestra", name: "Kestra", gender: "Unknown" as const, language: "en-US" },
+    { id: "Lorentz", name: "Lorentz", gender: "Unknown" as const, language: "en-US" },
+    { id: "Mara", name: "Mara", gender: "Unknown" as const, language: "en-US" },
+    { id: "Nettle", name: "Nettle", gender: "Unknown" as const, language: "en-US" },
+    { id: "Orin", name: "Orin", gender: "Unknown" as const, language: "en-US" },
+    { id: "Puck", name: "Puck", gender: "Unknown" as const, language: "en-US" },
+    { id: "Quinn", name: "Quinn", gender: "Unknown" as const, language: "en-US" },
+    { id: "Rune", name: "Rune", gender: "Unknown" as const, language: "en-US" },
+    { id: "Simbe", name: "Simbe", gender: "Unknown" as const, language: "en-US" },
+    { id: "Tertia", name: "Tertia", gender: "Unknown" as const, language: "en-US" },
+    { id: "Umbriel", name: "Umbriel", gender: "Unknown" as const, language: "en-US" },
+    { id: "Vesta", name: "Vesta", gender: "Unknown" as const, language: "en-US" },
+    { id: "Wystan", name: "Wystan", gender: "Unknown" as const, language: "en-US" },
+    { id: "Xeno", name: "Xeno", gender: "Unknown" as const, language: "en-US" },
+    { id: "Yara", name: "Yara", gender: "Unknown" as const, language: "en-US" },
+    { id: "Zephyr", name: "Zephyr", gender: "Unknown" as const, language: "en-US" },
   ];
 
   constructor(credentials: MistralTTSCredentials = {}) {
@@ -178,9 +179,9 @@ export class MistralTTSClient extends AbstractTTSClient {
       gender: voice.gender as "Male" | "Female" | "Unknown",
       languageCodes: [
         {
-          bcp47: voice.language || "en",
-          iso639_3: (voice.language || "en").split("-")[0],
-          display: voice.language || "English",
+          bcp47: voice.language || "en-US",
+          iso639_3: toIso639_3(voice.language || "en-US"),
+          display: toLanguageDisplay(voice.language || "en-US"),
         },
       ],
       provider: "mistral" as any,

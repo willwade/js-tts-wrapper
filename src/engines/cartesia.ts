@@ -3,6 +3,7 @@ import * as SSMLUtils from "../core/ssml-utils";
 import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { getFetch } from "../utils/fetch-utils";
+import { toIso639_3, toLanguageDisplay } from "../utils/language-utils";
 
 const fetch = getFetch();
 
@@ -261,11 +262,11 @@ export class CartesiaTTSClient extends AbstractTTSClient {
         ? [
             {
               bcp47: voice.language,
-              iso639_3: voice.language.split("-")[0],
-              display: voice.language,
+              iso639_3: toIso639_3(voice.language),
+              display: toLanguageDisplay(voice.language),
             },
           ]
-        : [{ bcp47: "en-US", iso639_3: "eng", display: "English" }],
+        : [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }],
       provider: "cartesia" as any,
     }));
   }

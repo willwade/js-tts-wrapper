@@ -3,6 +3,7 @@ import * as SSMLUtils from "../core/ssml-utils";
 import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { getFetch } from "../utils/fetch-utils";
+import { toIso639_3, toLanguageDisplay } from "../utils/language-utils";
 
 const fetch = getFetch();
 
@@ -26,22 +27,22 @@ export class HumeTTSClient extends AbstractTTSClient {
   private model: string;
 
   static readonly VOICES = [
-    { id: "ito", name: "Ito", gender: "Unknown" as const, language: "en" },
-    { id: "acantha", name: "Acantha", gender: "Unknown" as const, language: "en" },
-    { id: "ant ai gonus", name: "Antigonos", gender: "Unknown" as const, language: "en" },
-    { id: "ari", name: "Ari", gender: "Unknown" as const, language: "en" },
-    { id: "brant", name: "Brant", gender: "Unknown" as const, language: "en" },
-    { id: "daniel", name: "Daniel", gender: "Unknown" as const, language: "en" },
-    { id: "fin", name: "Fin", gender: "Unknown" as const, language: "en" },
-    { id: "hype", name: "Hype", gender: "Unknown" as const, language: "en" },
-    { id: "kora", name: "Kora", gender: "Unknown" as const, language: "en" },
-    { id: "mango", name: "Mango", gender: "Unknown" as const, language: "en" },
-    { id: "marek", name: "Marek", gender: "Unknown" as const, language: "en" },
-    { id: "ogma", name: "Ogma", gender: "Unknown" as const, language: "en" },
-    { id: "sora", name: "Sora", gender: "Unknown" as const, language: "en" },
-    { id: "terrence", name: "Terrence", gender: "Unknown" as const, language: "en" },
-    { id: "vitor", name: "Vitor", gender: "Unknown" as const, language: "en" },
-    { id: "zach", name: "Zach", gender: "Unknown" as const, language: "en" },
+    { id: "ito", name: "Ito", gender: "Unknown" as const, language: "en-US" },
+    { id: "acantha", name: "Acantha", gender: "Unknown" as const, language: "en-US" },
+    { id: "ant ai gonus", name: "Antigonos", gender: "Unknown" as const, language: "en-US" },
+    { id: "ari", name: "Ari", gender: "Unknown" as const, language: "en-US" },
+    { id: "brant", name: "Brant", gender: "Unknown" as const, language: "en-US" },
+    { id: "daniel", name: "Daniel", gender: "Unknown" as const, language: "en-US" },
+    { id: "fin", name: "Fin", gender: "Unknown" as const, language: "en-US" },
+    { id: "hype", name: "Hype", gender: "Unknown" as const, language: "en-US" },
+    { id: "kora", name: "Kora", gender: "Unknown" as const, language: "en-US" },
+    { id: "mango", name: "Mango", gender: "Unknown" as const, language: "en-US" },
+    { id: "marek", name: "Marek", gender: "Unknown" as const, language: "en-US" },
+    { id: "ogma", name: "Ogma", gender: "Unknown" as const, language: "en-US" },
+    { id: "sora", name: "Sora", gender: "Unknown" as const, language: "en-US" },
+    { id: "terrence", name: "Terrence", gender: "Unknown" as const, language: "en-US" },
+    { id: "vitor", name: "Vitor", gender: "Unknown" as const, language: "en-US" },
+    { id: "zach", name: "Zach", gender: "Unknown" as const, language: "en-US" },
   ];
 
   constructor(credentials: HumeTTSCredentials = {}) {
@@ -166,9 +167,9 @@ export class HumeTTSClient extends AbstractTTSClient {
       gender: voice.gender as "Male" | "Female" | "Unknown",
       languageCodes: [
         {
-          bcp47: voice.language || "en",
-          iso639_3: (voice.language || "en").split("-")[0],
-          display: voice.language || "English",
+          bcp47: voice.language || "en-US",
+          iso639_3: toIso639_3(voice.language || "en-US"),
+          display: toLanguageDisplay(voice.language || "en-US"),
         },
       ],
       provider: "hume" as any,

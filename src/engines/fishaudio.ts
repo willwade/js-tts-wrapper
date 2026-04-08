@@ -3,6 +3,7 @@ import * as SSMLUtils from "../core/ssml-utils";
 import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { getFetch } from "../utils/fetch-utils";
+import { toIso639_3, toLanguageDisplay } from "../utils/language-utils";
 
 const fetch = getFetch();
 
@@ -169,10 +170,10 @@ export class FishAudioTTSClient extends AbstractTTSClient {
         languageCodes: voice.languages
           ? voice.languages.map((lang: string) => ({
               bcp47: lang,
-              iso639_3: lang.split("-")[0],
-              display: lang,
+              iso639_3: toIso639_3(lang),
+              display: toLanguageDisplay(lang),
             }))
-          : [{ bcp47: "en", iso639_3: "eng", display: "English" }],
+          : [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }],
         provider: "fishaudio" as any,
       }));
   }

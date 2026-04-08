@@ -4,6 +4,7 @@ import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { base64ToUint8Array } from "../utils/base64-utils";
 import { getFetch } from "../utils/fetch-utils";
+import { toIso639_3, toLanguageDisplay } from "../utils/language-utils";
 
 const fetch = getFetch();
 
@@ -139,9 +140,9 @@ export class ResembleTTSClient extends AbstractTTSClient {
       gender: (voice.gender || "Unknown") as "Male" | "Female" | "Unknown",
       languageCodes: [
         {
-          bcp47: voice.language || "en",
-          iso639_3: (voice.language || "en").split("-")[0],
-          display: voice.language || "English",
+          bcp47: voice.language || "en-US",
+          iso639_3: toIso639_3(voice.language || "en-US"),
+          display: toLanguageDisplay(voice.language || "en-US"),
         },
       ],
       provider: "resemble" as any,

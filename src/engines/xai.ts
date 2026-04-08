@@ -3,6 +3,7 @@ import * as SSMLUtils from "../core/ssml-utils";
 import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { getFetch } from "../utils/fetch-utils";
+import { toIso639_3, toLanguageDisplay } from "../utils/language-utils";
 
 const fetch = getFetch();
 
@@ -28,12 +29,12 @@ export class XaiTTSClient extends AbstractTTSClient {
   private language: string;
 
   static readonly VOICES = [
-    { id: "avalon-47", name: "Avalon", gender: "Female" as const, language: "en" },
-    { id: "orion-56", name: "Orion", gender: "Male" as const, language: "en" },
-    { id: "luna-30", name: "Luna", gender: "Female" as const, language: "en" },
-    { id: "atlas-84", name: "Atlas", gender: "Male" as const, language: "en" },
-    { id: "aria-42", name: "Aria", gender: "Female" as const, language: "en" },
-    { id: "cosmo-01", name: "Cosmo", gender: "Male" as const, language: "en" },
+    { id: "avalon-47", name: "Avalon", gender: "Female" as const, language: "en-US" },
+    { id: "orion-56", name: "Orion", gender: "Male" as const, language: "en-US" },
+    { id: "luna-30", name: "Luna", gender: "Female" as const, language: "en-US" },
+    { id: "atlas-84", name: "Atlas", gender: "Male" as const, language: "en-US" },
+    { id: "aria-42", name: "Aria", gender: "Female" as const, language: "en-US" },
+    { id: "cosmo-01", name: "Cosmo", gender: "Male" as const, language: "en-US" },
   ];
 
   constructor(credentials: XaiTTSCredentials = {}) {
@@ -163,9 +164,9 @@ export class XaiTTSClient extends AbstractTTSClient {
       gender: voice.gender as "Male" | "Female" | "Unknown",
       languageCodes: [
         {
-          bcp47: voice.language || "en",
-          iso639_3: (voice.language || "en").split("-")[0],
-          display: voice.language || "English",
+          bcp47: voice.language || "en-US",
+          iso639_3: toIso639_3(voice.language || "en-US"),
+          display: toLanguageDisplay(voice.language || "en-US"),
         },
       ],
       provider: "xai" as any,
