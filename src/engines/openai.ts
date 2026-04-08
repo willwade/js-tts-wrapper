@@ -58,7 +58,7 @@ export interface OpenAITTSOptions extends SpeakOptions {
   /** OpenAI Speed (maps to rate) */
   speed?: number;
   /** Output format */
-  format?: 'mp3' | 'opus' | 'aac' | 'flac' | 'wav' | 'pcm';
+  format?: "mp3" | "opus" | "aac" | "flac" | "wav" | "pcm";
 
   /**
    * Output directory for audio files
@@ -174,7 +174,7 @@ export class OpenAITTSClient extends AbstractTTSClient {
       return this.client;
     }
 
-    this.clientLoadingPromise = (new Function('m','return import(m)') as any)("openai")
+    this.clientLoadingPromise = (new Function("m", "return import(m)") as any)("openai")
       .then((openaiModule: any) => {
         const OpenAIClass = openaiModule.OpenAI;
         this.client = new OpenAIClass({
@@ -250,7 +250,7 @@ export class OpenAITTSClient extends AbstractTTSClient {
    * @returns Array of required credential field names
    */
   protected getRequiredCredentials(): string[] {
-    return ['apiKey'];
+    return ["apiKey"];
   }
 
   /**
@@ -391,12 +391,14 @@ export class OpenAITTSClient extends AbstractTTSClient {
    */
   async textToSpeech(text: string, options: OpenAITTSOptions = {}): Promise<string> {
     if (typeof window !== "undefined") {
-      throw new Error("textToSpeech with file output is not supported in the browser. Use synthToBytes or synthToBytestream instead.");
+      throw new Error(
+        "textToSpeech with file output is not supported in the browser. Use synthToBytes or synthToBytestream instead."
+      );
     }
     // Node.js only
-    const importNodeBuiltin = async (name: string) => import(`node:${name}`);
-    const fs = await importNodeBuiltin("fs");
-    const path = await importNodeBuiltin("path");
+    const importNodeBuiltin = (name: string) => new Function("m", "return import(m)")(name);
+    const fs = await importNodeBuiltin("node:fs");
+    const path = await importNodeBuiltin("node:path");
     try {
       // Create output directory if it doesn't exist
       const outputDir = options.outputDir || ".";
@@ -436,11 +438,13 @@ export class OpenAITTSClient extends AbstractTTSClient {
    */
   async textToSpeechStreaming(text: string, options: OpenAITTSOptions = {}): Promise<string> {
     if (typeof window !== "undefined") {
-      throw new Error("textToSpeechStreaming with file output is not supported in the browser. Use synthToBytes or synthToBytestream instead.");
+      throw new Error(
+        "textToSpeechStreaming with file output is not supported in the browser. Use synthToBytes or synthToBytestream instead."
+      );
     }
-    const importNodeBuiltin = async (name: string) => import(`node:${name}`);
-    const fs = await importNodeBuiltin("fs");
-    const path = await importNodeBuiltin("path");
+    const importNodeBuiltin = (name: string) => new Function("m", "return import(m)")(name);
+    const fs = await importNodeBuiltin("node:fs");
+    const path = await importNodeBuiltin("node:path");
     try {
       // Create output directory if it doesn't exist
       const outputDir = options.outputDir || ".";
@@ -588,7 +592,10 @@ export class OpenAITTSClient extends AbstractTTSClient {
    * @param _options Synthesis options (currently unused for streaming, uses defaults).
    * @returns Promise resolving to an object containing the audio stream and an empty word boundaries array.
    */
-  async synthToBytestream(text: string, _options?: SpeakOptions): Promise<{
+  async synthToBytestream(
+    text: string,
+    _options?: SpeakOptions
+  ): Promise<{
     audioStream: ReadableStream<Uint8Array>;
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
