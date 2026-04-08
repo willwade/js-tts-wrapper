@@ -57,6 +57,15 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 | `espeak-wasm` | `EspeakBrowserTTSClient` | Both | eSpeak NG | `mespeak` (Node.js) or meSpeak.js (browser) |
 | `sapi` | `SAPITTSClient` | Node.js | Windows Speech API (SAPI) | None (uses PowerShell) |
 | `witai` | `WitAITTSClient` | Both | Wit.ai | None (uses fetch API) |
+| `cartesia` | `CartesiaTTSClient` | Both | Cartesia | None (uses fetch API) |
+| `deepgram` | `DeepgramTTSClient` | Both | Deepgram | None (uses fetch API) |
+| `hume` | `HumeTTSClient` | Both | Hume AI | None (uses fetch API) |
+| `xai` | `XAITTSClient` | Both | xAI (Grok) | None (uses fetch API) |
+| `fishaudio` | `FishAudioTTSClient` | Both | Fish Audio | None (uses fetch API) |
+| `mistral` | `MistralTTSClient` | Both | Mistral AI | None (uses fetch API) |
+| `murf` | `MurfTTSClient` | Both | Murf AI | None (uses fetch API) |
+| `unrealspeech` | `UnrealSpeechTTSClient` | Both | Unreal Speech | None (uses fetch API) |
+| `resemble` | `ResembleTTSClient` | Both | Resemble AI | None (uses fetch API) |
 
 **Factory Name**: Use with `createTTSClient('factory-name', credentials)`
 **Class Name**: Use with direct import `import { ClassName } from 'js-tts-wrapper'`
@@ -90,6 +99,15 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 | **SherpaOnnx** | ✅ | Estimated | ❌ | Low |
 | **SherpaOnnx-WASM** | ✅ | Estimated | ❌ | Low |
 | **SAPI** | ✅ | Estimated | ❌ | Low |
+| **Cartesia** | ✅ | Estimated | ❌ | Low |
+| **Deepgram** | ✅ | Estimated | ❌ | Low |
+| **Hume** | ✅ | Estimated | ❌ | Low |
+| **xAI** | ✅ | Estimated | ❌ | Low |
+| **Fish Audio** | ✅ | Estimated | ❌ | Low |
+| **Mistral** | ✅ | Estimated | ❌ | Low |
+| **Murf** | ✅ | Estimated | ❌ | Low |
+| **Unreal Speech** | ✅ | Estimated | ❌ | Low |
+| **Resemble** | ✅ | Estimated | ❌ | Low |
 
 **Character-Level Timing**: Only ElevenLabs provides precise character-level timing data via the `/with-timestamps` endpoint, enabling the most accurate word highlighting and speech synchronization.
 
@@ -253,7 +271,7 @@ async function runExample() {
 runExample().catch(console.error);
 ```
 
-The factory supports all engines: `'azure'`, `'google'`, `'polly'`, `'elevenlabs'`, `'openai'`, `'modelslab'`, `'playht'`, `'watson'`, `'witai'`, `'sherpaonnx'`, `'sherpaonnx-wasm'`, `'espeak'`, `'espeak-wasm'`, `'sapi'`, etc.
+The factory supports all engines: `'azure'`, `'google'`, `'polly'`, `'elevenlabs'`, `'openai'`, `'modelslab'`, `'playht'`, `'watson'`, `'witai'`, `'sherpaonnx'`, `'sherpaonnx-wasm'`, `'espeak'`, `'espeak-wasm'`, `'sapi'`, `'cartesia'`, `'deepgram'`, `'hume'`, `'xai'`, `'fishaudio'`, `'mistral'`, `'murf'`, `'unrealspeech'`, `'resemble'`, etc.
 
 ## Core Functionality
 
@@ -471,6 +489,15 @@ The following engines **automatically strip SSML tags** and convert to plain tex
 - **PlayHT** - SSML tags are removed, plain text is synthesized
 - **ModelsLab** - SSML tags are removed, plain text is synthesized
 - **SherpaOnnx/SherpaOnnx-WASM** - SSML tags are removed, plain text is synthesized
+- **Cartesia** - SSML tags removed; audio tags (`[laugh]`, `[sigh]`, etc.) mapped to `<emotion>` for sonic-3, stripped for others
+- **Deepgram** - SSML tags are removed, plain text is synthesized
+- **Hume** - SSML tags are removed, plain text is synthesized
+- **xAI** - SSML tags are removed; audio tags passed natively for grok-tts
+- **Fish Audio** - SSML tags removed; audio tags passed natively for s2-pro
+- **Mistral** - SSML tags are removed, plain text is synthesized
+- **Murf** - SSML tags are removed, plain text is synthesized
+- **Unreal Speech** - SSML tags are removed, plain text is synthesized
+- **Resemble** - SSML tags are removed, plain text is synthesized
 
 ### Usage Examples
 
@@ -667,6 +694,15 @@ When disabled, js-tts-wrapper falls back to the lightweight built-in converter (
 | OpenAI | ✅ Converted | → SSML → Plain text |
 | PlayHT | ✅ Converted | → SSML → Plain text |
 | SherpaOnnx | ✅ Converted | → SSML → Plain text |
+| Cartesia | ✅ Converted | → SSML → Plain text |
+| Deepgram | ✅ Converted | → SSML → Plain text |
+| Hume | ✅ Converted | → SSML → Plain text |
+| xAI | ✅ Converted | → SSML → Plain text |
+| Fish Audio | ✅ Converted | → SSML → Plain text |
+| Mistral | ✅ Converted | → SSML → Plain text |
+| Murf | ✅ Converted | → SSML → Plain text |
+| Unreal Speech | ✅ Converted | → SSML → Plain text |
+| Resemble | ✅ Converted | → SSML → Plain text |
 
 ### Speech Markdown vs Raw SSML: When to Use Each
 
@@ -1068,6 +1104,112 @@ await tts.speak('Hello from Windows SAPI!');
 ```
 
 > **Note**: This engine is **Windows-only**
+
+### Cartesia
+
+```javascript
+import { CartesiaTTSClient } from 'js-tts-wrapper';
+
+const tts = new CartesiaTTSClient({ apiKey: 'your-api-key' });
+await tts.setVoice('sonic-3'); // or 'sonic-2'
+await tts.speak('Hello from Cartesia!');
+```
+
+> Audio tags like `[laugh]`, `[sigh]` are mapped to `<emotion>` SSML for sonic-3, stripped for other models.
+
+### Deepgram
+
+```javascript
+import { DeepgramTTSClient } from 'js-tts-wrapper';
+
+const tts = new DeepgramTTSClient({ apiKey: 'your-api-key' });
+await tts.setVoice('aura-2-asteria-en');
+await tts.speak('Hello from Deepgram!');
+```
+
+> Uses a static voice list. Model and voice are combined in the URL parameter.
+
+### Hume AI
+
+```javascript
+import { HumeTTSClient } from 'js-tts-wrapper';
+
+const tts = new HumeTTSClient({ apiKey: 'your-api-key' });
+await tts.setVoice('ito'); // or any Hume voice name
+await tts.speak('Hello from Hume!');
+```
+
+> Supports `octave-2` and `octave-1` models. Streaming uses a separate `/tts/stream/file` endpoint.
+
+### xAI (Grok)
+
+```javascript
+import { XAITTSClient } from 'js-tts-wrapper';
+
+const tts = new XAITTSClient({ apiKey: 'your-api-key' });
+await tts.speak('Hello from xAI!');
+```
+
+> Native audio tag passthrough for grok-tts model. Language can be configured via properties.
+
+### Fish Audio
+
+```javascript
+import { FishAudioTTSClient } from 'js-tts-wrapper';
+
+const tts = new FishAudioTTSClient({ apiKey: 'your-api-key' });
+await tts.setVoice('your-voice-reference-id');
+await tts.speak('Hello from Fish Audio!');
+```
+
+> Model ID is passed as a header. Audio tags passed natively for s2-pro model.
+
+### Mistral
+
+```javascript
+import { MistralTTSClient } from 'js-tts-wrapper';
+
+const tts = new MistralTTSClient({ apiKey: 'your-api-key' });
+await tts.speak('Hello from Mistral!');
+```
+
+> Uses SSE streaming with base64 audio chunks. Non-streaming returns base64 JSON.
+
+### Murf
+
+```javascript
+import { MurfTTSClient } from 'js-tts-wrapper';
+
+const tts = new MurfTTSClient({ apiKey: 'your-api-key' });
+await tts.setVoice('en-US-natalie');
+await tts.speak('Hello from Murf!');
+```
+
+> Two models: GEN2 (base64 response) and FALCON (binary streaming). Uses static voice list.
+
+### Unreal Speech
+
+```javascript
+import { UnrealSpeechTTSClient } from 'js-tts-wrapper';
+
+const tts = new UnrealSpeechTTSClient({ apiKey: 'your-api-key' });
+await tts.setVoice('Scarlett');
+await tts.speak('Hello from Unreal Speech!');
+```
+
+> Non-streaming uses two-step URI-based flow. Streaming returns audio directly.
+
+### Resemble
+
+```javascript
+import { ResembleTTSClient } from 'js-tts-wrapper';
+
+const tts = new ResembleTTSClient({ apiKey: 'your-api-key' });
+await tts.setVoice('your-voice-id');
+await tts.speak('Hello from Resemble!');
+```
+
+> Non-streaming returns base64 JSON. Streaming returns raw binary audio.
 
 ## API Reference
 
