@@ -1,10 +1,10 @@
-import { SAPITTSClient } from "../engines/sapi";
-import { describe, it, expect, beforeAll } from '@jest/globals';
+import { beforeAll, describe, expect, it } from "@jest/globals";
 import * as os from "os";
+import { SAPITTSClient } from "../engines/sapi";
 
 /**
  * SAPI Voice Selection Tests
- * 
+ *
  * This test suite specifically verifies that the SAPI voice selection bug is fixed:
  * - setVoice() should properly select the specified voice
  * - Voice selection via options parameter should work
@@ -35,7 +35,7 @@ describe("SAPI Voice Selection", () => {
       console.log("Skipping SAPI tests - not on Windows");
       return;
     }
-    
+
     expect(client).not.toBeNull();
   });
 
@@ -48,9 +48,9 @@ describe("SAPI Voice Selection", () => {
     const voices = await client.getVoices();
     expect(voices).toBeDefined();
     expect(voices.length).toBeGreaterThan(0);
-    
+
     console.log(`Found ${voices.length} SAPI voices:`);
-    voices.forEach(voice => {
+    voices.forEach((voice) => {
       console.log(`  - ${voice.id}: ${voice.name} (${voice.gender})`);
     });
   });
@@ -75,11 +75,13 @@ describe("SAPI Voice Selection", () => {
     expect(audioBytes.length).toBeGreaterThan(0);
 
     // Check for WAV header
-    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
-    expect(wavHeader.startsWith('RIFF')).toBe(true);
-    expect(wavHeader.includes('WAVE')).toBe(true);
+    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString("ascii");
+    expect(wavHeader.startsWith("RIFF")).toBe(true);
+    expect(wavHeader.includes("WAVE")).toBe(true);
 
-    console.log(`✓ Successfully synthesized ${audioBytes.length} bytes with voice: ${testVoice.id}`);
+    console.log(
+      `✓ Successfully synthesized ${audioBytes.length} bytes with voice: ${testVoice.id}`
+    );
   });
 
   it("should respect voice selection via options parameter", async () => {
@@ -101,11 +103,13 @@ describe("SAPI Voice Selection", () => {
     expect(audioBytes.length).toBeGreaterThan(0);
 
     // Check for WAV header
-    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
-    expect(wavHeader.startsWith('RIFF')).toBe(true);
-    expect(wavHeader.includes('WAVE')).toBe(true);
+    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString("ascii");
+    expect(wavHeader.startsWith("RIFF")).toBe(true);
+    expect(wavHeader.includes("WAVE")).toBe(true);
 
-    console.log(`✓ Successfully synthesized ${audioBytes.length} bytes via options with voice: ${testVoice.id}`);
+    console.log(
+      `✓ Successfully synthesized ${audioBytes.length} bytes via options with voice: ${testVoice.id}`
+    );
   });
 
   it("should work with different voices if available", async () => {
@@ -161,9 +165,9 @@ describe("SAPI Voice Selection", () => {
     expect(audioBytes.length).toBeGreaterThan(0);
 
     // Check for WAV header
-    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
-    expect(wavHeader.startsWith('RIFF')).toBe(true);
-    expect(wavHeader.includes('WAVE')).toBe(true);
+    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString("ascii");
+    expect(wavHeader.startsWith("RIFF")).toBe(true);
+    expect(wavHeader.includes("WAVE")).toBe(true);
 
     console.log(`✓ Successfully synthesized complex SSML: ${audioBytes.length} bytes`);
   });
@@ -189,9 +193,9 @@ describe("SAPI Voice Selection", () => {
     expect(audioBytes.length).toBeGreaterThan(0);
 
     // Check for WAV header
-    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
-    expect(wavHeader.startsWith('RIFF')).toBe(true);
-    expect(wavHeader.includes('WAVE')).toBe(true);
+    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString("ascii");
+    expect(wavHeader.startsWith("RIFF")).toBe(true);
+    expect(wavHeader.includes("WAVE")).toBe(true);
 
     console.log(`✓ Successfully synthesized SSML with version: ${audioBytes.length} bytes`);
   });

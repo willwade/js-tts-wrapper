@@ -1,7 +1,7 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
-import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
 import * as SSMLUtils from "../core/ssml-utils";
 import * as SpeechMarkdown from "../markdown/converter";
+import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
 
 // Dynamic import for Google Cloud Text-to-Speech (Node.js only)
 // This avoids browser import errors for Node.js-only packages
@@ -36,7 +36,7 @@ export interface GoogleTTSCredentials extends TTSCredentials {
  * Extended options for Google TTS
  */
 export interface GoogleTTSOptions extends SpeakOptions {
-  format?: 'mp3' | 'wav'; // Define formats supported by this client logic (maps to LINEAR16)
+  format?: "mp3" | "wav"; // Define formats supported by this client logic (maps to LINEAR16)
 }
 
 /**
@@ -69,8 +69,6 @@ export class GoogleTTSClient extends AbstractTTSClient {
     this.googleCredentials = credentials;
     this.client = null;
 
-
-
     // Don't initialize the client here - do it lazily on first use
     // This follows the same pattern as Polly and Azure engines
   }
@@ -89,7 +87,7 @@ export class GoogleTTSClient extends AbstractTTSClient {
 
     try {
       // Try to load the Google Cloud Text-to-Speech client (Node.js only)
-      const dynamicImport: any = new Function('m', 'return import(m)');
+      const dynamicImport: any = new Function("m", "return import(m)");
       const ttsModule = await dynamicImport("@google-cloud/text-to-speech");
       const { TextToSpeechClient } = ttsModule;
 
@@ -115,9 +113,7 @@ export class GoogleTTSClient extends AbstractTTSClient {
 
       // In test mode, we'll just log a warning instead of an error
       if (process.env.NODE_ENV === "test") {
-        console.warn(
-          "Google TTS client not initialized in test mode. Some tests may be skipped."
-        );
+        console.warn("Google TTS client not initialized in test mode. Some tests may be skipped.");
       } else {
         console.warn(
           "Google TTS will not be available. Install @google-cloud/text-to-speech to use this engine."
@@ -170,14 +166,18 @@ export class GoogleTTSClient extends AbstractTTSClient {
       try {
         const ssml = await this.prepareSSML(text, options);
         const voiceName = options?.voice || this.voiceId;
-        const supportsSSML = !voiceName || (voiceName.includes("Standard") || voiceName.includes("Wavenet"));
+        const supportsSSML =
+          !voiceName || voiceName.includes("Standard") || voiceName.includes("Wavenet");
         let languageCode = this.lang || "en-US";
         if (voiceName) {
           const parts = voiceName.split("-");
           if (parts.length >= 2) languageCode = `${parts[0]}-${parts[1]}`;
         }
         const request: any = {
-          input: supportsSSML && SSMLUtils.isSSML(ssml) ? { ssml } : { text: SSMLUtils.isSSML(ssml) ? SSMLUtils.stripSSML(ssml) : ssml },
+          input:
+            supportsSSML && SSMLUtils.isSSML(ssml)
+              ? { ssml }
+              : { text: SSMLUtils.isSSML(ssml) ? SSMLUtils.stripSSML(ssml) : ssml },
           voice: { languageCode, name: voiceName },
           audioConfig: { audioEncoding: options?.format === "mp3" ? "MP3" : "LINEAR16" },
         };
@@ -214,7 +214,8 @@ export class GoogleTTSClient extends AbstractTTSClient {
       // Check if the voice supports SSML
       const voiceName = options?.voice || this.voiceId;
       // Only Standard and Wavenet voices support SSML
-      const supportsSSML = !voiceName || (voiceName.includes("Standard") || voiceName.includes("Wavenet"));
+      const supportsSSML =
+        !voiceName || voiceName.includes("Standard") || voiceName.includes("Wavenet");
 
       // Extract language code from voice name if available
       let languageCode = this.lang || "en-US";
@@ -228,7 +229,10 @@ export class GoogleTTSClient extends AbstractTTSClient {
 
       // Prepare the request
       const request: any = {
-        input: supportsSSML && SSMLUtils.isSSML(ssml) ? { ssml } : { text: SSMLUtils.isSSML(ssml) ? SSMLUtils.stripSSML(ssml) : ssml },
+        input:
+          supportsSSML && SSMLUtils.isSSML(ssml)
+            ? { ssml }
+            : { text: SSMLUtils.isSSML(ssml) ? SSMLUtils.stripSSML(ssml) : ssml },
         voice: {
           languageCode: languageCode,
           name: voiceName,
@@ -254,12 +258,12 @@ export class GoogleTTSClient extends AbstractTTSClient {
       }
 
       // Synthesize speech
-      let response;
+      let response: any;
       if (useWordTimings) {
         // Use beta API for word timings
         try {
           // Use dynamic import for ESM compatibility without static specifiers for bundlers
-          const dynamicImport: any = new Function('m', 'return import(m)');
+          const dynamicImport: any = new Function("m", "return import(m)");
           const ttsModule = await dynamicImport("@google-cloud/text-to-speech");
           const betaClient = new ttsModule.v1beta1.TextToSpeechClient({
             projectId: this.googleCredentials.projectId,
@@ -268,7 +272,10 @@ export class GoogleTTSClient extends AbstractTTSClient {
           });
           [response] = await betaClient.synthesizeSpeech(request);
         } catch (error) {
-          console.warn("Error using beta API for word timings, falling back to standard API:", error);
+          console.warn(
+            "Error using beta API for word timings, falling back to standard API:",
+            error
+          );
           [response] = await this.client.synthesizeSpeech(request);
         }
       } else {
@@ -277,17 +284,25 @@ export class GoogleTTSClient extends AbstractTTSClient {
       }
 
       // Process word timings if available
-      if (useWordTimings && response && 'timepoints' in response && Array.isArray(response.timepoints)) {
-        this.processTimepoints(response.timepoints as Array<{markName: string; timeSeconds: number}>, text);
+      if (
+        useWordTimings &&
+        response &&
+        "timepoints" in response &&
+        Array.isArray(response.timepoints)
+      ) {
+        this.processTimepoints(
+          response.timepoints as Array<{ markName: string; timeSeconds: number }>,
+          text
+        );
       } else {
         // Create estimated word timings
         this._createEstimatedWordTimings(text);
       }
 
       // Return audio content, ensuring it's a Uint8Array
-      return response && response.audioContent ?
-        new Uint8Array(response.audioContent as Uint8Array) :
-        new Uint8Array(0);
+      return response && response.audioContent
+        ? new Uint8Array(response.audioContent as Uint8Array)
+        : new Uint8Array(0);
     } catch (error) {
       console.error("Error synthesizing speech:", error);
       throw error;
@@ -300,7 +315,10 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Promise resolving to an object containing the audio stream and word boundaries
    */
-  async synthToBytestream(text: string, options?: GoogleTTSOptions): Promise<{
+  async synthToBytestream(
+    text: string,
+    options?: GoogleTTSOptions
+  ): Promise<{
     audioStream: ReadableStream<Uint8Array>;
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
@@ -333,15 +351,17 @@ export class GoogleTTSClient extends AbstractTTSClient {
       });
 
       // Always return the structure, populate boundaries only if requested AND available
-      const finalBoundaries = options?.useWordBoundary ? this.timings.map(([start, end, word]) => ({
-        text: word,
-        offset: Math.round(start * 10000), // Convert to 100-nanosecond units
-        duration: Math.round((end - start) * 10000),
-      })) : [];
+      const finalBoundaries = options?.useWordBoundary
+        ? this.timings.map(([start, end, word]) => ({
+            text: word,
+            offset: Math.round(start * 10000), // Convert to 100-nanosecond units
+            duration: Math.round((end - start) * 10000),
+          }))
+        : [];
 
       return {
         audioStream: stream,
-        wordBoundaries: finalBoundaries
+        wordBoundaries: finalBoundaries,
       };
     } catch (error) {
       console.error("Error synthesizing speech stream:", error);
@@ -383,10 +403,10 @@ export class GoogleTTSClient extends AbstractTTSClient {
     // Convert Google voices to unified format
     return rawVoices.map((voice: any) => ({
       id: voice.name,
-      name: voice.name || 'Unknown',
+      name: voice.name || "Unknown",
       gender: voice.ssmlGender?.toLowerCase() || undefined,
       languageCodes: voice.languageCodes,
-      provider: 'google' as const,
+      provider: "google" as const,
       raw: voice, // Keep the original raw voice data
     }));
   }
@@ -501,7 +521,10 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @param timepoints Timepoints from Google TTS response
    * @param text Original text
    */
-  private processTimepoints(timepoints: Array<{markName: string; timeSeconds: number}>, text: string): void {
+  private processTimepoints(
+    timepoints: Array<{ markName: string; timeSeconds: number }>,
+    text: string
+  ): void {
     // Extract plain text from SSML if needed
     const plainText = SSMLUtils.isSSML(text) ? SSMLUtils.stripSSML(text) : text;
 
@@ -518,11 +541,10 @@ export class GoogleTTSClient extends AbstractTTSClient {
       if (wordIndex >= 0 && wordIndex < words.length) {
         const word = words[wordIndex];
 
-
         const startTime = timepoint.timeSeconds;
 
         // Estimate end time (next timepoint or start + word length * average time per character)
-        let endTime;
+        let endTime: number;
         if (i < timepoints.length - 1) {
           endTime = timepoints[i + 1].timeSeconds;
         } else {
@@ -543,7 +565,7 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * @returns Array of required credential field names
    */
   protected getRequiredCredentials(): string[] {
-    return ['keyFilename']; // Primary credential type, though projectId and credentials are also supported
+    return ["keyFilename"]; // Primary credential type, though projectId and credentials are also supported
   }
 
   /**
@@ -553,7 +575,10 @@ export class GoogleTTSClient extends AbstractTTSClient {
   async checkCredentials(): Promise<boolean> {
     // If using API key mode, consider presence of key as valid for basic checks
     if (this.googleCredentials.apiKey) {
-      return typeof this.googleCredentials.apiKey === "string" && this.googleCredentials.apiKey.length > 10;
+      return (
+        typeof this.googleCredentials.apiKey === "string" &&
+        this.googleCredentials.apiKey.length > 10
+      );
     }
 
     // If the client is not available, check if the credentials file exists
@@ -561,8 +586,8 @@ export class GoogleTTSClient extends AbstractTTSClient {
       try {
         // Only import fs in Node.js environment
         if (typeof window === "undefined") {
-          const dyn: any = new Function('m','return import(m)');
-          const fs = await dyn('node:fs');
+          const dyn: any = new Function("m", "return import(m)");
+          const fs = await dyn("node:fs");
           const credentials = this.credentials as GoogleTTSCredentials;
 
           // Check if the keyFilename exists
@@ -571,8 +596,10 @@ export class GoogleTTSClient extends AbstractTTSClient {
           }
 
           // Check if the GOOGLE_APPLICATION_CREDENTIALS environment variable is set
-          if (process.env.GOOGLE_APPLICATION_CREDENTIALS &&
-              fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+          if (
+            process.env.GOOGLE_APPLICATION_CREDENTIALS &&
+            fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)
+          ) {
             return true;
           }
 
@@ -599,7 +626,11 @@ export class GoogleTTSClient extends AbstractTTSClient {
    * Check if credentials are valid with detailed response
    * @returns Promise resolving to an object with success flag and optional error message
    */
-  async checkCredentialsDetailed(): Promise<{ success: boolean; error?: string; voiceCount?: number }> {
+  async checkCredentialsDetailed(): Promise<{
+    success: boolean;
+    error?: string;
+    voiceCount?: number;
+  }> {
     // API key mode: try listing voices to validate the key
     if (this.googleCredentials.apiKey) {
       try {
@@ -609,7 +640,7 @@ export class GoogleTTSClient extends AbstractTTSClient {
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         };
       }
     }
@@ -619,8 +650,8 @@ export class GoogleTTSClient extends AbstractTTSClient {
       try {
         // Only import fs in Node.js environment
         if (typeof window === "undefined") {
-          const dyn: any = new Function('m','return import(m)');
-          const fs = await dyn('node:fs');
+          const dyn: any = new Function("m", "return import(m)");
+          const fs = await dyn("node:fs");
           const credentials = this.credentials as GoogleTTSCredentials;
 
           // Check if the keyFilename exists
@@ -629,32 +660,40 @@ export class GoogleTTSClient extends AbstractTTSClient {
           }
 
           // Check if the GOOGLE_APPLICATION_CREDENTIALS environment variable is set
-          if (process.env.GOOGLE_APPLICATION_CREDENTIALS &&
-              fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
-            return { success: true, error: "GOOGLE_APPLICATION_CREDENTIALS file exists but client not initialized" };
+          if (
+            process.env.GOOGLE_APPLICATION_CREDENTIALS &&
+            fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)
+          ) {
+            return {
+              success: true,
+              error: "GOOGLE_APPLICATION_CREDENTIALS file exists but client not initialized",
+            };
           }
 
           // Check if the GOOGLE_SA_PATH environment variable is set
           if (process.env.GOOGLE_SA_PATH && fs.existsSync(process.env.GOOGLE_SA_PATH)) {
-            return { success: true, error: "GOOGLE_SA_PATH file exists but client not initialized" };
+            return {
+              success: true,
+              error: "GOOGLE_SA_PATH file exists but client not initialized",
+            };
           }
 
           return {
             success: false,
-            error: "No valid credentials file found"
+            error: "No valid credentials file found",
           };
         } else {
           // In browser environment without apiKey, we can't check file existence
           return {
             success: false,
-            error: "Cannot check Google credentials file existence in browser environment"
+            error: "Cannot check Google credentials file existence in browser environment",
           };
         }
       } catch (error) {
         console.error("Error checking Google credentials:", error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         };
       }
     }
@@ -692,11 +731,7 @@ export class GoogleTTSClient extends AbstractTTSClient {
 
   private base64ToBytes(b64: string): Uint8Array {
     // Node path
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     if (typeof Buffer !== "undefined" && typeof (Buffer as any).from === "function") {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       const buf = (Buffer as any).from(b64, "base64");
       return buf instanceof Uint8Array ? buf : new Uint8Array(buf);
     }
@@ -706,5 +741,4 @@ export class GoogleTTSClient extends AbstractTTSClient {
     for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
     return out;
   }
-
 }

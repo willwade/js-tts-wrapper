@@ -210,7 +210,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
    * @returns Array of required credential field names
    */
   protected getRequiredCredentials(): string[] {
-    return ['apiKey', 'region', 'instanceId'];
+    return ["apiKey", "region", "instanceId"];
   }
 
   /**

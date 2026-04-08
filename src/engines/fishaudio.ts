@@ -127,14 +127,11 @@ export class FishAudioTTSClient extends AbstractTTSClient {
   async checkCredentials(): Promise<boolean> {
     if (!this.apiKey) return false;
     try {
-      const response = await fetch(`${this.baseUrl}/v1/tts`, {
-        method: "POST",
+      const response = await fetch(`${this.baseUrl}/v1/model`, {
+        method: "GET",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${this.apiKey}`,
-          model: this.model,
         },
-        body: JSON.stringify({ text: "test" }),
       });
       return response.ok;
     } catch {

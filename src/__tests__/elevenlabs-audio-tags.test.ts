@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "@jest/globals";
+import { beforeEach, describe, expect, it } from "@jest/globals";
 import { ElevenLabsTTSClient } from "../engines/elevenlabs";
 
 describe("ElevenLabs Audio Tag Support", () => {
@@ -29,7 +29,9 @@ describe("ElevenLabs Audio Tag Support", () => {
 
     it("should pass per-request model override for v3 audio tags", () => {
       client.setProperty("model", "eleven_multilingual_v2");
-      const result = (client as any).processAudioTags("Hello [laugh] world", { model: "eleven_v3" });
+      const result = (client as any).processAudioTags("Hello [laugh] world", {
+        model: "eleven_v3",
+      });
       expect(result).toBe("Hello [laugh] world");
     });
   });

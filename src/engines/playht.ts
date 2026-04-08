@@ -1,9 +1,10 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
-import * as SpeechMarkdown from "../markdown/converter";
 import * as SSMLUtils from "../core/ssml-utils";
+import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
-import { estimateWordBoundaries, type WordBoundary } from "../utils/word-timing-estimator";
 import { getFetch } from "../utils/fetch-utils";
+import { estimateWordBoundaries, type WordBoundary } from "../utils/word-timing-estimator";
+
 // Node-only imports moved inside Node-only code paths below for browser compatibility.
 
 // Get the fetch implementation for the current environment

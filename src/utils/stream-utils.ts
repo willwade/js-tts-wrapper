@@ -1,7 +1,6 @@
-import { isNode } from "./environment"; // Assuming this utility exists
-
 // Import Node.js stream type if needed
 import type { Readable } from "node:stream";
+import { isNode } from "./environment"; // Assuming this utility exists
 
 /**
  * Reads a ReadableStream<Uint8Array> (Web) or NodeJS.ReadableStream completely

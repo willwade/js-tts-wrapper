@@ -63,7 +63,7 @@ export class WitAITTSClient extends AbstractTTSClient {
    * @returns Array of required credential field names
    */
   protected getRequiredCredentials(): string[] {
-    return ['token'];
+    return ["token"];
   }
 
   /**
@@ -196,7 +196,9 @@ export class WitAITTSClient extends AbstractTTSClient {
     try {
       // Prepare text for synthesis (strip SSML/Markdown if present)
       const preparedText = await this.prepareText(text, options);
-      console.debug(`${this.constructor.name}.synthToBytes - TTS text ${preparedText}, Options: ${JSON.stringify(options)}`);
+      console.debug(
+        `${this.constructor.name}.synthToBytes - TTS text ${preparedText}, Options: ${JSON.stringify(options)}`
+      );
 
       // Use provided voice or the one set with setVoice
       let voice = options?.voice || this.voiceId;

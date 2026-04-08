@@ -12,11 +12,10 @@ import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 // Capture native fetch at module level
 const nativeFetch = globalThis.fetch;
 
-// Import the generated models config
-import { SHERPA_MODELS_CONFIG } from "./sherpaonnx/generated_models";
-
 // Import the sherpaonnx-loader
 import * as sherpaOnnxLoaderModule from "../utils/sherpaonnx-loader";
+// Import the generated models config
+import { SHERPA_MODELS_CONFIG } from "./sherpaonnx/generated_models";
 
 // Module scope variables to hold the imported modules
 let sherpa: any;

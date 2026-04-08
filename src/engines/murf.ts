@@ -2,6 +2,7 @@ import { AbstractTTSClient } from "../core/abstract-tts";
 import * as SSMLUtils from "../core/ssml-utils";
 import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
+import { base64ToUint8Array } from "../utils/base64-utils";
 import { getFetch } from "../utils/fetch-utils";
 
 const fetch = getFetch();
@@ -209,11 +210,7 @@ export class MurfTTSClient extends AbstractTTSClient {
     }
 
     const json = (await response.json()) as { encodedAudio: string };
-    const binaryStr = atob(json.encodedAudio);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
+    const bytes = base64ToUint8Array(json.encodedAudio);
     this._createEstimatedWordTimings(preparedText);
     return bytes;
   }

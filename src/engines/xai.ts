@@ -6,8 +6,6 @@ import { getFetch } from "../utils/fetch-utils";
 
 const fetch = getFetch();
 
-const AUDIO_TAG_REGEX = /\[[^\]]+\]/g;
-
 export interface XaiTTSOptions extends SpeakOptions {
   model?: string;
   voice?: string;
@@ -76,7 +74,6 @@ export class XaiTTSClient extends AbstractTTSClient {
   }
 
   private processAudioTags(text: string): string {
-    if (!AUDIO_TAG_REGEX.test(text)) return text;
     return text;
   }
 

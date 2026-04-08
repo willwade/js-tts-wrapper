@@ -1,7 +1,7 @@
-import { AbstractTTSClient } from "../core/abstract-tts";
-import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { createRequire } from "node:module";
 import path from "node:path";
+import { AbstractTTSClient } from "../core/abstract-tts";
+import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 
 // Dynamic text2wav module - will be loaded when needed
 let text2wav: any = null;
@@ -31,7 +31,11 @@ async function loadText2Wav() {
           try {
             const req = typeof input === "string" ? input : input?.url;
             // Intercept attempts to fetch the text2wav WASM by plain file path (no scheme)
-            if (typeof req === "string" && req.endsWith("espeak-ng.wasm") && !/^https?:|^file:/.test(req)) {
+            if (
+              typeof req === "string" &&
+              req.endsWith("espeak-ng.wasm") &&
+              !/^https?:|^file:/.test(req)
+            ) {
               const { readFileSync } = await import("node:fs");
               const requireFromCwd = createRequire(path.join(process.cwd(), "noop.js"));
               const wasmPath = requireFromCwd.resolve("text2wav/lib/espeak-ng.wasm");

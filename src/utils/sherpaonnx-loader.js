@@ -108,21 +108,25 @@ async function loadSherpaOnnxNode() {
     // If loading fails, provide helpful error message
     console.warn(
       "Failed to load sherpa-onnx-node directly. " +
-      "This might be because the environment variables need to be set before the Node.js process starts."
+        "This might be because the environment variables need to be set before the Node.js process starts."
     );
 
     console.error("\nTo use SherpaOnnx TTS, you need to:");
     console.error("1. Install the sherpa-onnx-node package: npm run install:sherpaonnx");
     console.error("2. Run your application with the correct environment variables:");
     console.error(`   - On macOS: DYLD_LIBRARY_PATH=${libraryPath} node your-script.js`);
-    console.error("   - On Linux: LD_LIBRARY_PATH=/path/to/node_modules/sherpa-onnx-linux-x64 node your-script.js");
+    console.error(
+      "   - On Linux: LD_LIBRARY_PATH=/path/to/node_modules/sherpa-onnx-linux-x64 node your-script.js"
+    );
     console.error("   - On Windows: No special environment variable needed");
-    console.error("3. Or use the helper script: node scripts/run-with-sherpaonnx.cjs your-script.js");
+    console.error(
+      "3. Or use the helper script: node scripts/run-with-sherpaonnx.cjs your-script.js"
+    );
 
     throw new Error(
       "Could not load sherpa-onnx-node. " +
-      "Please use the run-with-sherpaonnx.cjs script to run your application: " +
-      "node scripts/run-with-sherpaonnx.cjs your-script.js"
+        "Please use the run-with-sherpaonnx.cjs script to run your application: " +
+        "node scripts/run-with-sherpaonnx.cjs your-script.js"
     );
   }
 }

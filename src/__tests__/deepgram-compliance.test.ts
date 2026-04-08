@@ -1,4 +1,4 @@
-import { describe, it, expect, jest, beforeEach } from "@jest/globals";
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { DeepgramTTSClient } from "../engines/deepgram";
 import { createTTSClient } from "../factory";
 
@@ -102,9 +102,7 @@ describe("DeepgramTTSClient — Unified API compliance", () => {
       const voices = await client.getVoicesByLanguage("en-US");
       expect(voices.length).toBeGreaterThan(0);
       for (const v of voices) {
-        expect(
-          v.languageCodes.some((l) => l.bcp47 === "en-US" || l.iso639_3 === "eng")
-        ).toBe(true);
+        expect(v.languageCodes.some((l) => l.bcp47 === "en-US" || l.iso639_3 === "eng")).toBe(true);
       }
     });
   });

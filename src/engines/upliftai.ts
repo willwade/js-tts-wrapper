@@ -1,6 +1,6 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
-import * as SpeechMarkdown from "../markdown/converter";
 import * as SSMLUtils from "../core/ssml-utils";
+import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { getFetch } from "../utils/fetch-utils";
 

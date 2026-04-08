@@ -1,4 +1,4 @@
-import { describe, it, expect, jest, beforeEach } from "@jest/globals";
+import { beforeEach, describe, expect, it } from "@jest/globals";
 import { CartesiaTTSClient } from "../engines/cartesia";
 
 describe("CartesiaTTSClient", () => {

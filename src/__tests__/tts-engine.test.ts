@@ -1,20 +1,19 @@
+import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
 import * as fs from "fs";
-import * as path from "path";
 import * as os from "os";
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import * as path from "path";
 
 import type { AbstractTTSClient } from "../core/abstract-tts";
 import { AzureTTSClient } from "../engines/azure";
 import { ElevenLabsTTSClient } from "../engines/elevenlabs";
 import { GoogleTTSClient } from "../engines/google";
-import { PollyTTSClient } from "../engines/polly";
-
 import { OpenAITTSClient } from "../engines/openai";
 import { PlayHTTTSClient } from "../engines/playht";
-import { WatsonTTSClient } from "../engines/watson";
-import { WitAITTSClient } from "../engines/witai";
+import { PollyTTSClient } from "../engines/polly";
 import { SAPITTSClient } from "../engines/sapi";
 import { UpliftAITTSClient } from "../engines/upliftai";
+import { WatsonTTSClient } from "../engines/watson";
+import { WitAITTSClient } from "../engines/witai";
 import { MockTTSClient } from "./mock-tts-client.helper";
 
 // Use mocks for tests to avoid API calls
@@ -63,7 +62,11 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
         break;
 
       case "polly":
-        if (!process.env.POLLY_AWS_KEY_ID || !process.env.POLLY_AWS_ACCESS_KEY || !process.env.POLLY_REGION) {
+        if (
+          !process.env.POLLY_AWS_KEY_ID ||
+          !process.env.POLLY_AWS_ACCESS_KEY ||
+          !process.env.POLLY_REGION
+        ) {
           console.log("AWS Polly credentials not available");
           return null;
         }
@@ -73,8 +76,6 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
           secretAccessKey: process.env.POLLY_AWS_ACCESS_KEY,
         });
         break;
-
-
 
       case "openai":
         if (!process.env.OPENAI_API_KEY) {
@@ -98,7 +99,11 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
         break;
 
       case "watson":
-        if (!process.env.WATSON_API_KEY || !process.env.WATSON_REGION || !process.env.WATSON_INSTANCE_ID) {
+        if (
+          !process.env.WATSON_API_KEY ||
+          !process.env.WATSON_REGION ||
+          !process.env.WATSON_INSTANCE_ID
+        ) {
           console.log("Watson credentials not available");
           return null;
         }
@@ -156,7 +161,18 @@ async function createTTSClient(engine: string): Promise<AbstractTTSClient | null
 }
 
 // Define the engines to test (excluding sherpaonnx which has its own dedicated test files)
-const engines = ["azure", "elevenlabs", "google", "openai", "playht", "polly", "watson", "witai", "upliftai", "sapi"];
+const engines = [
+  "azure",
+  "elevenlabs",
+  "google",
+  "openai",
+  "playht",
+  "polly",
+  "watson",
+  "witai",
+  "upliftai",
+  "sapi",
+];
 
 // Run tests for each engine
 engines.forEach((engineName) => {
@@ -178,7 +194,7 @@ engines.forEach((engineName) => {
 
     afterAll(async () => {
       // Give any pending async operations time to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       client = null;
     });
 
@@ -204,11 +220,12 @@ engines.forEach((engineName) => {
       } catch (error) {
         // Check if this is a known service/credential issue
         const errorMessage = error instanceof Error ? error.message : String(error);
-        const isServiceIssue = errorMessage.includes('credentials') ||
-                              errorMessage.includes('unauthorized') ||
-                              errorMessage.includes('quota') ||
-                              errorMessage.includes('rate limit') ||
-                              errorMessage.includes('service unavailable');
+        const isServiceIssue =
+          errorMessage.includes("credentials") ||
+          errorMessage.includes("unauthorized") ||
+          errorMessage.includes("quota") ||
+          errorMessage.includes("rate limit") ||
+          errorMessage.includes("service unavailable");
 
         if (isServiceIssue) {
           console.log(`${engineName}: Skipping test due to service issue:`, errorMessage);
@@ -246,11 +263,12 @@ engines.forEach((engineName) => {
       } catch (error) {
         // Check if this is a known service/credential issue
         const errorMessage = error instanceof Error ? error.message : String(error);
-        const isServiceIssue = errorMessage.includes('credentials') ||
-                              errorMessage.includes('unauthorized') ||
-                              errorMessage.includes('quota') ||
-                              errorMessage.includes('rate limit') ||
-                              errorMessage.includes('service unavailable');
+        const isServiceIssue =
+          errorMessage.includes("credentials") ||
+          errorMessage.includes("unauthorized") ||
+          errorMessage.includes("quota") ||
+          errorMessage.includes("rate limit") ||
+          errorMessage.includes("service unavailable");
 
         if (isServiceIssue) {
           console.log(`${engineName}: Skipping test due to service issue:`, errorMessage);
@@ -314,14 +332,18 @@ engines.forEach((engineName) => {
       } catch (error) {
         // Check if this is a known service/credential issue
         const errorMessage = error instanceof Error ? error.message : String(error);
-        const isServiceIssue = errorMessage.includes('credentials') ||
-                              errorMessage.includes('unauthorized') ||
-                              errorMessage.includes('quota') ||
-                              errorMessage.includes('rate limit') ||
-                              errorMessage.includes('service unavailable');
+        const isServiceIssue =
+          errorMessage.includes("credentials") ||
+          errorMessage.includes("unauthorized") ||
+          errorMessage.includes("quota") ||
+          errorMessage.includes("rate limit") ||
+          errorMessage.includes("service unavailable");
 
         if (isServiceIssue) {
-          console.log(`${engineName}: Skipping synthToBytes test due to service issue:`, errorMessage);
+          console.log(
+            `${engineName}: Skipping synthToBytes test due to service issue:`,
+            errorMessage
+          );
           return;
         } else {
           console.error(`${engineName}: Unexpected error in synthToBytes:`, error);
@@ -367,11 +389,12 @@ engines.forEach((engineName) => {
         } catch (error) {
           // Check if this is a known service/credential issue
           const errorMessage = error instanceof Error ? error.message : String(error);
-          const isServiceIssue = errorMessage.includes('credentials') ||
-                                errorMessage.includes('unauthorized') ||
-                                errorMessage.includes('quota') ||
-                                errorMessage.includes('rate limit') ||
-                                errorMessage.includes('service unavailable');
+          const isServiceIssue =
+            errorMessage.includes("credentials") ||
+            errorMessage.includes("unauthorized") ||
+            errorMessage.includes("quota") ||
+            errorMessage.includes("rate limit") ||
+            errorMessage.includes("service unavailable");
 
           if (isServiceIssue) {
             console.log(`${engineName}: Skipping SSML test due to service issue:`, errorMessage);
@@ -445,11 +468,12 @@ engines.forEach((engineName) => {
       } catch (error) {
         // Check if this is a known service/credential issue
         const errorMessage = error instanceof Error ? error.message : String(error);
-        const isServiceIssue = errorMessage.includes('credentials') ||
-                              errorMessage.includes('unauthorized') ||
-                              errorMessage.includes('quota') ||
-                              errorMessage.includes('rate limit') ||
-                              errorMessage.includes('service unavailable');
+        const isServiceIssue =
+          errorMessage.includes("credentials") ||
+          errorMessage.includes("unauthorized") ||
+          errorMessage.includes("quota") ||
+          errorMessage.includes("rate limit") ||
+          errorMessage.includes("service unavailable");
 
         if (isServiceIssue) {
           console.log(`${engineName}: Skipping streaming test due to service issue:`, errorMessage);
@@ -495,14 +519,18 @@ engines.forEach((engineName) => {
       } catch (error) {
         // Check if this is a known service/credential issue
         const errorMessage = error instanceof Error ? error.message : String(error);
-        const isServiceIssue = errorMessage.includes('credentials') ||
-                              errorMessage.includes('unauthorized') ||
-                              errorMessage.includes('quota') ||
-                              errorMessage.includes('rate limit') ||
-                              errorMessage.includes('service unavailable');
+        const isServiceIssue =
+          errorMessage.includes("credentials") ||
+          errorMessage.includes("unauthorized") ||
+          errorMessage.includes("quota") ||
+          errorMessage.includes("rate limit") ||
+          errorMessage.includes("service unavailable");
 
         if (isServiceIssue) {
-          console.log(`${engineName}: Skipping word boundary test due to service issue:`, errorMessage);
+          console.log(
+            `${engineName}: Skipping word boundary test due to service issue:`,
+            errorMessage
+          );
           return;
         } else {
           console.error(`${engineName}: Unexpected error in word boundary events:`, error);

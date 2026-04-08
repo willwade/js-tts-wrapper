@@ -2,6 +2,7 @@ import { AbstractTTSClient } from "../core/abstract-tts";
 import * as SSMLUtils from "../core/ssml-utils";
 import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
+import { base64ToUint8Array } from "../utils/base64-utils";
 import { getFetch } from "../utils/fetch-utils";
 
 const fetch = getFetch();
@@ -99,15 +100,13 @@ export class ResembleTTSClient extends AbstractTTSClient {
   async checkCredentials(): Promise<boolean> {
     if (!this.apiKey) return false;
     try {
-      const response = await fetch(`${this.baseUrl}/synthesize`, {
-        method: "POST",
+      const response = await fetch(`${this.baseUrl}/v2/voices`, {
+        method: "GET",
         headers: {
-          "Content-Type": "application/json",
           Authorization: this.apiKey,
         },
-        body: JSON.stringify({ voice_uuid: "test", data: "test" }),
       });
-      return response.status !== 401;
+      return response.ok;
     } catch {
       return false;
     }
@@ -118,11 +117,35 @@ export class ResembleTTSClient extends AbstractTTSClient {
   }
 
   protected async _getVoices(): Promise<any[]> {
-    return [];
+    try {
+      const response = await fetch(`${this.baseUrl}/v2/voices`, {
+        method: "GET",
+        headers: {
+          Authorization: this.apiKey,
+        },
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
   }
 
-  protected async _mapVoicesToUnified(_rawVoices: any[]): Promise<UnifiedVoice[]> {
-    return [];
+  protected async _mapVoicesToUnified(rawVoices: any[]): Promise<UnifiedVoice[]> {
+    return rawVoices.map((voice: any) => ({
+      id: voice.uuid || voice.id || voice.voice_uuid,
+      name: voice.name || voice.uuid || voice.id,
+      gender: (voice.gender || "Unknown") as "Male" | "Female" | "Unknown",
+      languageCodes: [
+        {
+          bcp47: voice.language || "en",
+          iso639_3: (voice.language || "en").split("-")[0],
+          display: voice.language || "English",
+        },
+      ],
+      provider: "resemble" as any,
+    }));
   }
 
   async synthToBytes(text: string, options: ResembleTTSOptions = {}): Promise<Uint8Array> {
@@ -152,11 +175,7 @@ export class ResembleTTSClient extends AbstractTTSClient {
     }
 
     const json = (await response.json()) as { audio_content: string };
-    const binaryStr = atob(json.audio_content);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
+    const bytes = base64ToUint8Array(json.audio_content);
 
     this._createEstimatedWordTimings(preparedText);
     return bytes;

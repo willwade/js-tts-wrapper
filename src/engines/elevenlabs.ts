@@ -1,6 +1,7 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
 import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
+import { base64ToUint8Array } from "../utils/base64-utils";
 import { getFetch } from "../utils/fetch-utils";
 
 // Get the fetch implementation for the current environment
@@ -517,8 +518,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
 
         // Decode base64 audio data
         const audioBase64 = timestampResponse.audio_base64;
-        const audioBuffer = Buffer.from(audioBase64, "base64");
-        audioData = new Uint8Array(audioBuffer);
+        audioData = base64ToUint8Array(audioBase64);
 
         // Convert character timing to word boundaries and store for events
         if (timestampResponse.alignment) {
@@ -611,8 +611,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
 
         // Decode base64 audio data
         const audioBase64 = timestampResponse.audio_base64;
-        const audioBuffer = Buffer.from(audioBase64, "base64");
-        audioData = new Uint8Array(audioBuffer);
+        audioData = base64ToUint8Array(audioBase64);
 
         // Convert character timing to word boundaries
         if (timestampResponse.alignment) {

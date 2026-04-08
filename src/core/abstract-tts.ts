@@ -1,3 +1,4 @@
+import * as SpeechMarkdown from "../markdown/converter";
 import { SSMLBuilder } from "../ssml/builder";
 import type {
   CredentialsCheckResult,
@@ -10,12 +11,11 @@ import type {
   UnifiedVoice,
   WordBoundaryCallback,
 } from "../types";
-import { LanguageNormalizer } from "./language-utils";
-import * as SSMLUtils from "./ssml-utils";
-import { isBrowser, isNode } from "../utils/environment";
 import type { AudioFormat } from "../utils/audio-converter";
 import { detectAudioFormat } from "../utils/audio-input";
-import * as SpeechMarkdown from "../markdown/converter";
+import { isBrowser, isNode } from "../utils/environment";
+import { LanguageNormalizer } from "./language-utils";
+import * as SSMLUtils from "./ssml-utils";
 
 /**
  * Abstract base class for all TTS clients
@@ -71,11 +71,12 @@ export abstract class AbstractTTSClient {
    * Capability signaling for UIs to filter providers without hardcoding names
    * Engines can override these in their constructors.
    */
-  public capabilities: { browserSupported: boolean; nodeSupported: boolean; needsWasm?: boolean } = {
-    browserSupported: true,
-    nodeSupported: true,
-    needsWasm: false,
-  };
+  public capabilities: { browserSupported: boolean; nodeSupported: boolean; needsWasm?: boolean } =
+    {
+      browserSupported: true,
+      nodeSupported: true,
+      needsWasm: false,
+    };
 
   /**
    * Audio sample rate in Hz
@@ -179,25 +180,38 @@ export abstract class AbstractTTSClient {
 
     // Try to convert if conversion is available (Node only)
     if (!isNode) {
-      console.warn(`Audio format conversion not available in browser. Returning native format (${nativeFormat}) instead of requested format (${requestedFormat})`);
+      console.warn(
+        `Audio format conversion not available in browser. Returning native format (${nativeFormat}) instead of requested format (${requestedFormat})`
+      );
       return nativeAudioBytes;
     }
 
     try {
-      const { isAudioConversionAvailable, convertAudioFormat } = await (new Function('m','return import(m)'))('../utils/audio-converter');
+      const { isAudioConversionAvailable, convertAudioFormat } = await new Function(
+        "m",
+        "return import(m)"
+      )("../utils/audio-converter");
       if (isAudioConversionAvailable()) {
         try {
           const conversionResult = await convertAudioFormat(nativeAudioBytes, requestedFormat);
           return conversionResult.audioBytes;
         } catch (error) {
-          console.warn(`Audio format conversion failed: ${error instanceof Error ? error.message : String(error)}`);
-          console.warn(`Returning native format (${nativeFormat}) instead of requested format (${requestedFormat})`);
+          console.warn(
+            `Audio format conversion failed: ${error instanceof Error ? error.message : String(error)}`
+          );
+          console.warn(
+            `Returning native format (${nativeFormat}) instead of requested format (${requestedFormat})`
+          );
         }
       } else {
-        console.warn(`Audio format conversion not available. Returning native format (${nativeFormat}) instead of requested format (${requestedFormat})`);
+        console.warn(
+          `Audio format conversion not available. Returning native format (${nativeFormat}) instead of requested format (${requestedFormat})`
+        );
       }
     } catch {
-      console.warn(`Audio converter not available at runtime; returning native format (${nativeFormat})`);
+      console.warn(
+        `Audio converter not available at runtime; returning native format (${nativeFormat})`
+      );
     }
 
     // Fallback: return native audio
@@ -300,11 +314,10 @@ export abstract class AbstractTTSClient {
 
       // Check if we're in a browser environment
       if (isBrowser) {
-
         // Create audio blob and URL with the correct MIME type
         const ab = new ArrayBuffer(audioBytes.byteLength);
-            new Uint8Array(ab).set(audioBytes);
-            const blob = new Blob([ab], { type: mimeType });
+        new Uint8Array(ab).set(audioBytes);
+        const blob = new Blob([ab], { type: mimeType });
         const url = URL.createObjectURL(blob);
 
         // Create and play audio element
@@ -348,7 +361,7 @@ export abstract class AbstractTTSClient {
         // In Node.js environment, try to use sound-play
         try {
           // Check if Node.js audio playback is available
-          const nodeAudioModule = await import('../utils/node-audio.js');
+          const nodeAudioModule = await import("../utils/node-audio.js");
           const { isNodeAudioAvailable, playAudioInNode } = nodeAudioModule;
           const audioAvailable = await isNodeAudioAvailable();
 
@@ -366,14 +379,20 @@ export abstract class AbstractTTSClient {
 
             // Play audio using our node-audio utility
             // Pass the engine name to handle Polly audio differently
-            await playAudioInNode(audioBytes, this.sampleRate, this.constructor.name.replace('TTSClient', '').toLowerCase());
+            await playAudioInNode(
+              audioBytes,
+              this.sampleRate,
+              this.constructor.name.replace("TTSClient", "").toLowerCase()
+            );
 
             // Emit end event
             this.emit("end");
           } else {
             console.log("Audio playback in Node.js requires the sound-play package.");
             console.log("Install it with: npm install js-tts-wrapper[node-audio]");
-            console.log("Or use synthToFile() to save audio to a file and play it with an external player.");
+            console.log(
+              "Or use synthToFile() to save audio to a file and play it with an external player."
+            );
 
             // Fire word boundary callbacks immediately when audio playback is not available
             this._fireWordBoundaryCallbacks();
@@ -387,7 +406,9 @@ export abstract class AbstractTTSClient {
       } else {
         // Unknown environment
         console.log("Audio playback is not supported in this environment.");
-        console.log("Use synthToFile() to save audio to a file and play it with an external player.");
+        console.log(
+          "Use synthToFile() to save audio to a file and play it with an external player."
+        );
         this.emit("end");
       }
     } catch (error) {
@@ -445,23 +466,31 @@ export abstract class AbstractTTSClient {
 
         // Apply format conversion if needed (for streaming, we convert the final buffer)
         if (normalizedOptions?.format) {
-          if (!isNode) {
-            // Browser: no conversion; just detect MIME from bytes
-            mimeType = detectAudioFormat(audioBytes);
-          } else {
+          if (isNode) {
             try {
-            const { isAudioConversionAvailable, convertAudioFormat } = await (new Function('m','return import(m)'))('../utils/audio-converter');
-            if (isAudioConversionAvailable()) {
-              const conversionResult = await convertAudioFormat(audioBytes, normalizedOptions.format as AudioFormat);
-              audioBytes = conversionResult.audioBytes;
-              mimeType = conversionResult.mimeType;
-            } else {
+              const { isAudioConversionAvailable, convertAudioFormat } = await new Function(
+                "m",
+                "return import(m)"
+              )("../utils/audio-converter");
+              if (isAudioConversionAvailable()) {
+                const conversionResult = await convertAudioFormat(
+                  audioBytes,
+                  normalizedOptions.format as AudioFormat
+                );
+                audioBytes = conversionResult.audioBytes;
+                mimeType = conversionResult.mimeType;
+              } else {
+                mimeType = detectAudioFormat(audioBytes);
+              }
+            } catch (error) {
+              console.warn(
+                `Streaming format conversion failed: ${error instanceof Error ? error.message : String(error)}`
+              );
               mimeType = detectAudioFormat(audioBytes);
             }
-          } catch (error) {
-            console.warn(`Streaming format conversion failed: ${error instanceof Error ? error.message : String(error)}`);
+          } else {
+            // Browser: no conversion; just detect MIME from bytes
             mimeType = detectAudioFormat(audioBytes);
-          }
           }
         } else {
           // Determine MIME type based on actual audio format
@@ -478,8 +507,6 @@ export abstract class AbstractTTSClient {
         // We'll create estimated timings if needed
         text = ""; // No text available for audio input
       }
-
-
 
       // Use actual word boundaries if available, otherwise create estimated ones
       if (wordBoundaries.length > 0) {
@@ -499,11 +526,10 @@ export abstract class AbstractTTSClient {
 
       // Check if we're in a browser environment
       if (isBrowser) {
-
         // Create audio blob and URL with the correct MIME type
         const ab = new ArrayBuffer(audioBytes.byteLength);
-            new Uint8Array(ab).set(audioBytes);
-            const blob = new Blob([ab], { type: mimeType });
+        new Uint8Array(ab).set(audioBytes);
+        const blob = new Blob([ab], { type: mimeType });
         const url = URL.createObjectURL(blob);
 
         // Create and play audio element
@@ -540,10 +566,10 @@ export abstract class AbstractTTSClient {
         audio.src = url;
       } else if (isNode) {
         // In Node.js environment, try to use sound-play
-        console.log('🔍 Taking Node.js audio path');
+        console.log("🔍 Taking Node.js audio path");
         try {
           // Check if Node.js audio playback is available
-          const nodeAudioModule = await import('../utils/node-audio.js');
+          const nodeAudioModule = await import("../utils/node-audio.js");
           const { isNodeAudioAvailable, playAudioInNode } = nodeAudioModule;
           const audioAvailable = await isNodeAudioAvailable();
           console.log(`🔍 Audio available: ${audioAvailable}`);
@@ -556,20 +582,26 @@ export abstract class AbstractTTSClient {
           }
 
           if (audioAvailable) {
-            console.log('🔍 Audio available - scheduling word boundary callbacks');
+            console.log("🔍 Audio available - scheduling word boundary callbacks");
             // Schedule word boundary callbacks
             this._scheduleWordBoundaryCallbacks();
 
             // Play audio using our node-audio utility with the engine's sample rate
             // Pass the engine name to handle Polly audio differently
-            await playAudioInNode(audioBytes, this.sampleRate, this.constructor.name.replace('TTSClient', '').toLowerCase());
+            await playAudioInNode(
+              audioBytes,
+              this.sampleRate,
+              this.constructor.name.replace("TTSClient", "").toLowerCase()
+            );
 
             // Emit end event
             this.emit("end");
           } else {
             console.log("Audio playback in Node.js requires the sound-play package.");
             console.log("Install it with: npm install js-tts-wrapper[node-audio]");
-            console.log("Or use synthToFile() to save audio to a file and play it with an external player.");
+            console.log(
+              "Or use synthToFile() to save audio to a file and play it with an external player."
+            );
 
             // Fire word boundary callbacks immediately
             this._fireWordBoundaryCallbacks();
@@ -583,7 +615,9 @@ export abstract class AbstractTTSClient {
       } else {
         // Unknown environment
         console.log("Audio playback is not supported in this environment.");
-        console.log("Use synthToFile() to save audio to a file and play it with an external player.");
+        console.log(
+          "Use synthToFile() to save audio to a file and play it with an external player."
+        );
 
         // Create estimated word timings if needed and we have text
         if (text) {
@@ -646,7 +680,7 @@ export abstract class AbstractTTSClient {
     } else if (isNode) {
       // In Node.js, use the file system
       const outputPath = filename.endsWith(`.${format}`) ? filename : `${filename}.${format}`;
-      const fs = await (new Function('m','return import(m)'))('node:fs');
+      const fs = await new Function("m", "return import(m)")("node:fs");
       fs.writeFileSync(outputPath, Buffer.from(audioBytes));
     } else {
       console.warn("File saving not implemented for this environment.");
@@ -681,14 +715,16 @@ export abstract class AbstractTTSClient {
       // Node.js environment - use node-speaker
       try {
         // Import dynamically to avoid circular dependencies
-        import('./node-audio-control.js').then(nodeAudio => {
-          const paused = nodeAudio.pauseAudioPlayback();
-          if (paused) {
-            this.audio.isPaused = true;
-          }
-        }).catch(error => {
-          console.error("Error importing node-audio-control:", error);
-        });
+        import("./node-audio-control.js")
+          .then((nodeAudio) => {
+            const paused = nodeAudio.pauseAudioPlayback();
+            if (paused) {
+              this.audio.isPaused = true;
+            }
+          })
+          .catch((error) => {
+            console.error("Error importing node-audio-control:", error);
+          });
       } catch (error) {
         console.error("Error pausing audio in Node.js:", error);
       }
@@ -709,14 +745,16 @@ export abstract class AbstractTTSClient {
       // Node.js environment - use node-speaker
       try {
         // Import dynamically to avoid circular dependencies
-        import('./node-audio-control.js').then(nodeAudio => {
-          const resumed = nodeAudio.resumeAudioPlayback();
-          if (resumed) {
-            this.audio.isPaused = false;
-          }
-        }).catch(error => {
-          console.error("Error importing node-audio-control:", error);
-        });
+        import("./node-audio-control.js")
+          .then((nodeAudio) => {
+            const resumed = nodeAudio.resumeAudioPlayback();
+            if (resumed) {
+              this.audio.isPaused = false;
+            }
+          })
+          .catch((error) => {
+            console.error("Error importing node-audio-control:", error);
+          });
       } catch (error) {
         console.error("Error resuming audio in Node.js:", error);
       }
@@ -739,15 +777,17 @@ export abstract class AbstractTTSClient {
       // Node.js environment - use node-speaker
       try {
         // Import dynamically to avoid circular dependencies
-        import('./node-audio-control.js').then(nodeAudio => {
-          const stopped = nodeAudio.stopAudioPlayback();
-          if (stopped) {
-            this.audio.isPlaying = false;
-            this.audio.isPaused = false;
-          }
-        }).catch(error => {
-          console.error("Error importing node-audio-control:", error);
-        });
+        import("./node-audio-control.js")
+          .then((nodeAudio) => {
+            const stopped = nodeAudio.stopAudioPlayback();
+            if (stopped) {
+              this.audio.isPlaying = false;
+              this.audio.isPaused = false;
+            }
+          })
+          .catch((error) => {
+            console.error("Error importing node-audio-control:", error);
+          });
       } catch (error) {
         console.error("Error stopping audio in Node.js:", error);
       }
@@ -790,7 +830,7 @@ export abstract class AbstractTTSClient {
       this.emit("boundary", {
         text: word,
         offset: Math.round(start * 10000), // Convert to 100-nanosecond units
-        duration: Math.round((end - start) * 10000)
+        duration: Math.round((end - start) * 10000),
       });
     }
   }
@@ -807,7 +847,7 @@ export abstract class AbstractTTSClient {
       const event = {
         text: word,
         offset: Math.round(start * 10000), // Convert to 100-nanosecond units
-        duration: Math.round((end - start) * 10000)
+        duration: Math.round((end - start) * 10000),
       };
 
       setTimeout(() => {
@@ -837,7 +877,10 @@ export abstract class AbstractTTSClient {
   /**
    * Normalize Speech Markdown options to auto-enable conversion when detected.
    */
-  protected normalizeSpeechMarkdownOptions(text: string, options?: SpeakOptions): SpeakOptions | undefined {
+  protected normalizeSpeechMarkdownOptions(
+    text: string,
+    options?: SpeakOptions
+  ): SpeakOptions | undefined {
     if (options?.useSpeechMarkdown !== undefined) {
       return options;
     }
@@ -979,13 +1022,13 @@ export abstract class AbstractTTSClient {
       const voices = await this._getVoices();
       return {
         success: voices.length > 0,
-        voiceCount: voices.length
+        voiceCount: voices.length,
       };
     } catch (error) {
       console.error("Error checking credentials:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
@@ -997,15 +1040,15 @@ export abstract class AbstractTTSClient {
   async getCredentialStatus(): Promise<{
     valid: boolean;
     engine: string;
-    environment: 'browser' | 'node';
+    environment: "browser" | "node";
     requiresCredentials: boolean;
     credentialTypes: string[];
     message: string;
     details?: Record<string, any>;
     error?: string;
   }> {
-    const isBrowser = typeof window !== 'undefined';
-    const engineName = this.constructor.name.replace('TTSClient', '').toLowerCase();
+    const isBrowser = typeof window !== "undefined";
+    const engineName = this.constructor.name.replace("TTSClient", "").toLowerCase();
 
     try {
       const isValid = await this.checkCredentials();
@@ -1023,26 +1066,26 @@ export abstract class AbstractTTSClient {
       return {
         valid: isValid,
         engine: engineName,
-        environment: isBrowser ? 'browser' : 'node',
+        environment: isBrowser ? "browser" : "node",
         requiresCredentials: requiresCreds,
         credentialTypes: this.getRequiredCredentials(),
-        message: isValid ?
-          `${engineName} credentials are valid and ${voices.length} voices are available` :
-          `${engineName} credentials are invalid or service is unavailable`,
+        message: isValid
+          ? `${engineName} credentials are valid and ${voices.length} voices are available`
+          : `${engineName} credentials are invalid or service is unavailable`,
         details: {
           voiceCount: voices.length,
-          hasCredentials: Object.keys(this.credentials || {}).length > 0
-        }
+          hasCredentials: Object.keys(this.credentials || {}).length > 0,
+        },
       };
     } catch (error) {
       return {
         valid: false,
         engine: engineName,
-        environment: isBrowser ? 'browser' : 'node',
+        environment: isBrowser ? "browser" : "node",
         requiresCredentials: this.getRequiredCredentials().length > 0,
         credentialTypes: this.getRequiredCredentials(),
         message: `Error validating ${engineName} credentials`,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }

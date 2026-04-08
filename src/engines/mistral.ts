@@ -2,6 +2,7 @@ import { AbstractTTSClient } from "../core/abstract-tts";
 import * as SSMLUtils from "../core/ssml-utils";
 import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
+import { base64ToUint8Array } from "../utils/base64-utils";
 import { getFetch } from "../utils/fetch-utils";
 
 const fetch = getFetch();
@@ -26,6 +27,36 @@ export class MistralTTSClient extends AbstractTTSClient {
   private baseUrl: string;
   private model: string;
   private responseFormat: string;
+
+  static readonly VOICES = [
+    { id: "Amalthea", name: "Amalthea", gender: "Unknown" as const, language: "en" },
+    { id: "Achan", name: "Achan", gender: "Unknown" as const, language: "en" },
+    { id: "Brave", name: "Brave", gender: "Unknown" as const, language: "en" },
+    { id: "Contessa", name: "Contessa", gender: "Unknown" as const, language: "en" },
+    { id: "Daintree", name: "Daintree", gender: "Unknown" as const, language: "en" },
+    { id: "Eugora", name: "Eugora", gender: "Unknown" as const, language: "en" },
+    { id: "Fornax", name: "Fornax", gender: "Unknown" as const, language: "en" },
+    { id: "Griffin", name: "Griffin", gender: "Unknown" as const, language: "en" },
+    { id: "Hestia", name: "Hestia", gender: "Unknown" as const, language: "en" },
+    { id: "Irving", name: "Irving", gender: "Unknown" as const, language: "en" },
+    { id: "Jasmine", name: "Jasmine", gender: "Unknown" as const, language: "en" },
+    { id: "Kestra", name: "Kestra", gender: "Unknown" as const, language: "en" },
+    { id: "Lorentz", name: "Lorentz", gender: "Unknown" as const, language: "en" },
+    { id: "Mara", name: "Mara", gender: "Unknown" as const, language: "en" },
+    { id: "Nettle", name: "Nettle", gender: "Unknown" as const, language: "en" },
+    { id: "Orin", name: "Orin", gender: "Unknown" as const, language: "en" },
+    { id: "Puck", name: "Puck", gender: "Unknown" as const, language: "en" },
+    { id: "Quinn", name: "Quinn", gender: "Unknown" as const, language: "en" },
+    { id: "Rune", name: "Rune", gender: "Unknown" as const, language: "en" },
+    { id: "Simbe", name: "Simbe", gender: "Unknown" as const, language: "en" },
+    { id: "Tertia", name: "Tertia", gender: "Unknown" as const, language: "en" },
+    { id: "Umbriel", name: "Umbriel", gender: "Unknown" as const, language: "en" },
+    { id: "Vesta", name: "Vesta", gender: "Unknown" as const, language: "en" },
+    { id: "Wystan", name: "Wystan", gender: "Unknown" as const, language: "en" },
+    { id: "Xeno", name: "Xeno", gender: "Unknown" as const, language: "en" },
+    { id: "Yara", name: "Yara", gender: "Unknown" as const, language: "en" },
+    { id: "Zephyr", name: "Zephyr", gender: "Unknown" as const, language: "en" },
+  ];
 
   constructor(credentials: MistralTTSCredentials = {}) {
     super(credentials);
@@ -137,11 +168,23 @@ export class MistralTTSClient extends AbstractTTSClient {
   }
 
   protected async _getVoices(): Promise<any[]> {
-    return [];
+    return MistralTTSClient.VOICES;
   }
 
-  protected async _mapVoicesToUnified(_rawVoices: any[]): Promise<UnifiedVoice[]> {
-    return [];
+  protected async _mapVoicesToUnified(rawVoices: any[]): Promise<UnifiedVoice[]> {
+    return rawVoices.map((voice) => ({
+      id: voice.id,
+      name: voice.name,
+      gender: voice.gender as "Male" | "Female" | "Unknown",
+      languageCodes: [
+        {
+          bcp47: voice.language || "en",
+          iso639_3: (voice.language || "en").split("-")[0],
+          display: voice.language || "English",
+        },
+      ],
+      provider: "mistral" as any,
+    }));
   }
 
   async synthToBytes(text: string, options: MistralTTSOptions = {}): Promise<Uint8Array> {
@@ -176,14 +219,8 @@ export class MistralTTSClient extends AbstractTTSClient {
     }
 
     const json = (await response.json()) as { audio_data: string };
-    const binaryStr = atob(json.audio_data);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
-
     this._createEstimatedWordTimings(preparedText);
-    return bytes;
+    return base64ToUint8Array(json.audio_data);
   }
 
   async synthToBytestream(
@@ -266,12 +303,7 @@ export class MistralTTSClient extends AbstractTTSClient {
             try {
               const json = JSON.parse(data);
               if (json.type === "speech.audio.delta" && typeof json.audio_data === "string") {
-                const binaryStr = atob(json.audio_data);
-                const bytes = new Uint8Array(binaryStr.length);
-                for (let i = 0; i < binaryStr.length; i++) {
-                  bytes[i] = binaryStr.charCodeAt(i);
-                }
-                controller.enqueue(bytes);
+                controller.enqueue(base64ToUint8Array(json.audio_data));
               }
             } catch {
               /* skip malformed */

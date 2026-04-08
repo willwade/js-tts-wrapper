@@ -1,19 +1,18 @@
+import type {
+  SynthesizeSpeechCommandInput,
+  SynthesizeSpeechCommandOutput,
+} from "@aws-sdk/client-polly";
 import { AbstractTTSClient } from "../core/abstract-tts";
 import * as SSMLUtils from "../core/ssml-utils";
-import type {
-  SpeakOptions,
-  TTSCredentials,
-  UnifiedVoice,
-} from "../types";
 import * as SpeechMarkdown from "../markdown/converter";
-import type { SynthesizeSpeechCommandInput, SynthesizeSpeechCommandOutput } from "@aws-sdk/client-polly";
+import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { streamToBuffer } from "../utils/stream-utils";
 
 /**
  * Extended options for Polly TTS
  */
 export interface PollyTTSOptions extends SpeakOptions {
-  format?: 'mp3' | 'wav' | 'ogg'; // Define formats supported by this client logic
+  format?: "mp3" | "wav" | "ogg"; // Define formats supported by this client logic
   filePath?: string; // Path to save the file (if provided, it's for file saving, not playback)
 }
 
@@ -83,7 +82,9 @@ export class PollyTTSClient extends AbstractTTSClient {
    */
   protected async _getVoices(): Promise<any[]> {
     try {
-      const pollyModule = this._pollyModule || (await (new Function('m','return import(m)') as any)("@aws-sdk/client-polly"));
+      const pollyModule =
+        this._pollyModule ||
+        (await (new Function("m", "return import(m)") as any)("@aws-sdk/client-polly"));
       if (!this.client) {
         const PollyClient = pollyModule.PollyClient;
         this.client = new PollyClient({
@@ -115,7 +116,7 @@ export class PollyTTSClient extends AbstractTTSClient {
 
     // Populate the voice cache for engine detection
     this.voiceCache.clear();
-    voices.forEach(voice => {
+    voices.forEach((voice) => {
       this.voiceCache.set(voice.id, voice);
     });
 
@@ -228,8 +229,6 @@ export class PollyTTSClient extends AbstractTTSClient {
     }
   }
 
-
-
   /**
    * Prepare SSML for AWS Polly based on voice engine capabilities
    * @param text Text or SSML to prepare
@@ -263,17 +262,17 @@ export class PollyTTSClient extends AbstractTTSClient {
     }
 
     // Validate and process SSML for Polly compatibility
-    const validation = SSMLUtils.validateSSMLForEngine(text, 'polly', voiceId);
+    const validation = SSMLUtils.validateSSMLForEngine(text, "polly", voiceId);
     if (validation.warnings.length > 0) {
-      console.warn('Polly SSML warnings:', validation.warnings);
+      console.warn("Polly SSML warnings:", validation.warnings);
     }
     if (!validation.isValid) {
-      console.error('Polly SSML validation errors:', validation.errors);
-      throw new Error(`Invalid SSML for Polly: ${validation.errors.join(', ')}`);
+      console.error("Polly SSML validation errors:", validation.errors);
+      throw new Error(`Invalid SSML for Polly: ${validation.errors.join(", ")}`);
     }
 
     // Process SSML for Polly compatibility (removes unsupported tags based on voice type)
-    text = SSMLUtils.processSSMLForEngine(text, 'polly', voiceId);
+    text = SSMLUtils.processSSMLForEngine(text, "polly", voiceId);
 
     // Get SSML support level for additional processing
     const ssmlSupport = await this.getSSMLSupportLevel(voiceId);
@@ -287,7 +286,7 @@ export class PollyTTSClient extends AbstractTTSClient {
       }
 
       // 2. Fix any self-closing tags that Polly doesn't support
-      text = text.replace(/<break\s+([^>]+)\/>/gi, '<break $1></break>');
+      text = text.replace(/<break\s+([^>]+)\/>/gi, "<break $1></break>");
 
       // 3. Apply prosody settings if needed
       if (
@@ -304,7 +303,7 @@ export class PollyTTSClient extends AbstractTTSClient {
           const prosodyContent = this.constructProsodyTag(content);
 
           // Put back inside speak tags with the original attributes
-          const openingTag = text.substring(0, text.indexOf('>') + 1);
+          const openingTag = text.substring(0, text.indexOf(">") + 1);
           text = `${openingTag}${prosodyContent}</speak>`;
         }
       }
@@ -319,12 +318,11 @@ export class PollyTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Promise resolving to audio bytes
    */
-  async synthToBytes(
-    text: string,
-    options?: PollyTTSOptions
-  ): Promise<Uint8Array> {
+  async synthToBytes(text: string, options?: PollyTTSOptions): Promise<Uint8Array> {
     try {
-      const pollyModule = this._pollyModule || (await (new Function('m','return import(m)') as any)("@aws-sdk/client-polly"));
+      const pollyModule =
+        this._pollyModule ||
+        (await (new Function("m", "return import(m)") as any)("@aws-sdk/client-polly"));
       if (!this.client) {
         const PollyClient = pollyModule.PollyClient;
         this.client = new PollyClient({
@@ -340,19 +338,14 @@ export class PollyTTSClient extends AbstractTTSClient {
       const { OutputFormat, SynthesizeSpeechCommand, VoiceId } = pollyModule;
 
       // Determine the output format
-      // For Polly, we always request PCM for WAV (so we can add the header)
-      // and MP3/OGG directly for those formats
       const requestedFormat = options?.format || "wav";
-      let outputFormat;
+      let outputFormat: any;
 
       if (requestedFormat === "mp3") {
-        // Request MP3 directly from Polly
         outputFormat = OutputFormat.MP3;
       } else if (requestedFormat === "ogg") {
-        // Request OGG directly from Polly
         outputFormat = OutputFormat.OGG_VORBIS;
       } else {
-        // For WAV, request PCM and we'll add the WAV header
         outputFormat = OutputFormat.PCM;
       }
 
@@ -437,7 +430,9 @@ export class PollyTTSClient extends AbstractTTSClient {
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
     try {
-      const pollyModule = this._pollyModule || (await (new Function('m','return import(m)') as any)("@aws-sdk/client-polly"));
+      const pollyModule =
+        this._pollyModule ||
+        (await (new Function("m", "return import(m)") as any)("@aws-sdk/client-polly"));
       if (!this.client) {
         const PollyClient = pollyModule.PollyClient;
         this.client = new PollyClient({
@@ -449,7 +444,13 @@ export class PollyTTSClient extends AbstractTTSClient {
         });
         this._pollyModule = pollyModule;
       }
-      const { OutputFormat, SynthesizeSpeechCommandInput, SynthesizeSpeechCommand, VoiceId, SpeechMarkType } = pollyModule;
+      const {
+        OutputFormat,
+        SynthesizeSpeechCommandInput,
+        SynthesizeSpeechCommand,
+        VoiceId,
+        SpeechMarkType,
+      } = pollyModule;
       const VoiceIdType = VoiceId; // Get the RUNTIME VoiceId enum/object
       const voiceIdString = options?.voice || this.voiceId || "Joanna";
       const voiceId = voiceIdString as unknown as typeof VoiceIdType; // Cast via unknown
@@ -467,7 +468,7 @@ export class PollyTTSClient extends AbstractTTSClient {
       const { Engine } = pollyModule;
       const engine = Engine[engineString as keyof typeof Engine] || Engine.standard;
 
-      let wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
+      const wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
 
       // Request Speech Marks (JSON)
       try {
@@ -509,11 +510,8 @@ export class PollyTTSClient extends AbstractTTSClient {
         // Caller should check wordBoundaries array length if marks are critical
       }
 
-      // Request Audio Stream (PCM/MP3/OGG)
-      // For Polly, we always request PCM for WAV (so we can add the header)
-      // and MP3/OGG directly for those formats
       const requestedFormat = options?.format || "wav";
-      let outputFormat;
+      let outputFormat: any;
 
       if (requestedFormat === "mp3") {
         // Request MP3 directly from Polly
@@ -571,7 +569,7 @@ export class PollyTTSClient extends AbstractTTSClient {
               start(controller) {
                 controller.enqueue(wavData);
                 controller.close();
-              }
+              },
             });
           } catch (error) {
             console.error("Error adding WAV header to PCM stream:", error);
@@ -628,7 +626,11 @@ export class PollyTTSClient extends AbstractTTSClient {
    * @param sampleRate Sample rate in Hz (default: 16000)
    * @returns PCM audio data with WAV header
    */
-  private addWavHeader(pcmData: Uint8Array, sampleRate: number = 16000, _isForPlayback: boolean = false): Uint8Array {
+  private addWavHeader(
+    pcmData: Uint8Array,
+    sampleRate: number = 16000,
+    _isForPlayback: boolean = false
+  ): Uint8Array {
     // Always use 16000 Hz for Polly PCM data to match the Python implementation
     // The Python implementation uses wav.setparams((1, 2, 16000, 0, "NONE", "NONE"))
     sampleRate = 16000;
@@ -646,10 +648,10 @@ export class PollyTTSClient extends AbstractTTSClient {
 
     // Chunk size (file size - 8)
     const fileSize = pcmData.length + headerSize - 8;
-    wavData[4] = fileSize & 0xFF;
-    wavData[5] = (fileSize >> 8) & 0xFF;
-    wavData[6] = (fileSize >> 16) & 0xFF;
-    wavData[7] = (fileSize >> 24) & 0xFF;
+    wavData[4] = fileSize & 0xff;
+    wavData[5] = (fileSize >> 8) & 0xff;
+    wavData[6] = (fileSize >> 16) & 0xff;
+    wavData[7] = (fileSize >> 24) & 0xff;
 
     // "WAVE" format
     wavData[8] = 0x57; // 'W'
@@ -659,7 +661,7 @@ export class PollyTTSClient extends AbstractTTSClient {
 
     // "fmt " sub-chunk
     wavData[12] = 0x66; // 'f'
-    wavData[13] = 0x6D; // 'm'
+    wavData[13] = 0x6d; // 'm'
     wavData[14] = 0x74; // 't'
     wavData[15] = 0x20; // ' '
 
@@ -678,17 +680,17 @@ export class PollyTTSClient extends AbstractTTSClient {
     wavData[23] = 0;
 
     // Sample rate (always 16000 Hz for Polly PCM)
-    wavData[24] = sampleRate & 0xFF;
-    wavData[25] = (sampleRate >> 8) & 0xFF;
-    wavData[26] = (sampleRate >> 16) & 0xFF;
-    wavData[27] = (sampleRate >> 24) & 0xFF;
+    wavData[24] = sampleRate & 0xff;
+    wavData[25] = (sampleRate >> 8) & 0xff;
+    wavData[26] = (sampleRate >> 16) & 0xff;
+    wavData[27] = (sampleRate >> 24) & 0xff;
 
     // Byte rate (SampleRate * NumChannels * BitsPerSample/8)
-    const byteRate = sampleRate * 1 * 16 / 8;
-    wavData[28] = byteRate & 0xFF;
-    wavData[29] = (byteRate >> 8) & 0xFF;
-    wavData[30] = (byteRate >> 16) & 0xFF;
-    wavData[31] = (byteRate >> 24) & 0xFF;
+    const byteRate = (sampleRate * 1 * 16) / 8;
+    wavData[28] = byteRate & 0xff;
+    wavData[29] = (byteRate >> 8) & 0xff;
+    wavData[30] = (byteRate >> 16) & 0xff;
+    wavData[31] = (byteRate >> 24) & 0xff;
 
     // Block align (NumChannels * BitsPerSample/8)
     wavData[32] = 2; // 1 * 16 / 8
@@ -705,10 +707,10 @@ export class PollyTTSClient extends AbstractTTSClient {
     wavData[39] = 0x61; // 'a'
 
     // Sub-chunk size (data size)
-    wavData[40] = pcmData.length & 0xFF;
-    wavData[41] = (pcmData.length >> 8) & 0xFF;
-    wavData[42] = (pcmData.length >> 16) & 0xFF;
-    wavData[43] = (pcmData.length >> 24) & 0xFF;
+    wavData[40] = pcmData.length & 0xff;
+    wavData[41] = (pcmData.length >> 8) & 0xff;
+    wavData[42] = (pcmData.length >> 16) & 0xff;
+    wavData[43] = (pcmData.length >> 24) & 0xff;
 
     // Copy PCM data after header
     wavData.set(pcmData, headerSize);
@@ -721,7 +723,7 @@ export class PollyTTSClient extends AbstractTTSClient {
    * @returns Array of required credential field names
    */
   protected getRequiredCredentials(): string[] {
-    return ['region', 'accessKeyId', 'secretAccessKey'];
+    return ["region", "accessKeyId", "secretAccessKey"];
   }
 
   /**
@@ -731,18 +733,20 @@ export class PollyTTSClient extends AbstractTTSClient {
   async checkCredentials(): Promise<boolean> {
     // If a client is injected, attempt a lightweight API call
     const injected = (this.credentials as any)?.client;
-    if (!injected) {
+    if (injected) {
+      this.client = injected;
+    } else {
       // Fast-fail if required credentials are missing to avoid importing SDK in CI/tests
       const { region, accessKeyId, secretAccessKey } = this.credentials as any;
       if (!region || !accessKeyId || !secretAccessKey) {
         return false;
       }
-    } else {
-      this.client = injected;
     }
 
     try {
-      const pollyModule = this._pollyModule || (await (new Function('m','return import(m)') as any)("@aws-sdk/client-polly"));
+      const pollyModule =
+        this._pollyModule ||
+        (await (new Function("m", "return import(m)") as any)("@aws-sdk/client-polly"));
       if (!this.client) {
         const PollyClient = pollyModule.PollyClient;
         this.client = new PollyClient({

@@ -9,12 +9,12 @@
  */
 
 import { AbstractTTSClient } from "../core/abstract-tts";
-import * as SpeechMarkdown from "../markdown/converter";
 import * as SSMLUtils from "../core/ssml-utils";
+import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
+import { decompressBzip2 } from "../utils/bzip2";
 import { fileSystem, isBrowser, isNode, pathUtils } from "../utils/environment";
 import { estimateWordBoundaries } from "../utils/word-timing-estimator";
-import { decompressBzip2 } from "../utils/bzip2";
 
 // Enhanced model type definitions for multi-model support
 export type ModelType = "kokoro" | "matcha" | "vits" | "mms";

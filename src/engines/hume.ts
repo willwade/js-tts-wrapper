@@ -25,6 +25,25 @@ export class HumeTTSClient extends AbstractTTSClient {
   private baseUrl: string;
   private model: string;
 
+  static readonly VOICES = [
+    { id: "ito", name: "Ito", gender: "Unknown" as const, language: "en" },
+    { id: "acantha", name: "Acantha", gender: "Unknown" as const, language: "en" },
+    { id: "ant ai gonus", name: "Antigonos", gender: "Unknown" as const, language: "en" },
+    { id: "ari", name: "Ari", gender: "Unknown" as const, language: "en" },
+    { id: "brant", name: "Brant", gender: "Unknown" as const, language: "en" },
+    { id: "daniel", name: "Daniel", gender: "Unknown" as const, language: "en" },
+    { id: "fin", name: "Fin", gender: "Unknown" as const, language: "en" },
+    { id: "hype", name: "Hype", gender: "Unknown" as const, language: "en" },
+    { id: "kora", name: "Kora", gender: "Unknown" as const, language: "en" },
+    { id: "mango", name: "Mango", gender: "Unknown" as const, language: "en" },
+    { id: "marek", name: "Marek", gender: "Unknown" as const, language: "en" },
+    { id: "ogma", name: "Ogma", gender: "Unknown" as const, language: "en" },
+    { id: "sora", name: "Sora", gender: "Unknown" as const, language: "en" },
+    { id: "terrence", name: "Terrence", gender: "Unknown" as const, language: "en" },
+    { id: "vitor", name: "Vitor", gender: "Unknown" as const, language: "en" },
+    { id: "zach", name: "Zach", gender: "Unknown" as const, language: "en" },
+  ];
+
   constructor(credentials: HumeTTSCredentials = {}) {
     super(credentials);
     this.apiKey = credentials.apiKey || process.env.HUME_API_KEY || "";
@@ -124,9 +143,9 @@ export class HumeTTSClient extends AbstractTTSClient {
           "Content-Type": "application/json",
           "X-Hume-Api-Key": this.apiKey,
         },
-        body: JSON.stringify({ utterances: [{ text: "test" }] }),
+        body: JSON.stringify({ utterances: [{ text: "t" }] }),
       });
-      return response.ok;
+      return response.status !== 401 && response.status !== 403;
     } catch {
       return false;
     }
@@ -137,11 +156,23 @@ export class HumeTTSClient extends AbstractTTSClient {
   }
 
   protected async _getVoices(): Promise<any[]> {
-    return [];
+    return HumeTTSClient.VOICES;
   }
 
-  protected async _mapVoicesToUnified(_rawVoices: any[]): Promise<UnifiedVoice[]> {
-    return [];
+  protected async _mapVoicesToUnified(rawVoices: any[]): Promise<UnifiedVoice[]> {
+    return rawVoices.map((voice) => ({
+      id: voice.id,
+      name: voice.name,
+      gender: voice.gender as "Male" | "Female" | "Unknown",
+      languageCodes: [
+        {
+          bcp47: voice.language || "en",
+          iso639_3: (voice.language || "en").split("-")[0],
+          display: voice.language || "English",
+        },
+      ],
+      provider: "hume" as any,
+    }));
   }
 
   async synthToBytes(text: string, options: HumeTTSOptions = {}): Promise<Uint8Array> {

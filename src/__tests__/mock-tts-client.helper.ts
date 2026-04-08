@@ -1,5 +1,5 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
-import type { SpeakOptions, UnifiedVoice, WordBoundaryCallback, WordBoundary } from "../types";
+import type { SpeakOptions, UnifiedVoice, WordBoundary, WordBoundaryCallback } from "../types";
 
 /**
  * Mock TTS client for testing
@@ -36,10 +36,9 @@ export class MockTTSClient extends AbstractTTSClient {
   async synthToBytes(_text: string, _options?: SpeakOptions): Promise<Uint8Array> {
     // Return a small WAV file header (44 bytes)
     return new Uint8Array([
-      0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45,
-      0x66, 0x6d, 0x74, 0x20, 0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00,
-      0x44, 0xac, 0x00, 0x00, 0x88, 0x58, 0x01, 0x00, 0x02, 0x00, 0x10, 0x00,
-      0x64, 0x61, 0x74, 0x61, 0x00, 0x00, 0x00, 0x00,
+      0x52, 0x49, 0x46, 0x46, 0x24, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45, 0x66, 0x6d, 0x74,
+      0x20, 0x10, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x44, 0xac, 0x00, 0x00, 0x88, 0x58,
+      0x01, 0x00, 0x02, 0x00, 0x10, 0x00, 0x64, 0x61, 0x74, 0x61, 0x00, 0x00, 0x00, 0x00,
     ]);
   }
 
@@ -49,7 +48,10 @@ export class MockTTSClient extends AbstractTTSClient {
    * @param options Synthesis options.
    * @returns Promise resolving to an object containing the audio stream and word boundaries.
    */
-  async synthToBytestream(text: string, options?: SpeakOptions): Promise<{
+  async synthToBytestream(
+    text: string,
+    options?: SpeakOptions
+  ): Promise<{
     audioStream: ReadableStream<Uint8Array>;
     wordBoundaries: WordBoundary[];
   }> {
@@ -67,9 +69,9 @@ export class MockTTSClient extends AbstractTTSClient {
     if (options?.useWordBoundary) {
       // Create mock word boundaries
       const wordBoundaries: WordBoundary[] = [
-        { text: 'Mock', offset: 0, duration: 500 },
-        { text: 'boundary', offset: 500, duration: 500 },
-        { text: 'test.', offset: 1000, duration: 500 }
+        { text: "Mock", offset: 0, duration: 500 },
+        { text: "boundary", offset: 500, duration: 500 },
+        { text: "test.", offset: 1000, duration: 500 },
       ];
 
       return {

@@ -23,7 +23,7 @@ describe("Azure MSTTS Namespace Handling", () => {
       expect(result).toContain('xmlns:mstts="https://www.w3.org/2001/mstts"');
       expect(result).toContain('xmlns="http://www.w3.org/2001/10/synthesis"');
       expect(result).toContain('version="1.0"');
-      expect(result).toContain('xml:lang=');
+      expect(result).toContain("xml:lang=");
     });
 
     it("should not add mstts namespace when SSML does not contain mstts tags", async () => {
@@ -33,7 +33,7 @@ describe("Azure MSTTS Namespace Handling", () => {
 
       const result = (client as any).ensureAzureSSMLStructure(ssml, "en-US-AriaNeural");
 
-      expect(result).not.toContain('xmlns:mstts=');
+      expect(result).not.toContain("xmlns:mstts=");
       expect(result).toContain('xmlns="http://www.w3.org/2001/10/synthesis"');
     });
 
@@ -110,7 +110,7 @@ describe("Azure MSTTS Namespace Handling", () => {
 
       expect(result).toContain('version="1.0"');
       expect(result).toContain('xmlns="http://www.w3.org/2001/10/synthesis"');
-      expect(result).toContain('xml:lang=');
+      expect(result).toContain("xml:lang=");
     });
 
     it("should not duplicate attributes", async () => {
@@ -130,4 +130,3 @@ describe("Azure MSTTS Namespace Handling", () => {
     });
   });
 });
-
