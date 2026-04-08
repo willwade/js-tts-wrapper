@@ -433,8 +433,12 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
     }
   }
 
+  private static readonly AUDIO_TAG_REGEX = /\[[^\]]+\]/g;
+
+  private static readonly V3_AUDIO_TAG_MODELS = ["eleven_v3"];
+
   /**
-   * Prepare text for synthesis by stripping SSML tags
+   * Prepare text for synthesis by stripping SSML tags and processing audio tags
    * @param text Text to prepare
    * @param options Synthesis options
    * @returns Prepared text
@@ -444,19 +448,48 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
 
     // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
-      // Convert to SSML first, then strip SSML tags
-      // Use "elevenlabs" platform for ElevenLabs-specific Speech Markdown features
       const ssml = await SpeechMarkdown.toSSML(processedText, "elevenlabs");
       processedText = this._stripSSML(ssml);
     }
 
     // If text is SSML, strip the tags as ElevenLabs doesn't support SSML
-    // and has its own emotion analysis
     if (this._isSSML(processedText)) {
       processedText = this._stripSSML(processedText);
     }
 
+    // Process audio tags based on model
+    processedText = this.processAudioTags(
+      processedText,
+      options as ElevenLabsTTSOptions | undefined
+    );
+
     return processedText;
+  }
+
+  /**
+   * Process audio tags ([laugh], [sigh], etc.) based on the model.
+   * eleven_v3 natively supports audio tags — pass them through.
+   * For all other models, strip audio tags.
+   */
+  private processAudioTags(text: string, options?: ElevenLabsTTSOptions): string {
+    const modelId = this.resolveModelId(options);
+    const isAudioTagModel = ElevenLabsTTSClient.V3_AUDIO_TAG_MODELS.some((m) =>
+      modelId.startsWith(m)
+    );
+
+    if (isAudioTagModel) {
+      return text;
+    }
+
+    if (!ElevenLabsTTSClient.AUDIO_TAG_REGEX.test(text)) {
+      return text;
+    }
+
+    const stripped = text
+      .replace(ElevenLabsTTSClient.AUDIO_TAG_REGEX, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    return stripped;
   }
 
   /**

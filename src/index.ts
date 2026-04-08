@@ -1,49 +1,49 @@
 // Core exports
 export { AbstractTTSClient } from "./core/abstract-tts";
+export { AudioPlayback } from "./core/playback";
 export * as SSMLUtils from "./core/ssml-utils";
 export * as VoiceUtils from "./core/voice-utils";
-export { AudioPlayback } from "./core/playback";
-
-// Factory export
-export * from "./factory";
-
-// SSML exports
-export { SSMLBuilder } from "./ssml/builder";
-
-// Markdown exports
-export * as SpeechMarkdown from "./markdown/converter";
-export { configureSpeechMarkdown } from "./markdown/converter";
-
-// Utility exports
-export { getFetch, isFetchAvailable } from "./utils/fetch-utils";
-
 // Engine exports
 export { AzureTTSClient } from "./engines/azure";
+export { CartesiaTTSClient } from "./engines/cartesia";
+export { DeepgramTTSClient } from "./engines/deepgram";
 export { ElevenLabsTTSClient } from "./engines/elevenlabs";
+export { EspeakNodeTTSClient, EspeakTTSClient } from "./engines/espeak";
+export { EspeakBrowserTTSClient, EspeakWasmTTSClient } from "./engines/espeak-wasm";
+export { FishAudioTTSClient } from "./engines/fishaudio";
 export { GoogleTTSClient } from "./engines/google";
+export { HumeTTSClient } from "./engines/hume";
+export { MistralTTSClient } from "./engines/mistral";
+export { ModelsLabTTSClient } from "./engines/modelslab";
+export { MurfTTSClient } from "./engines/murf";
 export { OpenAITTSClient } from "./engines/openai";
 export { PlayHTTTSClient } from "./engines/playht";
 export { PollyTTSClient } from "./engines/polly";
+export { ResembleTTSClient } from "./engines/resemble";
+export { SAPITTSClient } from "./engines/sapi";
 export { SherpaOnnxTTSClient } from "./engines/sherpaonnx";
-// Note: The browser-only SherpaONNX WASM engine is not exported from the Node entry.
-// Import it from 'js-tts-wrapper/browser' instead.
-// export { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm";
-export { EspeakNodeTTSClient, EspeakTTSClient } from "./engines/espeak";
-export { EspeakBrowserTTSClient, EspeakWasmTTSClient } from "./engines/espeak-wasm";
+export { UnrealSpeechTTSClient } from "./engines/unrealspeech";
+export { UpliftAITTSClient } from "./engines/upliftai";
 export { WatsonTTSClient } from "./engines/watson";
 export { WitAITTSClient } from "./engines/witai";
-export { UpliftAITTSClient } from "./engines/upliftai";
-export { ModelsLabTTSClient } from "./engines/modelslab";
-export { SAPITTSClient } from "./engines/sapi";
-
+export { XaiTTSClient } from "./engines/xai";
+// Factory export
+export * from "./factory";
+// Markdown exports
+export * as SpeechMarkdown from "./markdown/converter";
+export { configureSpeechMarkdown } from "./markdown/converter";
+// SSML exports
+export { SSMLBuilder } from "./ssml/builder";
 // Type exports
 export type {
   CredentialsCheckResult,
+  PropertyType,
+  SimpleCallback,
   SpeakOptions,
-  UnifiedVoice,
   TTSCredentials,
   TTSEventType,
+  UnifiedVoice,
   WordBoundaryCallback,
-  SimpleCallback,
-  PropertyType,
 } from "./types";
+// Utility exports
+export { getFetch, isFetchAvailable } from "./utils/fetch-utils";

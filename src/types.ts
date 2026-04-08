@@ -113,7 +113,16 @@ export type UnifiedVoice = {
     | "sherpaonnx"
     | "sherpaonnx-wasm"
     | "espeak-ng"
-    | "sapi";
+    | "sapi"
+    | "cartesia"
+    | "deepgram"
+    | "hume"
+    | "mistral"
+    | "murf"
+    | "resemble"
+    | "unrealspeech"
+    | "xai"
+    | "fishaudio";
 
   /**
    * Language codes supported by this voice

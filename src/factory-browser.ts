@@ -1,16 +1,25 @@
 // Browser-compatible factory for TTS clients
 import { AzureTTSClient } from "./engines/azure.js";
+import { CartesiaTTSClient } from "./engines/cartesia.js";
+import { DeepgramTTSClient } from "./engines/deepgram.js";
 import { ElevenLabsTTSClient } from "./engines/elevenlabs.js";
 import { EspeakBrowserTTSClient } from "./engines/espeak-wasm.js";
+import { FishAudioTTSClient } from "./engines/fishaudio.js";
 import { GoogleTTSClient } from "./engines/google.js";
+import { HumeTTSClient } from "./engines/hume.js";
+import { MistralTTSClient } from "./engines/mistral.js";
+import { ModelsLabTTSClient } from "./engines/modelslab.js";
+import { MurfTTSClient } from "./engines/murf.js";
 import { OpenAITTSClient } from "./engines/openai.js";
 import { PlayHTTTSClient } from "./engines/playht.js";
 import { PollyTTSClient } from "./engines/polly.js";
+import { ResembleTTSClient } from "./engines/resemble.js";
 import { SherpaOnnxWasmTTSClient } from "./engines/sherpaonnx-wasm.js";
+import { UnrealSpeechTTSClient } from "./engines/unrealspeech.js";
+import { UpliftAITTSClient } from "./engines/upliftai.js";
 import { WatsonTTSClient } from "./engines/watson.js";
 import { WitAITTSClient } from "./engines/witai.js";
-import { UpliftAITTSClient } from "./engines/upliftai.js";
-import { ModelsLabTTSClient } from "./engines/modelslab.js";
+import { XaiTTSClient } from "./engines/xai.js";
 import type { TTSCredentials } from "./types";
 
 // Import MockTTSClient for testing
@@ -30,13 +39,22 @@ try {
 
 export type SupportedBrowserTTS =
   | "azure"
+  | "cartesia"
+  | "deepgram"
+  | "fishaudio"
   | "google"
+  | "hume"
+  | "mistral"
+  | "murf"
   | "polly"
   | "elevenlabs"
   | "openai"
   | "playht"
   | "watson"
   | "witai"
+  | "xai"
+  | "resemble"
+  | "unrealspeech"
   | "upliftai"
   | "modelslab"
   | "sherpaonnx-wasm"
@@ -83,6 +101,18 @@ export function createBrowserTTSClient(engine: SupportedBrowserTTS, credentials?
       return applyProperties(
         new AzureTTSClient(credentials as { subscriptionKey: string; region: string })
       );
+    case "cartesia":
+      return applyProperties(
+        new CartesiaTTSClient(credentials as import("./engines/cartesia").CartesiaTTSCredentials)
+      );
+    case "deepgram":
+      return applyProperties(
+        new DeepgramTTSClient(credentials as import("./engines/deepgram").DeepgramTTSCredentials)
+      );
+    case "fishaudio":
+      return applyProperties(
+        new FishAudioTTSClient(credentials as import("./engines/fishaudio").FishAudioTTSCredentials)
+      );
     case "google":
       return applyProperties(
         new GoogleTTSClient(credentials as import("./engines/google").GoogleTTSCredentials)
@@ -111,13 +141,39 @@ export function createBrowserTTSClient(engine: SupportedBrowserTTS, credentials?
       return applyProperties(
         new WitAITTSClient(credentials as import("./engines/witai").WitAITTSCredentials)
       );
+    case "xai":
+      return applyProperties(
+        new XaiTTSClient(credentials as import("./engines/xai").XaiTTSCredentials)
+      );
     case "upliftai":
       return applyProperties(
         new UpliftAITTSClient(credentials as import("./engines/upliftai").UpliftAITTSCredentials)
       );
+    case "hume":
+      return applyProperties(
+        new HumeTTSClient(credentials as import("./engines/hume").HumeTTSCredentials)
+      );
+    case "mistral":
+      return applyProperties(
+        new MistralTTSClient(credentials as import("./engines/mistral").MistralTTSCredentials)
+      );
+    case "murf":
+      return applyProperties(
+        new MurfTTSClient(credentials as import("./engines/murf").MurfTTSCredentials)
+      );
     case "modelslab":
       return applyProperties(
         new ModelsLabTTSClient(credentials as import("./engines/modelslab").ModelsLabTTSCredentials)
+      );
+    case "resemble":
+      return applyProperties(
+        new ResembleTTSClient(credentials as import("./engines/resemble").ResembleTTSCredentials)
+      );
+    case "unrealspeech":
+      return applyProperties(
+        new UnrealSpeechTTSClient(
+          credentials as import("./engines/unrealspeech").UnrealSpeechTTSCredentials
+        )
       );
     case "sherpaonnx-wasm":
       return applyProperties(new SherpaOnnxWasmTTSClient(credentials as any));
