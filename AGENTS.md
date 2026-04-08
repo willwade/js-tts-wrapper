@@ -79,9 +79,8 @@ Ensure `npm run build` passes before opening a PR.
 - Reference the issue number in the PR description
 
 ### 5. Release Process
-1. Bump `package.json` version and commit to `main`
-2. Create a GitHub Release via the UI (or `gh release create vX.Y.Z --title vX.Y.Z --generate-notes`)
-3. The `Test and Publish` workflow triggers on the release event, runs tests, then publishes to npm via OIDC trusted publishing
+1. Create a GitHub Release with a version tag (e.g. `gh release create v0.1.73 --title v0.1.73 --generate-notes`)
+2. The `Test and Publish` workflow triggers on the release event, runs tests, publishes to npm via OIDC trusted publishing, then commits the version bump back to `main` automatically
 
 ## Key Interfaces
 
