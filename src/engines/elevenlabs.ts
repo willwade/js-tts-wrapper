@@ -101,25 +101,32 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       {
         id: "eleven_v3",
         features: [
+          "streaming",
           "audio-tags",
           "inline-voice-cloning",
           "word-boundary-events",
           "character-boundary-events",
         ],
       },
-      { id: "eleven_turbo_v2_5", features: ["word-boundary-events", "character-boundary-events"] },
-      { id: "eleven_turbo_v2", features: ["word-boundary-events", "character-boundary-events"] },
+      {
+        id: "eleven_turbo_v2_5",
+        features: ["streaming", "word-boundary-events", "character-boundary-events"],
+      },
+      {
+        id: "eleven_turbo_v2",
+        features: ["streaming", "word-boundary-events", "character-boundary-events"],
+      },
       {
         id: "eleven_monolingual_v1",
-        features: ["word-boundary-events", "character-boundary-events"],
+        features: ["streaming", "word-boundary-events", "character-boundary-events"],
       },
       {
         id: "eleven_multilingual_v1",
-        features: ["word-boundary-events", "character-boundary-events"],
+        features: ["streaming", "word-boundary-events", "character-boundary-events"],
       },
       {
         id: "eleven_multilingual_v2",
-        features: ["word-boundary-events", "character-boundary-events"],
+        features: ["streaming", "word-boundary-events", "character-boundary-events"],
       },
     ];
     this.apiKey = credentials.apiKey || process.env.ELEVENLABS_API_KEY || "";
@@ -627,26 +634,34 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       // Check if we need timing data
       const useTimestamps = options?.useTimestamps || options?.useWordBoundary;
 
-      let audioData: Uint8Array;
+      let audioStream: ReadableStream<Uint8Array>;
       let wordBoundaries: Array<{ text: string; offset: number; duration: number }> = [];
 
       if (useTimestamps) {
-        // Use the with-timestamps endpoint for timing data
         const timestampResponse = await this.synthWithTimestamps(preparedText, voiceId, options);
 
-        // Decode base64 audio data
         const audioBase64 = timestampResponse.audio_base64;
-        audioData = base64ToUint8Array(audioBase64);
+        const audioData = base64ToUint8Array(audioBase64);
 
-        // Convert character timing to word boundaries
         if (timestampResponse.alignment) {
           wordBoundaries = this.convertCharacterTimingToWordBoundaries(
             preparedText,
             timestampResponse.alignment
           );
         }
+
+        let finalData = audioData;
+        if (options?.format === "wav") {
+          finalData = await this.convertMp3ToWav(audioData);
+        }
+
+        audioStream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(finalData);
+            controller.close();
+          },
+        });
       } else {
-        // Use the regular streaming endpoint (no timing data)
         const payload = this.buildRequestPayload(preparedText, options);
         const requestOptions = {
           method: "POST",
@@ -674,24 +689,44 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
           throw err;
         }
 
-        const responseArrayBuffer = await response.arrayBuffer();
-        audioData = new Uint8Array(responseArrayBuffer);
+        if (response.body) {
+          audioStream = response.body;
+        } else {
+          const arrayBuffer = await response.arrayBuffer();
+          audioStream = new ReadableStream({
+            start(controller) {
+              controller.enqueue(new Uint8Array(arrayBuffer));
+              controller.close();
+            },
+          });
+        }
+
+        if (options?.format === "wav") {
+          const chunks: Uint8Array[] = [];
+          const reader = audioStream.getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+          }
+          const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
+          const merged = new Uint8Array(totalLength);
+          let offset = 0;
+          for (const chunk of chunks) {
+            merged.set(chunk, offset);
+            offset += chunk.length;
+          }
+          const wavData = await this.convertMp3ToWav(merged);
+          audioStream = new ReadableStream({
+            start(controller) {
+              controller.enqueue(wavData);
+              controller.close();
+            },
+          });
+        }
       }
 
-      // Convert to WAV if requested (since we always get MP3 from ElevenLabs)
-      if (options?.format === "wav") {
-        audioData = await this.convertMp3ToWav(audioData);
-      }
-
-      // Create a ReadableStream from the Uint8Array
-      const readableStream = new ReadableStream({
-        start(controller) {
-          controller.enqueue(audioData);
-          controller.close();
-        },
-      });
-
-      return { audioStream: readableStream, wordBoundaries };
+      return { audioStream, wordBoundaries };
     } catch (error) {
       console.error("Error synthesizing speech stream:", error);
       throw error;

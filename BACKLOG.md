@@ -67,10 +67,13 @@ Providers that support inline voice cloning:
 
 ### Streaming Improvements
 
-- Cartesia: true streaming via WebSocket or SSE
-- Deepgram: true streaming
-- Google Gemini: pseudo-streaming (SSE base64 chunks)
-- Standardize `synthToBytestream` to return actual streaming responses where supported
+- [x] Cartesia: true streaming (already pipes response.body)
+- [x] Deepgram: true streaming (already pipes response.body)
+- [x] ElevenLabs: true streaming (fixed — pipes response.body when not using timestamps)
+- [x] Polly: true streaming for MP3/OGG (already pipes AudioStream; WAV requires buffering for header)
+- [x] Standardize `synthToBytestream` to return actual streaming responses where supported
+- Google Cloud TTS: SDK returns all audio at once — would need StreamingSynthesize beta API
+- Google Gemini TTS: pseudo-streaming via SSE base64 chunks (new engine, not yet implemented)
 
 ### Tree-Shakeable Subpath Exports
 
