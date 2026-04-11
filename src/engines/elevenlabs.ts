@@ -7,7 +7,9 @@ import { getFetch } from "../utils/fetch-utils";
 const fetch = getFetch();
 
 /**
- * Extended options for ElevenLabs TTS
+ * Extended options for ElevenLabs TTS.
+ * seed, languageCode, previousText, nextText, and applyTextNormalization are
+ * only honoured by the eleven_v3 model and are silently ignored by others.
  */
 export interface ElevenLabsTTSOptions extends SpeakOptions {
   format?: "mp3" | "wav"; // Define formats supported by this client logic (maps to pcm)
@@ -17,11 +19,10 @@ export interface ElevenLabsTTSOptions extends SpeakOptions {
   outputFormat?: string; // Override output_format per request
   voiceSettings?: Record<string, unknown>; // Override voice_settings per request
   requestOptions?: Record<string, unknown>; // Additional request payload overrides
-  // v3-specific parameters
-  seed?: number; // Seed for deterministic output (eleven_v3+)
+  seed?: number; // Deterministic output — same seed produces the same audio
   languageCode?: string; // Force language interpretation (e.g. "en")
-  previousText?: string; // Context for continuity between requests
-  nextText?: string; // Context for continuity between requests
+  previousText?: string; // Context for continuity between sequential requests
+  nextText?: string; // Context for continuity between sequential requests
   applyTextNormalization?: "auto" | "on" | "off"; // Control spelling/number expansion
 }
 
@@ -71,6 +72,8 @@ export interface ElevenLabsTimestampResponse {
  * ElevenLabs TTS client
  */
 export class ElevenLabsTTSClient extends AbstractTTSClient {
+  private static readonly MODEL_V3 = "eleven_v3";
+  private static readonly DEFAULT_MODEL = "eleven_multilingual_v2";
   /**
    * ElevenLabs API key
    */
@@ -104,7 +107,9 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
     super(credentials);
     this.apiKey = credentials.apiKey || process.env.ELEVENLABS_API_KEY || "";
     this.modelId =
-      (credentials as any).modelId || (credentials as any).model || "eleven_multilingual_v2";
+      (credentials as any).modelId ||
+      (credentials as any).model ||
+      ElevenLabsTTSClient.DEFAULT_MODEL;
 
     if (typeof (credentials as any).outputFormat === "string") {
       this.outputFormat = (credentials as any).outputFormat;
@@ -265,7 +270,6 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
     merged.output_format = this.resolveOutputFormat(options, merged);
     merged.voice_settings = this.resolveVoiceSettings(options, merged);
 
-    // v3 optional parameters
     if (options?.seed !== undefined) merged.seed = options.seed;
     if (options?.languageCode) merged.language_code = options.languageCode;
     if (options?.previousText) merged.previous_text = options.previousText;
@@ -467,8 +471,8 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
 
     // <emphasis level="strong|moderate"> … </emphasis> → … [excited]
     text = text.replace(
-      /<emphasis\s+level=["'](strong|moderate)["'][^>]*>([\s\S]*?)<\/emphasis>/gi,
-      (_match, _level, content) => `${content.trim()} [excited]`
+      /<emphasis\s+level=["'](?:strong|moderate)["'][^>]*>([\s\S]*?)<\/emphasis>/gi,
+      (_match, content) => `${content.trim()} [excited]`
     );
 
     // <emphasis level="reduced"> … </emphasis> → … [whispers]
@@ -509,7 +513,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
 
     if (this._isSSML(processedText)) {
       const modelId = this.resolveModelId(options);
-      if (modelId === "eleven_v3") {
+      if (modelId === ElevenLabsTTSClient.MODEL_V3) {
         // Translate SSML to v3 audio tags where possible
         processedText = this._ssmlToV3AudioTags(processedText);
       } else {
