@@ -556,7 +556,11 @@ export class AzureTTSClient extends AbstractTTSClient {
     // Use voice from options or the default voice
     const voiceId = options?.voice || this.voiceId;
 
-    // Validate and process SSML for Azure compatibility
+    // Process and structure SSML first so required attributes are present before validation
+    ssml = SSMLUtils.processSSMLForEngine(ssml, "azure", voiceId || undefined);
+    ssml = this.ensureAzureSSMLStructure(ssml, voiceId, options);
+
+    // Validate after processing so warnings reflect what Azure actually receives
     const validation = SSMLUtils.validateSSMLForEngine(ssml, "azure", voiceId || undefined);
     if (validation.warnings.length > 0) {
       console.warn("Azure SSML warnings:", validation.warnings);
@@ -565,12 +569,6 @@ export class AzureTTSClient extends AbstractTTSClient {
       console.error("Azure SSML validation errors:", validation.errors);
       throw new Error(`Invalid SSML for Azure: ${validation.errors.join(", ")}`);
     }
-
-    // Process SSML for Azure compatibility
-    ssml = SSMLUtils.processSSMLForEngine(ssml, "azure", voiceId || undefined);
-
-    // Ensure proper SSML structure for Azure
-    ssml = this.ensureAzureSSMLStructure(ssml, voiceId, options);
 
     return ssml;
   }
@@ -648,7 +646,7 @@ export class AzureTTSClient extends AbstractTTSClient {
         const attrs: string[] = [];
         if (rate && rate !== DEFAULT_RATE) attrs.push(`rate="${rate}"`);
         if (pitch && pitch !== DEFAULT_PITCH) attrs.push(`pitch="${pitch}"`);
-        if (volume !== DEFAULT_VOLUME) attrs.push(`volume="${volume}%"`);
+        if (volume !== DEFAULT_VOLUME) attrs.push(`volume="${volume}"`);
 
         // <prosody> must be nested inside <voice>, not as a direct child of <speak>.
         // Azure rejects: Node [speak] should not contain node [prosody] with type [Others].

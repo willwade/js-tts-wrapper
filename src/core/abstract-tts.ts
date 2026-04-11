@@ -993,7 +993,7 @@ export abstract class AbstractTTSClient {
     }
 
     if (this.properties.volume) {
-      attrs.push(`volume="${this.properties.volume}%"`);
+      attrs.push(`volume="${this.properties.volume}"`);
     }
 
     if (attrs.length === 0) {
