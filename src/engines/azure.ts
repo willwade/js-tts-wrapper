@@ -646,12 +646,22 @@ export class AzureTTSClient extends AbstractTTSClient {
       if (options.volume !== undefined) attrs.push(`volume="${options.volume}%"`);
 
       if (attrs.length > 0) {
-        // Extract content
-        const match = ssml.match(/<speak[^>]*>(.*?)<\/speak>/s);
-        if (match) {
-          const content = match[1];
-          const prosodyContent = `<prosody ${attrs.join(" ")}>${content}</prosody>`;
-          ssml = ssml.replace(content, prosodyContent);
+        // Extract content from inside <voice> if present, otherwise from <speak>.
+        // Prosody must be nested inside <voice>, not as a direct child of <speak>.
+        if (ssml.includes("<voice")) {
+          const match = ssml.match(/<voice[^>]*>(.*?)<\/voice>/s);
+          if (match) {
+            const content = match[1];
+            const prosodyContent = `<prosody ${attrs.join(" ")}>${content}</prosody>`;
+            ssml = ssml.replace(content, prosodyContent);
+          }
+        } else {
+          const match = ssml.match(/<speak[^>]*>(.*?)<\/speak>/s);
+          if (match) {
+            const content = match[1];
+            const prosodyContent = `<prosody ${attrs.join(" ")}>${content}</prosody>`;
+            ssml = ssml.replace(content, prosodyContent);
+          }
         }
       }
     }

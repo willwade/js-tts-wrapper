@@ -128,5 +128,26 @@ describe("Azure MSTTS Namespace Handling", () => {
       const xmlnsMatches = result.match(/xmlns="http:\/\/www\.w3\.org\/2001\/10\/synthesis"/g);
       expect(xmlnsMatches?.length).toBe(1);
     });
+
+    it("should nest <prosody> inside <voice>, not as a direct child of <speak>", async () => {
+      // Regression test for: https://github.com/willwade/js-tts-wrapper/issues/38
+      // When rate/pitch/volume are passed as options, <prosody> was placed outside
+      // <voice>, which Azure rejects with:
+      //   "Node [speak] with type [RootSpeak] should not contain node [prosody] with type [Others]"
+      const plainSSML = `<speak>Hello world</speak>`;
+      const options = { rate: "fast", pitch: "high", volume: 80 };
+
+      const result = (client as any).ensureAzureSSMLStructure(plainSSML, "en-US-JennyNeural", options);
+
+      // <prosody> must appear after <voice>, not before it
+      const voiceIndex = result.indexOf("<voice");
+      const prosodyIndex = result.indexOf("<prosody");
+      expect(voiceIndex).toBeGreaterThan(-1);
+      expect(prosodyIndex).toBeGreaterThan(voiceIndex);
+
+      // The structure must be <speak><voice><prosody>...</prosody></voice></speak>
+      expect(result).toMatch(/<voice[^>]*>\s*<prosody[^>]*>/);
+      expect(result).toMatch(/<\/prosody>\s*<\/voice>/);
+    });
   });
 });
