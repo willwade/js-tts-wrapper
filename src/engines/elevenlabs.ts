@@ -7,7 +7,9 @@ import { getFetch } from "../utils/fetch-utils";
 const fetch = getFetch();
 
 /**
- * Extended options for ElevenLabs TTS
+ * Extended options for ElevenLabs TTS.
+ * seed, languageCode, previousText, nextText, and applyTextNormalization are
+ * only honoured by the eleven_v3 model and are silently ignored by others.
  */
 export interface ElevenLabsTTSOptions extends SpeakOptions {
   format?: "mp3" | "wav"; // Define formats supported by this client logic (maps to pcm)
@@ -17,6 +19,11 @@ export interface ElevenLabsTTSOptions extends SpeakOptions {
   outputFormat?: string; // Override output_format per request
   voiceSettings?: Record<string, unknown>; // Override voice_settings per request
   requestOptions?: Record<string, unknown>; // Additional request payload overrides
+  seed?: number; // Deterministic output — same seed produces the same audio
+  languageCode?: string; // Force language interpretation (e.g. "en")
+  previousText?: string; // Context for continuity between sequential requests
+  nextText?: string; // Context for continuity between sequential requests
+  applyTextNormalization?: "auto" | "on" | "off"; // Control spelling/number expansion
 }
 
 /**
@@ -65,6 +72,8 @@ export interface ElevenLabsTimestampResponse {
  * ElevenLabs TTS client
  */
 export class ElevenLabsTTSClient extends AbstractTTSClient {
+  private static readonly MODEL_V3 = "eleven_v3";
+  private static readonly DEFAULT_MODEL = "eleven_multilingual_v2";
   /**
    * ElevenLabs API key
    */
@@ -98,7 +107,9 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
     super(credentials);
     this.apiKey = credentials.apiKey || process.env.ELEVENLABS_API_KEY || "";
     this.modelId =
-      (credentials as any).modelId || (credentials as any).model || "eleven_multilingual_v2";
+      (credentials as any).modelId ||
+      (credentials as any).model ||
+      ElevenLabsTTSClient.DEFAULT_MODEL;
 
     if (typeof (credentials as any).outputFormat === "string") {
       this.outputFormat = (credentials as any).outputFormat;
@@ -258,6 +269,13 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
     merged.model_id = this.resolveModelId(options, merged);
     merged.output_format = this.resolveOutputFormat(options, merged);
     merged.voice_settings = this.resolveVoiceSettings(options, merged);
+
+    if (options?.seed !== undefined) merged.seed = options.seed;
+    if (options?.languageCode) merged.language_code = options.languageCode;
+    if (options?.previousText) merged.previous_text = options.previousText;
+    if (options?.nextText) merged.next_text = options.nextText;
+    if (options?.applyTextNormalization)
+      merged.apply_text_normalization = options.applyTextNormalization;
 
     return merged;
   }
@@ -434,24 +452,17 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
   }
 
   /**
-   * Prepare text for synthesis by stripping SSML tags
-   * @param text Text to prepare
-   * @param options Synthesis options
-   * @returns Prepared text
+   * Prepare text for synthesis by stripping SSML tags.
+   * ElevenLabs does not support SSML — use native [audio tags] for v3 expressiveness.
    */
-  private async prepareText(text: string, options?: SpeakOptions): Promise<string> {
+  private async prepareText(text: string, options?: ElevenLabsTTSOptions): Promise<string> {
     let processedText = text;
 
-    // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
-      // Convert to SSML first, then strip SSML tags
-      // Use "elevenlabs" platform for ElevenLabs-specific Speech Markdown features
       const ssml = await SpeechMarkdown.toSSML(processedText, "elevenlabs");
-      processedText = this._stripSSML(ssml);
+      processedText = ssml;
     }
 
-    // If text is SSML, strip the tags as ElevenLabs doesn't support SSML
-    // and has its own emotion analysis
     if (this._isSSML(processedText)) {
       processedText = this._stripSSML(processedText);
     }
