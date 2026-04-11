@@ -486,8 +486,6 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
 
   private static readonly AUDIO_TAG_REGEX = /\[[^\]]+\]/g;
 
-  private static readonly V3_AUDIO_TAG_MODELS = ["eleven_v3"];
-
   /**
    * Prepare text for synthesis by stripping SSML tags.
    * ElevenLabs does not support SSML — use native [audio tags] for v3 expressiveness.
@@ -521,9 +519,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    */
   private processAudioTags(text: string, options?: ElevenLabsTTSOptions): string {
     const modelId = this.resolveModelId(options);
-    const isAudioTagModel = ElevenLabsTTSClient.V3_AUDIO_TAG_MODELS.some((m) =>
-      modelId.startsWith(m)
-    );
+    const isAudioTagModel = modelId.startsWith(ElevenLabsTTSClient.MODEL_V3);
 
     if (isAudioTagModel) {
       return text;
