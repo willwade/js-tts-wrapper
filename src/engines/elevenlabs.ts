@@ -452,74 +452,19 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
   }
 
   /**
-   * Translate SSML to ElevenLabs v3 audio tags (best-effort, lossy).
-   * eleven_v3 uses inline [tag] annotations instead of SSML markup.
-   *
-   * Mappings:
-   *   <emphasis level="strong">…</emphasis>  → …[excited]
-   *   <emphasis level="reduced">…</emphasis> → …[whispers]
-   *   <emphasis level="moderate">…</emphasis>→ …[excited]
-   *   <break time="Xs"/>                     → [pause]
-   *   <prosody …>…</prosody>                 → … (content kept, tags stripped)
-   *   All other SSML tags                    → content kept, tags stripped
-   */
-  private _ssmlToV3AudioTags(ssml: string): string {
-    let text = ssml;
-
-    // Unwrap <speak> wrapper
-    text = text.replace(/<\/?speak[^>]*>/gi, "");
-
-    // <emphasis level="strong|moderate"> … </emphasis> → … [excited]
-    text = text.replace(
-      /<emphasis\s+level=["'](?:strong|moderate)["'][^>]*>([\s\S]*?)<\/emphasis>/gi,
-      (_match, content) => `${content.trim()} [excited]`
-    );
-
-    // <emphasis level="reduced"> … </emphasis> → … [whispers]
-    text = text.replace(
-      /<emphasis\s+level=["']reduced["'][^>]*>([\s\S]*?)<\/emphasis>/gi,
-      (_match, content) => `${content.trim()} [whispers]`
-    );
-
-    // <emphasis> without level → … [excited]
-    text = text.replace(
-      /<emphasis[^>]*>([\s\S]*?)<\/emphasis>/gi,
-      (_match, content) => `${content.trim()} [excited]`
-    );
-
-    // <break … /> → [pause]
-    text = text.replace(/<break[^/]*\/>/gi, "[pause]");
-
-    // Strip remaining SSML tags, preserving content
-    text = this._stripSSML(text);
-
-    return text.trim();
-  }
-
-  /**
-   * Prepare text for synthesis, handling SSML and v3 audio tags.
-   * @param text Text to prepare
-   * @param options Synthesis options
-   * @returns Prepared text
+   * Prepare text for synthesis by stripping SSML tags.
+   * ElevenLabs does not support SSML — use native [audio tags] for v3 expressiveness.
    */
   private async prepareText(text: string, options?: ElevenLabsTTSOptions): Promise<string> {
     let processedText = text;
 
-    // Convert from Speech Markdown if requested
     if (options?.useSpeechMarkdown && SpeechMarkdown.isSpeechMarkdown(processedText)) {
       const ssml = await SpeechMarkdown.toSSML(processedText, "elevenlabs");
       processedText = ssml;
     }
 
     if (this._isSSML(processedText)) {
-      const modelId = this.resolveModelId(options);
-      if (modelId === ElevenLabsTTSClient.MODEL_V3) {
-        // Translate SSML to v3 audio tags where possible
-        processedText = this._ssmlToV3AudioTags(processedText);
-      } else {
-        // Non-v3 models: strip SSML entirely (ElevenLabs ignores it)
-        processedText = this._stripSSML(processedText);
-      }
+      processedText = this._stripSSML(processedText);
     }
 
     return processedText;
