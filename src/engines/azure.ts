@@ -616,38 +616,42 @@ export class AzureTTSClient extends AbstractTTSClient {
       }
     }
 
-    // Add prosody if properties are set
-    if (this.properties.rate || this.properties.pitch || this.properties.volume) {
-      // Extract content between voice tags or speak tags
-      let content = "";
-      if (ssml.includes("<voice")) {
-        const match = ssml.match(/<voice[^>]*>(.*?)<\/voice>/s);
-        if (match) {
-          content = match[1];
-          const prosodyContent = this.constructProsodyTag(content);
-          ssml = ssml.replace(content, prosodyContent);
-        }
-      } else {
-        const match = ssml.match(/<speak[^>]*>(.*?)<\/speak>/s);
-        if (match) {
-          content = match[1];
-          const prosodyContent = this.constructProsodyTag(content);
-          ssml = ssml.replace(content, prosodyContent);
-        }
+    // Build prosody attributes by merging this.properties defaults with per-call options.
+    // Options take precedence. We only emit a <prosody> element when at least one
+    // attribute differs from Azure's implicit defaults (medium/medium/100%), to avoid
+    // wrapping content in a no-op element.
+    {
+      const DEFAULT_RATE = "medium";
+      const DEFAULT_PITCH = "medium";
+      const DEFAULT_VOLUME = 100;
+
+      const rate = options?.rate ?? (this.properties.rate as string | undefined);
+      const pitch = options?.pitch ?? (this.properties.pitch as string | undefined);
+      // volume: SpeakOptions types volume as 0-100. Guard against callers who pass a
+      // 0-1 fraction by normalising: any value ≤ 1 (and > 0) is treated as a fraction
+      // and scaled to 0-100.
+      let rawVolume: number | undefined =
+        options?.volume !== undefined
+          ? options.volume
+          : (this.properties.volume as number | undefined);
+      if (rawVolume !== undefined && rawVolume > 0 && rawVolume <= 1) {
+        rawVolume = Math.round(rawVolume * 100);
       }
-    }
+      const volume = rawVolume !== undefined ? rawVolume : DEFAULT_VOLUME;
 
-    // Also add prosody from options if provided
-    if (options?.rate || options?.pitch || options?.volume !== undefined) {
-      // Create prosody attributes
-      const attrs: string[] = [];
-      if (options.rate) attrs.push(`rate="${options.rate}"`);
-      if (options.pitch) attrs.push(`pitch="${options.pitch}"`);
-      if (options.volume !== undefined) attrs.push(`volume="${options.volume}%"`);
+      const hasNonDefaultProsody =
+        (rate !== undefined && rate !== DEFAULT_RATE) ||
+        (pitch !== undefined && pitch !== DEFAULT_PITCH) ||
+        volume !== DEFAULT_VOLUME;
 
-      if (attrs.length > 0) {
-        // Extract content from inside <voice> if present, otherwise from <speak>.
-        // Prosody must be nested inside <voice>, not as a direct child of <speak>.
+      if (hasNonDefaultProsody) {
+        const attrs: string[] = [];
+        if (rate && rate !== DEFAULT_RATE) attrs.push(`rate="${rate}"`);
+        if (pitch && pitch !== DEFAULT_PITCH) attrs.push(`pitch="${pitch}"`);
+        if (volume !== DEFAULT_VOLUME) attrs.push(`volume="${volume}%"`);
+
+        // <prosody> must be nested inside <voice>, not as a direct child of <speak>.
+        // Azure rejects: Node [speak] should not contain node [prosody] with type [Others].
         if (ssml.includes("<voice")) {
           const match = ssml.match(/<voice[^>]*>(.*?)<\/voice>/s);
           if (match) {

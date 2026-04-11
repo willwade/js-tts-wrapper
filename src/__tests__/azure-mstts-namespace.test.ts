@@ -149,5 +149,40 @@ describe("Azure MSTTS Namespace Handling", () => {
       expect(result).toMatch(/<voice[^>]*>\s*<prosody[^>]*>/);
       expect(result).toMatch(/<\/prosody>\s*<\/voice>/);
     });
+
+    it("should produce a single <prosody> element (not double-nested) when options are provided", async () => {
+      // Regression test for: https://github.com/willwade/js-tts-wrapper/issues/40
+      // this.properties defaults (rate="medium", pitch="medium", volume=100) were always
+      // truthy, causing a first prosody to be added, then options adding a second one on top.
+      const plainSSML = `<speak>Hello world</speak>`;
+      const options = { rate: "fast", pitch: "high", volume: 80 };
+
+      const result = (client as any).ensureAzureSSMLStructure(plainSSML, "en-US-JennyNeural", options);
+
+      const prosodyMatches = result.match(/<prosody/g);
+      expect(prosodyMatches?.length).toBe(1);
+    });
+
+    it("should not emit <prosody> when all values are at Azure defaults", async () => {
+      // No prosody element needed when everything is at the implicit default
+      const plainSSML = `<speak>Hello world</speak>`;
+      const options = { rate: "medium", pitch: "medium", volume: 100 };
+
+      const result = (client as any).ensureAzureSSMLStructure(plainSSML, "en-US-JennyNeural", options);
+
+      expect(result).not.toContain("<prosody");
+    });
+
+    it("should normalise 0-1 volume fraction to 0-100 percentage", async () => {
+      // Regression test for: https://github.com/willwade/js-tts-wrapper/issues/40
+      // Callers commonly pass volume as a 0-1 float; 0.8 should become volume="80%", not "0.8%".
+      const plainSSML = `<speak>Hello world</speak>`;
+      const options = { volume: 0.8 };
+
+      const result = (client as any).ensureAzureSSMLStructure(plainSSML, "en-US-JennyNeural", options);
+
+      expect(result).toContain('volume="80%"');
+      expect(result).not.toContain('volume="0.8%"');
+    });
   });
 });
