@@ -1,9 +1,10 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
-import * as SpeechMarkdown from "../markdown/converter";
 import * as SSMLUtils from "../core/ssml-utils";
+import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
-import { estimateWordBoundaries, type WordBoundary } from "../utils/word-timing-estimator";
 import { getFetch } from "../utils/fetch-utils";
+import { estimateWordBoundaries, type WordBoundary } from "../utils/word-timing-estimator";
+
 // Node-only imports moved inside Node-only code paths below for browser compatibility.
 
 // Get the fetch implementation for the current environment
@@ -75,6 +76,11 @@ export class PlayHTTTSClient extends AbstractTTSClient {
    */
   constructor(credentials: PlayHTTTSCredentials = {}) {
     super(credentials);
+
+    this._models = [
+      { id: "playht", features: ["streaming"] },
+      { id: "playht2.5-turbo", features: ["streaming"] },
+    ];
 
     // Set credentials
     this.apiKey = credentials.apiKey || process.env.PLAYHT_API_KEY || "";

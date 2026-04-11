@@ -1,17 +1,17 @@
-import { describe, it, expect, beforeAll, afterAll } from "@jest/globals";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
 import { PollyTTSClient } from "../engines/polly";
 import type { UnifiedVoice } from "../types";
 
 // Load environment variables from .env file
-const envFile = path.join(process.cwd(), '.env');
+const envFile = path.join(process.cwd(), ".env");
 if (fs.existsSync(envFile)) {
-  const envContent = fs.readFileSync(envFile, 'utf8');
-  const envLines = envContent.split('\n');
+  const envContent = fs.readFileSync(envFile, "utf8");
+  const envLines = envContent.split("\n");
   for (const line of envLines) {
-    if (line.trim() && !line.startsWith('#')) {
+    if (line.trim() && !line.startsWith("#")) {
       const match = line.match(/^export\s+([A-Za-z0-9_]+)="(.*)"/);
       if (match) {
         const [, key, value] = match;
@@ -19,14 +19,14 @@ if (fs.existsSync(envFile)) {
       }
     }
   }
-  console.log('Environment variables loaded from .env file for Polly SSML tests');
+  console.log("Environment variables loaded from .env file for Polly SSML tests");
 } else {
-  console.log('No .env file found for Polly SSML tests');
+  console.log("No .env file found for Polly SSML tests");
 }
 
 /**
  * Polly SSML Engine Detection and Handling Tests
- * 
+ *
  * This test suite verifies that the Polly engine correctly:
  * 1. Detects voice engine types from AWS API (standard, neural, long-form, generative)
  * 2. Applies appropriate SSML handling based on engine capabilities
@@ -50,7 +50,7 @@ describe("Polly SSML Engine Detection and Handling", () => {
       const credentials = {
         region: process.env.POLLY_REGION || "us-east-1",
         accessKeyId: process.env.POLLY_AWS_KEY_ID || "fake-key",
-        secretAccessKey: process.env.POLLY_AWS_ACCESS_KEY || "fake-secret"
+        secretAccessKey: process.env.POLLY_AWS_ACCESS_KEY || "fake-secret",
       };
 
       client = new PollyTTSClient(credentials);
@@ -68,7 +68,9 @@ describe("Polly SSML Engine Detection and Handling", () => {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.log(`Polly: Credentials not available or invalid (${errorMessage}), skipping SSML engine tests`);
+      console.log(
+        `Polly: Credentials not available or invalid (${errorMessage}), skipping SSML engine tests`
+      );
       runTests = false;
     }
   });
@@ -81,16 +83,18 @@ describe("Polly SSML Engine Detection and Handling", () => {
       }
 
       // Check that voices have metadata with supported engines
-      const voicesWithEngines = voices.filter(voice => 
-        voice.metadata?.supportedEngines && voice.metadata.supportedEngines.length > 0
+      const voicesWithEngines = voices.filter(
+        (voice) => voice.metadata?.supportedEngines && voice.metadata.supportedEngines.length > 0
       );
 
       expect(voicesWithEngines.length).toBeGreaterThan(0);
-      
+
       // Log some examples for debugging
       const exampleVoices = voicesWithEngines.slice(0, 5);
-      exampleVoices.forEach(voice => {
-        console.log(`Voice ${voice.id}: supports engines [${voice.metadata?.supportedEngines?.join(', ')}]`);
+      exampleVoices.forEach((voice) => {
+        console.log(
+          `Voice ${voice.id}: supports engines [${voice.metadata?.supportedEngines?.join(", ")}]`
+        );
       });
     });
 
@@ -103,13 +107,13 @@ describe("Polly SSML Engine Detection and Handling", () => {
       const engineTypes = {
         standard: 0,
         neural: 0,
-        'long-form': 0,
-        generative: 0
+        "long-form": 0,
+        generative: 0,
       };
 
-      voices.forEach(voice => {
+      voices.forEach((voice) => {
         const engines = voice.metadata?.supportedEngines || [];
-        engines.forEach(engine => {
+        engines.forEach((engine) => {
           if (engine in engineTypes) {
             engineTypes[engine as keyof typeof engineTypes]++;
           }
@@ -117,7 +121,7 @@ describe("Polly SSML Engine Detection and Handling", () => {
       });
 
       console.log("Engine type distribution:", engineTypes);
-      
+
       // We should have at least some standard and neural voices
       expect(engineTypes.standard + engineTypes.neural).toBeGreaterThan(0);
     });
@@ -132,11 +136,11 @@ describe("Polly SSML Engine Detection and Handling", () => {
 
       // Test a few different voice types if available
       const testVoices = voices.slice(0, 3);
-      
+
       for (const voice of testVoices) {
         const engines = voice.metadata?.supportedEngines || [];
-        console.log(`Testing voice ${voice.id} with engines: [${engines.join(', ')}]`);
-        
+        console.log(`Testing voice ${voice.id} with engines: [${engines.join(", ")}]`);
+
         // We can't directly test the private method, but we can test the behavior
         // by checking if SSML is processed correctly
         const ssmlText = `
@@ -151,10 +155,12 @@ describe("Polly SSML Engine Detection and Handling", () => {
           // Set the voice and try to synthesize
           client.setVoice(voice.id);
           const audioBytes = await client.synthToBytes(ssmlText, { format: "mp3" });
-          
+
           // If we get audio bytes, the engine handled the SSML appropriately
           expect(audioBytes.length).toBeGreaterThan(0);
-          console.log(`Voice ${voice.id}: Successfully processed SSML (${audioBytes.length} bytes)`);
+          console.log(
+            `Voice ${voice.id}: Successfully processed SSML (${audioBytes.length} bytes)`
+          );
         } catch (error) {
           // Some voices might not be available in the test region
           console.log(`Voice ${voice.id}: Synthesis failed - ${error}`);
@@ -171,7 +177,7 @@ describe("Polly SSML Engine Detection and Handling", () => {
       }
 
       // Find a neural voice if available
-      const neuralVoice = voices.find(voice => 
+      const neuralVoice = voices.find((voice) =>
         voice.metadata?.supportedEngines?.includes("neural")
       );
 
@@ -189,10 +195,12 @@ describe("Polly SSML Engine Detection and Handling", () => {
       try {
         client.setVoice(neuralVoice.id);
         const audioBytes = await client.synthToBytes(ssmlWithEmphasis, { format: "mp3" });
-        
+
         // Neural voices should strip emphasis tags but still produce audio
         expect(audioBytes.length).toBeGreaterThan(0);
-        console.log(`Neural voice ${neuralVoice.id}: Successfully handled emphasis tags (${audioBytes.length} bytes)`);
+        console.log(
+          `Neural voice ${neuralVoice.id}: Successfully handled emphasis tags (${audioBytes.length} bytes)`
+        );
       } catch (error) {
         console.log(`Neural voice ${neuralVoice.id}: Synthesis failed - ${error}`);
       }
@@ -205,12 +213,13 @@ describe("Polly SSML Engine Detection and Handling", () => {
       }
 
       // Test both standard and neural voices if available
-      const standardVoice = voices.find(voice => 
-        voice.metadata?.supportedEngines?.includes("standard") &&
-        !voice.metadata?.supportedEngines?.includes("neural")
+      const standardVoice = voices.find(
+        (voice) =>
+          voice.metadata?.supportedEngines?.includes("standard") &&
+          !voice.metadata?.supportedEngines?.includes("neural")
       );
-      
-      const neuralVoice = voices.find(voice => 
+
+      const neuralVoice = voices.find((voice) =>
         voice.metadata?.supportedEngines?.includes("neural")
       );
 
@@ -226,7 +235,9 @@ describe("Polly SSML Engine Detection and Handling", () => {
           client.setVoice(standardVoice.id);
           const audioBytes = await client.synthToBytes(ssmlWithProsody, { format: "mp3" });
           expect(audioBytes.length).toBeGreaterThan(0);
-          console.log(`Standard voice ${standardVoice.id}: Successfully processed prosody (${audioBytes.length} bytes)`);
+          console.log(
+            `Standard voice ${standardVoice.id}: Successfully processed prosody (${audioBytes.length} bytes)`
+          );
         } catch (error) {
           console.log(`Standard voice ${standardVoice.id}: Synthesis failed - ${error}`);
         }
@@ -238,7 +249,9 @@ describe("Polly SSML Engine Detection and Handling", () => {
           client.setVoice(neuralVoice.id);
           const audioBytes = await client.synthToBytes(ssmlWithProsody, { format: "mp3" });
           expect(audioBytes.length).toBeGreaterThan(0);
-          console.log(`Neural voice ${neuralVoice.id}: Successfully processed prosody (${audioBytes.length} bytes)`);
+          console.log(
+            `Neural voice ${neuralVoice.id}: Successfully processed prosody (${audioBytes.length} bytes)`
+          );
         } catch (error) {
           console.log(`Neural voice ${neuralVoice.id}: Synthesis failed - ${error}`);
         }
@@ -254,7 +267,7 @@ describe("Polly SSML Engine Detection and Handling", () => {
       }
 
       // Find a voice that supports multiple engines including neural
-      const multiEngineVoice = voices.find(voice => {
+      const multiEngineVoice = voices.find((voice) => {
         const engines = voice.metadata?.supportedEngines || [];
         return engines.includes("neural") && engines.length > 1;
       });
@@ -264,15 +277,19 @@ describe("Polly SSML Engine Detection and Handling", () => {
         return;
       }
 
-      console.log(`Testing engine preference for voice ${multiEngineVoice.id} with engines: [${multiEngineVoice.metadata?.supportedEngines?.join(', ')}]`);
-      
+      console.log(
+        `Testing engine preference for voice ${multiEngineVoice.id} with engines: [${multiEngineVoice.metadata?.supportedEngines?.join(", ")}]`
+      );
+
       // The engine selection logic should prefer neural over standard
       // We can't directly test the private method, but we can verify synthesis works
       try {
         client.setVoice(multiEngineVoice.id);
         const audioBytes = await client.synthToBytes("Testing engine selection", { format: "mp3" });
         expect(audioBytes.length).toBeGreaterThan(0);
-        console.log(`Multi-engine voice ${multiEngineVoice.id}: Successfully synthesized (${audioBytes.length} bytes)`);
+        console.log(
+          `Multi-engine voice ${multiEngineVoice.id}: Successfully synthesized (${audioBytes.length} bytes)`
+        );
       } catch (error) {
         console.log(`Multi-engine voice ${multiEngineVoice.id}: Synthesis failed - ${error}`);
       }

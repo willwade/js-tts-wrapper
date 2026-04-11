@@ -9,12 +9,12 @@
  */
 
 import { AbstractTTSClient } from "../core/abstract-tts";
-import * as SpeechMarkdown from "../markdown/converter";
 import * as SSMLUtils from "../core/ssml-utils";
+import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice, WordBoundaryCallback } from "../types";
+import { decompressBzip2 } from "../utils/bzip2";
 import { fileSystem, isBrowser, isNode, pathUtils } from "../utils/environment";
 import { estimateWordBoundaries } from "../utils/word-timing-estimator";
-import { decompressBzip2 } from "../utils/bzip2";
 
 // Enhanced model type definitions for multi-model support
 export type ModelType = "kokoro" | "matcha" | "vits" | "mms";
@@ -166,6 +166,8 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
    */
   constructor(credentials: TTSCredentials = {}, enhancedOptions: EnhancedWasmOptions = {}) {
     super(credentials);
+
+    this._models = [{ id: "sherpaonnx-wasm", features: ["open-source"] }];
 
     // Capabilities: Browser-only engine, requires WASM runtime
     this.capabilities = { browserSupported: true, nodeSupported: false, needsWasm: true };

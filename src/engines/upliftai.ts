@@ -1,6 +1,6 @@
 import { AbstractTTSClient } from "../core/abstract-tts";
-import * as SpeechMarkdown from "../markdown/converter";
 import * as SSMLUtils from "../core/ssml-utils";
+import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { getFetch } from "../utils/fetch-utils";
 
@@ -93,6 +93,7 @@ export class UpliftAITTSClient extends AbstractTTSClient {
    */
   constructor(credentials: UpliftAITTSCredentials = {}) {
     super(credentials);
+    this._models = [{ id: "upliftai", features: [] }];
     this.apiKey = credentials.apiKey || process.env.UPLIFTAI_API_KEY || "";
     this.outputFormat = "MP3_22050_128"; // Default format
   }

@@ -31,6 +31,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
    */
   constructor(credentials: WatsonTTSCredentials) {
     super(credentials);
+    this._models = [{ id: "watson", features: ["streaming", "ssml", "word-boundary-events"] }];
     this.apiKey = credentials.apiKey as string;
     this.region = credentials.region as string;
     this.instanceId = credentials.instanceId as string;
@@ -210,7 +211,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
    * @returns Array of required credential field names
    */
   protected getRequiredCredentials(): string[] {
-    return ['apiKey', 'region', 'instanceId'];
+    return ["apiKey", "region", "instanceId"];
   }
 
   /**

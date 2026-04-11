@@ -1,9 +1,9 @@
 // Node-only imports moved inside Node-only code paths below for browser compatibility.
 import { AbstractTTSClient } from "../core/abstract-tts";
-import * as SpeechMarkdown from "../markdown/converter";
 import * as SSMLUtils from "../core/ssml-utils";
+import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
-import { type WordBoundary, estimateWordBoundaries } from "../utils/word-timing-estimator";
+import { estimateWordBoundaries, type WordBoundary } from "../utils/word-timing-estimator";
 
 // Mock OpenAI types for TypeScript compilation
 // These will be replaced by the actual types when the openai package is installed
@@ -140,6 +140,11 @@ export class OpenAITTSClient extends AbstractTTSClient {
    */
   constructor(credentials: OpenAITTSCredentials = {}) {
     super(credentials);
+    this._models = [
+      { id: "gpt-4o-mini-tts", features: ["streaming", "audio-tags"] },
+      { id: "tts-1", features: ["streaming"] },
+      { id: "tts-1-hd", features: ["streaming"] },
+    ];
     this.credentials = credentials;
 
     // Don't initialize client here, load it on demand

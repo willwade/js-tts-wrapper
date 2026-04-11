@@ -1,16 +1,16 @@
-import { SAPITTSClient } from "../engines/sapi";
-import { describe, it, expect, beforeAll } from '@jest/globals';
+import { beforeAll, describe, expect, it } from "@jest/globals";
 import * as os from "os";
+import { SAPITTSClient } from "../engines/sapi";
 
 /**
  * SAPI SSML Handling Tests
- * 
+ *
  * This test suite specifically verifies that SAPI properly handles:
  * 1. Plain text (should be automatically wrapped in SSML)
  * 2. SSML with proper speak tags
  * 3. SSML fragments without speak tags (should be wrapped)
  * 4. Mixed content scenarios
- * 
+ *
  * The key issue being tested: SAPI should not read SSML tags literally
  * when they are present but not properly wrapped.
  */
@@ -44,28 +44,28 @@ describe("SAPI SSML Handling", () => {
       it.skip(`${testName} (Windows only)`, () => {});
       return;
     }
-    
+
     if (!client) {
       it.skip(`${testName} (SAPI not available)`, () => {});
       return;
     }
-    
+
     it(testName, testFn, 30000); // 30 second timeout for SAPI operations
   };
 
   runTest("should handle plain text without reading tags literally", async () => {
     const plainText = "Hello world, this is a test.";
-    
+
     // This should work without any issues - plain text gets wrapped in SSML
     const audioBytes = await client!.synthToBytes(plainText);
-    
+
     expect(audioBytes).toBeInstanceOf(Uint8Array);
     expect(audioBytes.length).toBeGreaterThan(0);
-    
+
     // Check for WAV header
-    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
-    expect(wavHeader.startsWith('RIFF')).toBe(true);
-    expect(wavHeader.includes('WAVE')).toBe(true);
+    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString("ascii");
+    expect(wavHeader.startsWith("RIFF")).toBe(true);
+    expect(wavHeader.includes("WAVE")).toBe(true);
   });
 
   runTest("should handle proper SSML without issues", async () => {
@@ -74,16 +74,16 @@ describe("SAPI SSML Handling", () => {
       <break time="500ms"/>
       This should work correctly.
     </speak>`;
-    
+
     const audioBytes = await client!.synthToBytes(properSSML);
-    
+
     expect(audioBytes).toBeInstanceOf(Uint8Array);
     expect(audioBytes.length).toBeGreaterThan(0);
-    
+
     // Check for WAV header
-    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
-    expect(wavHeader.startsWith('RIFF')).toBe(true);
-    expect(wavHeader.includes('WAVE')).toBe(true);
+    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString("ascii");
+    expect(wavHeader.startsWith("RIFF")).toBe(true);
+    expect(wavHeader.includes("WAVE")).toBe(true);
   });
 
   runTest("should handle SSML fragments by wrapping them properly", async () => {
@@ -92,16 +92,16 @@ describe("SAPI SSML Handling", () => {
     const ssmlFragment = `This is a <emphasis level="strong">test</emphasis> with SSML tags.
       <break time="300ms"/>
       The tags should not be read literally.`;
-    
+
     const audioBytes = await client!.synthToBytes(ssmlFragment);
-    
+
     expect(audioBytes).toBeInstanceOf(Uint8Array);
     expect(audioBytes.length).toBeGreaterThan(0);
-    
+
     // Check for WAV header
-    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
-    expect(wavHeader.startsWith('RIFF')).toBe(true);
-    expect(wavHeader.includes('WAVE')).toBe(true);
+    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString("ascii");
+    expect(wavHeader.startsWith("RIFF")).toBe(true);
+    expect(wavHeader.includes("WAVE")).toBe(true);
   });
 
   runTest("should handle simple speak tags without version attributes", async () => {
@@ -110,16 +110,16 @@ describe("SAPI SSML Handling", () => {
       <break time="200ms"/>
       It should work correctly.
     </speak>`;
-    
+
     const audioBytes = await client!.synthToBytes(simpleSSML);
-    
+
     expect(audioBytes).toBeInstanceOf(Uint8Array);
     expect(audioBytes.length).toBeGreaterThan(0);
-    
+
     // Check for WAV header
-    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
-    expect(wavHeader.startsWith('RIFF')).toBe(true);
-    expect(wavHeader.includes('WAVE')).toBe(true);
+    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString("ascii");
+    expect(wavHeader.startsWith("RIFF")).toBe(true);
+    expect(wavHeader.includes("WAVE")).toBe(true);
   });
 
   runTest("should handle prosody tags correctly", async () => {
@@ -128,16 +128,16 @@ describe("SAPI SSML Handling", () => {
       <break time="500ms"/>
       <prosody rate="fast" pitch="high">This text should be spoken quickly with a high pitch.</prosody>
     </speak>`;
-    
+
     const audioBytes = await client!.synthToBytes(prosodySSML);
-    
+
     expect(audioBytes).toBeInstanceOf(Uint8Array);
     expect(audioBytes.length).toBeGreaterThan(0);
-    
+
     // Check for WAV header
-    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
-    expect(wavHeader.startsWith('RIFF')).toBe(true);
-    expect(wavHeader.includes('WAVE')).toBe(true);
+    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString("ascii");
+    expect(wavHeader.startsWith("RIFF")).toBe(true);
+    expect(wavHeader.includes("WAVE")).toBe(true);
   });
 
   runTest("should handle mixed content with various SSML elements", async () => {
@@ -157,9 +157,9 @@ describe("SAPI SSML Handling", () => {
     expect(audioBytes.length).toBeGreaterThan(0);
 
     // Check for WAV header
-    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
-    expect(wavHeader.startsWith('RIFF')).toBe(true);
-    expect(wavHeader.includes('WAVE')).toBe(true);
+    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString("ascii");
+    expect(wavHeader.startsWith("RIFF")).toBe(true);
+    expect(wavHeader.includes("WAVE")).toBe(true);
   });
 
   runTest("should respect voice selection with setVoice", async () => {
@@ -168,7 +168,7 @@ describe("SAPI SSML Handling", () => {
     expect(voices.length).toBeGreaterThan(0);
 
     // Find a German voice if available (like TTS_MS_DE-DE_HEDDA_11.0)
-    const germanVoice = voices.find(v => v.id.includes('DE-DE') || v.name.includes('German'));
+    const germanVoice = voices.find((v) => v.id.includes("DE-DE") || v.name.includes("German"));
 
     if (germanVoice) {
       // Set the German voice
@@ -182,9 +182,9 @@ describe("SAPI SSML Handling", () => {
       expect(audioBytes.length).toBeGreaterThan(0);
 
       // Check for WAV header
-      const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
-      expect(wavHeader.startsWith('RIFF')).toBe(true);
-      expect(wavHeader.includes('WAVE')).toBe(true);
+      const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString("ascii");
+      expect(wavHeader.startsWith("RIFF")).toBe(true);
+      expect(wavHeader.includes("WAVE")).toBe(true);
     } else {
       // If no German voice available, test with any available voice
       const firstVoice = voices[0];
@@ -197,9 +197,9 @@ describe("SAPI SSML Handling", () => {
       expect(audioBytes.length).toBeGreaterThan(0);
 
       // Check for WAV header
-      const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
-      expect(wavHeader.startsWith('RIFF')).toBe(true);
-      expect(wavHeader.includes('WAVE')).toBe(true);
+      const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString("ascii");
+      expect(wavHeader.startsWith("RIFF")).toBe(true);
+      expect(wavHeader.includes("WAVE")).toBe(true);
     }
   });
 
@@ -218,8 +218,8 @@ describe("SAPI SSML Handling", () => {
     expect(audioBytes.length).toBeGreaterThan(0);
 
     // Check for WAV header
-    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString('ascii');
-    expect(wavHeader.startsWith('RIFF')).toBe(true);
-    expect(wavHeader.includes('WAVE')).toBe(true);
+    const wavHeader = Buffer.from(audioBytes.slice(0, 12)).toString("ascii");
+    expect(wavHeader.startsWith("RIFF")).toBe(true);
+    expect(wavHeader.includes("WAVE")).toBe(true);
   });
 });

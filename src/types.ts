@@ -113,7 +113,16 @@ export type UnifiedVoice = {
     | "sherpaonnx"
     | "sherpaonnx-wasm"
     | "espeak-ng"
-    | "sapi";
+    | "sapi"
+    | "cartesia"
+    | "deepgram"
+    | "hume"
+    | "mistral"
+    | "murf"
+    | "resemble"
+    | "unrealspeech"
+    | "xai"
+    | "fishaudio";
 
   /**
    * Language codes supported by this voice
@@ -180,6 +189,30 @@ export type SimpleCallback = () => void;
 /**
  * Property type for TTS properties
  */
+export type ModelFeature =
+  | "streaming"
+  | "audio-tags"
+  | "inline-voice-cloning"
+  | "open-source"
+  | "word-boundary-events"
+  | "character-boundary-events"
+  | "ssml";
+
+export const FEATURES: Record<string, ModelFeature> = {
+  STREAMING: "streaming",
+  AUDIO_TAGS: "audio-tags",
+  INLINE_VOICE_CLONING: "inline-voice-cloning",
+  OPEN_SOURCE: "open-source",
+  WORD_BOUNDARY_EVENTS: "word-boundary-events",
+  CHARACTER_BOUNDARY_EVENTS: "character-boundary-events",
+  SSML: "ssml",
+} as const;
+
+export interface ModelInfo {
+  id: string;
+  features: ModelFeature[];
+}
+
 export type PropertyType = string | number | boolean;
 
 /**

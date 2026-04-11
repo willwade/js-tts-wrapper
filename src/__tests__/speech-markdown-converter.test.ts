@@ -32,7 +32,8 @@ describe("SpeechMarkdown", () => {
     });
 
     it("should convert rate modifier (text)[rate:'slow'] to SSML", async () => {
-      const markdown = "(I can speak text slow)[rate:'x-slow'] and (I can speak text fast)[rate:'x-fast']";
+      const markdown =
+        "(I can speak text slow)[rate:'x-slow'] and (I can speak text fast)[rate:'x-fast']";
       const result = await SpeechMarkdown.toSSML(markdown, "microsoft-azure");
 
       expect(result).toContain('<prosody rate="x-slow"');
@@ -42,7 +43,8 @@ describe("SpeechMarkdown", () => {
     });
 
     it("should convert pitch modifier (text)[pitch:'high'] to SSML", async () => {
-      const markdown = "(I can speak text high)[pitch:'high'] and (I can speak text low)[pitch:'low']";
+      const markdown =
+        "(I can speak text high)[pitch:'high'] and (I can speak text low)[pitch:'low']";
       const result = await SpeechMarkdown.toSSML(markdown, "microsoft-azure");
 
       expect(result).toContain('<prosody pitch="high"');
@@ -52,7 +54,8 @@ describe("SpeechMarkdown", () => {
     });
 
     it("should convert volume modifier (text)[volume:'loud'] to SSML", async () => {
-      const markdown = "(I can speak text loud)[volume:'loud'] and (I can speak text soft)[volume:'soft']";
+      const markdown =
+        "(I can speak text loud)[volume:'loud'] and (I can speak text soft)[volume:'soft']";
       const result = await SpeechMarkdown.toSSML(markdown, "microsoft-azure");
 
       expect(result).toContain('<prosody volume="loud"');
@@ -123,15 +126,15 @@ I can make text ++important++ or use very emphasised and slightly emphasised.
     });
 
     it("should detect rate", () => {
-      expect(SpeechMarkdown.isSpeechMarkdown("Hello (slowly)[rate:\"slow\"] world")).toBe(true);
+      expect(SpeechMarkdown.isSpeechMarkdown('Hello (slowly)[rate:"slow"] world')).toBe(true);
     });
 
     it("should detect pitch", () => {
-      expect(SpeechMarkdown.isSpeechMarkdown("Hello (high)[pitch:\"high\"] world")).toBe(true);
+      expect(SpeechMarkdown.isSpeechMarkdown('Hello (high)[pitch:"high"] world')).toBe(true);
     });
 
     it("should detect volume", () => {
-      expect(SpeechMarkdown.isSpeechMarkdown("Hello (loud)[volume:\"loud\"] world")).toBe(true);
+      expect(SpeechMarkdown.isSpeechMarkdown('Hello (loud)[volume:"loud"] world')).toBe(true);
     });
 
     it("should return false for plain text", () => {

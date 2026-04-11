@@ -27,16 +27,70 @@ export interface ModelsLabTTSOptions extends SpeakOptions {
 /** Static list of available voices */
 const MODELSLAB_VOICES: UnifiedVoice[] = [
   // Emotion-capable female voices
-  { id: "madison",  name: "Madison",  gender: "Female", provider: "modelslab", languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }] },
-  { id: "tara",     name: "Tara",     gender: "Female", provider: "modelslab", languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }] },
-  { id: "leah",     name: "Leah",     gender: "Female", provider: "modelslab", languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }] },
-  { id: "jess",     name: "Jess",     gender: "Female", provider: "modelslab", languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }] },
-  { id: "mia",      name: "Mia",      gender: "Female", provider: "modelslab", languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }] },
-  { id: "zoe",      name: "Zoe",      gender: "Female", provider: "modelslab", languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }] },
+  {
+    id: "madison",
+    name: "Madison",
+    gender: "Female",
+    provider: "modelslab",
+    languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }],
+  },
+  {
+    id: "tara",
+    name: "Tara",
+    gender: "Female",
+    provider: "modelslab",
+    languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }],
+  },
+  {
+    id: "leah",
+    name: "Leah",
+    gender: "Female",
+    provider: "modelslab",
+    languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }],
+  },
+  {
+    id: "jess",
+    name: "Jess",
+    gender: "Female",
+    provider: "modelslab",
+    languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }],
+  },
+  {
+    id: "mia",
+    name: "Mia",
+    gender: "Female",
+    provider: "modelslab",
+    languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }],
+  },
+  {
+    id: "zoe",
+    name: "Zoe",
+    gender: "Female",
+    provider: "modelslab",
+    languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }],
+  },
   // Emotion-capable male voices
-  { id: "leo",      name: "Leo",      gender: "Male",   provider: "modelslab", languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }] },
-  { id: "dan",      name: "Dan",      gender: "Male",   provider: "modelslab", languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }] },
-  { id: "zac",      name: "Zac",      gender: "Male",   provider: "modelslab", languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }] },
+  {
+    id: "leo",
+    name: "Leo",
+    gender: "Male",
+    provider: "modelslab",
+    languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }],
+  },
+  {
+    id: "dan",
+    name: "Dan",
+    gender: "Male",
+    provider: "modelslab",
+    languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }],
+  },
+  {
+    id: "zac",
+    name: "Zac",
+    gender: "Male",
+    provider: "modelslab",
+    languageCodes: [{ bcp47: "en-US", iso639_3: "eng", display: "English (US)" }],
+  },
 ];
 
 const API_URL = "https://modelslab.com/api/v6/voice/text_to_speech";
@@ -65,9 +119,10 @@ export class ModelsLabTTSClient extends AbstractTTSClient {
 
   constructor(credentials: ModelsLabTTSCredentials = {}) {
     super(credentials);
+    this._models = [{ id: "modelslab", features: [] }];
     this.apiKey =
       credentials.apiKey ||
-      (typeof process !== "undefined" ? process.env.MODELSLAB_API_KEY ?? "" : "");
+      (typeof process !== "undefined" ? (process.env.MODELSLAB_API_KEY ?? "") : "");
     this.defaultLanguage = DEFAULT_LANGUAGE;
     this.defaultSpeed = 1.0;
     if (!this.voiceId) {
@@ -142,7 +197,13 @@ export class ModelsLabTTSClient extends AbstractTTSClient {
     const speed = options.speed ?? this.defaultSpeed;
     const language = options.language ?? this.defaultLanguage;
 
-    const audioBytes = await this._synthesize(processedText, voiceId, language, speed, options.emotion ?? false);
+    const audioBytes = await this._synthesize(
+      processedText,
+      voiceId,
+      language,
+      speed,
+      options.emotion ?? false
+    );
 
     const audioStream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -215,10 +276,7 @@ export class ModelsLabTTSClient extends AbstractTTSClient {
   }
 
   /** Poll the fetch_result URL until audio is ready. */
-  private async _poll(
-    fetchUrl: string,
-    fetch: ReturnType<typeof getFetch>
-  ): Promise<string> {
+  private async _poll(fetchUrl: string, fetch: ReturnType<typeof getFetch>): Promise<string> {
     for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
       await this._sleep(POLL_INTERVAL_MS);
 

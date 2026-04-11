@@ -1,10 +1,10 @@
-import { AbstractTTSClient } from "../core/abstract-tts";
-import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
-import * as SpeechMarkdown from "../markdown/converter";
 import { spawn } from "node:child_process";
-import { readFileSync, unlinkSync, existsSync } from "node:fs";
+import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { AbstractTTSClient } from "../core/abstract-tts";
+import * as SpeechMarkdown from "../markdown/converter";
+import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 
 /**
  * SAPI TTS Client Credentials
@@ -41,6 +41,8 @@ export class SAPITTSClient extends AbstractTTSClient {
 
   constructor(credentials: SAPITTSCredentials = {}) {
     super(credentials);
+
+    this._models = [{ id: "sapi", features: ["ssml"] }];
 
     // Validate Windows environment
     this.validateEnvironment();
@@ -80,7 +82,7 @@ export class SAPITTSClient extends AbstractTTSClient {
   async checkCredentials(): Promise<boolean> {
     try {
       this.validateEnvironment();
-      
+
       // Test if PowerShell and System.Speech are available
       const testScript = `
         try {
@@ -136,7 +138,9 @@ export class SAPITTSClient extends AbstractTTSClient {
       const parsedResult = JSON.parse(result);
 
       // Ensure we have an array (PowerShell returns single object when there's only one voice)
-      const voiceData: SAPIVoiceInfo[] = Array.isArray(parsedResult) ? parsedResult : [parsedResult];
+      const voiceData: SAPIVoiceInfo[] = Array.isArray(parsedResult)
+        ? parsedResult
+        : [parsedResult];
 
       // Convert to unified voice format
       const unifiedVoices: UnifiedVoice[] = voiceData.map((voice) => ({
@@ -334,13 +338,17 @@ export class SAPITTSClient extends AbstractTTSClient {
         $synth = [System.Speech.Synthesis.SpeechSynthesizer]::new()
 
         # Set voice if specified
-        ${voiceName ? `
+        ${
+          voiceName
+            ? `
         try {
           $synth.SelectVoice("${this.escapePowerShellString(voiceName)}")
         } catch {
           # If voice selection fails, continue with default voice
           Write-Warning "Could not select voice '${this.escapePowerShellString(voiceName)}', using default voice"
-        }` : ""}
+        }`
+            : ""
+        }
 
         # Set speech properties
         $synth.Rate = ${rate}
@@ -383,7 +391,9 @@ export class SAPITTSClient extends AbstractTTSClient {
       }
 
       // Create estimated word timings (SAPI doesn't provide real-time events in this mode)
-      this._createEstimatedWordTimings(isSSMLProcessed ? this.stripSSML(processedText) : processedText);
+      this._createEstimatedWordTimings(
+        isSSMLProcessed ? this.stripSSML(processedText) : processedText
+      );
 
       return new Uint8Array(audioBuffer);
     } catch (error) {
@@ -480,10 +490,11 @@ export class SAPITTSClient extends AbstractTTSClient {
           return 4;
         case "x-fast":
           return 8;
-        default:
+        default: {
           // Try to parse as number
           const parsed = Number.parseFloat(rate);
           return Number.isNaN(parsed) ? 0 : Math.max(-10, Math.min(10, parsed));
+        }
       }
     }
 
@@ -518,10 +529,11 @@ export class SAPITTSClient extends AbstractTTSClient {
           return 80;
         case "x-loud":
           return 100;
-        default:
+        default: {
           // Try to parse as number
           const parsed = Number.parseFloat(volume);
           return Number.isNaN(parsed) ? 100 : Math.max(0, Math.min(100, parsed));
+        }
       }
     }
 
@@ -539,11 +551,7 @@ export class SAPITTSClient extends AbstractTTSClient {
    * @returns Escaped string
    */
   private escapePowerShellString(str: string): string {
-    return str
-      .replace(/\\/g, "\\\\")
-      .replace(/"/g, '""')
-      .replace(/`/g, "``")
-      .replace(/\$/g, "`$");
+    return str.replace(/\\/g, "\\\\").replace(/"/g, '""').replace(/`/g, "``").replace(/\$/g, "`$");
   }
 
   /**
@@ -566,26 +574,29 @@ export class SAPITTSClient extends AbstractTTSClient {
     const trimmedText = text.trim();
 
     // Check if the SSML already has version attribute
-    if (trimmedText.includes('version=')) {
+    if (trimmedText.includes("version=")) {
       return text; // Return original text to preserve formatting
     }
 
     // Check for double wrapping (defensive programming)
     // This prevents the bug where SSML gets wrapped twice
-    if (trimmedText.includes('<speak') && trimmedText.indexOf('<speak') !== trimmedText.lastIndexOf('<speak')) {
-      console.warn('SAPI: Detected potential double SSML wrapping, returning text as-is');
+    if (
+      trimmedText.includes("<speak") &&
+      trimmedText.indexOf("<speak") !== trimmedText.lastIndexOf("<speak")
+    ) {
+      console.warn("SAPI: Detected potential double SSML wrapping, returning text as-is");
       return text;
     }
 
     // If it's a simple <speak> tag, add the version attribute
     // Note: SAPI requires xml:lang="en" (not "en-US") for SSML to work properly
-    if (trimmedText.startsWith('<speak>')) {
-      return text.replace('<speak>', '<speak version="1.0" xml:lang="en">');
+    if (trimmedText.startsWith("<speak>")) {
+      return text.replace("<speak>", '<speak version="1.0" xml:lang="en">');
     }
 
     // If it doesn't start with <speak>, wrap it properly
     // Note: SAPI requires xml:lang="en" (not "en-US") for SSML to work properly
-    if (!trimmedText.startsWith('<speak')) {
+    if (!trimmedText.startsWith("<speak")) {
       return `<speak version="1.0" xml:lang="en">${text}</speak>`;
     }
 

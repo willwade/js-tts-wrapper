@@ -1,5 +1,5 @@
-import { isBrowser } from "../utils/environment";
 import { SpeechMarkdown as SMSpeechMarkdown } from "speechmarkdown-js";
+import { isBrowser } from "../utils/environment";
 
 export interface SpeechMarkdownRuntimeConfig {
   enabled?: boolean;

@@ -28,6 +28,7 @@ export class AzureTTSClient extends AbstractTTSClient {
    */
   constructor(credentials: AzureTTSCredentials) {
     super(credentials);
+    this._models = [{ id: "azure", features: ["streaming", "ssml", "word-boundary-events"] }];
     // Type assertion is safe here due to the AzureTTSCredentials interface
     this.subscriptionKey = credentials.subscriptionKey as string;
     this.region = credentials.region as string;
@@ -61,7 +62,7 @@ export class AzureTTSClient extends AbstractTTSClient {
    * @returns Array of required credential field names
    */
   protected getRequiredCredentials(): string[] {
-    return ['subscriptionKey', 'region'];
+    return ["subscriptionKey", "region"];
   }
 
   /**
@@ -121,7 +122,9 @@ export class AzureTTSClient extends AbstractTTSClient {
    */
   async synthToBytes(text: string, options?: AzureTTSOptions): Promise<Uint8Array> {
     const ssml = await this.prepareSSML(text, options);
-    console.debug(`${this.constructor.name}.synthToBytes - TTS text ${ssml}, Options: ${JSON.stringify(options)}`);
+    console.debug(
+      `${this.constructor.name}.synthToBytes - TTS text ${ssml}, Options: ${JSON.stringify(options)}`
+    );
 
     try {
       const response = await fetch(
@@ -204,22 +207,24 @@ export class AzureTTSClient extends AbstractTTSClient {
         return this.sdk;
       }
       this.sdkLoadingPromise = new Promise((resolve) => {
-        const script = document.createElement('script');
-        script.src = 'https://aka.ms/csspeech/jsbrowserpackageraw';
+        const script = document.createElement("script");
+        script.src = "https://aka.ms/csspeech/jsbrowserpackageraw";
         script.async = true;
         script.onload = () => {
           this.sdk = (window as any).SpeechSDK || null;
           this.sdkLoadingPromise = null;
           if (this.sdk) {
-            console.log('Microsoft Speech SDK (browser) loaded successfully.');
+            console.log("Microsoft Speech SDK (browser) loaded successfully.");
             resolve(this.sdk);
           } else {
-            console.warn('Speech SDK script loaded but window.SpeechSDK not found. Falling back to REST.');
+            console.warn(
+              "Speech SDK script loaded but window.SpeechSDK not found. Falling back to REST."
+            );
             resolve(null);
           }
         };
         script.onerror = () => {
-          console.warn('Failed to load Microsoft Speech SDK (browser). Falling back to REST.');
+          console.warn("Failed to load Microsoft Speech SDK (browser). Falling back to REST.");
           this.sdkLoadingPromise = null;
           resolve(null);
         };
@@ -229,9 +234,8 @@ export class AzureTTSClient extends AbstractTTSClient {
     }
 
     // Node: dynamic import
-    const dyn: any = new Function('m','return import(m)');
-    // @ts-ignore - Suppress module not found error for SDK types during build
-    this.sdkLoadingPromise = dyn('microsoft-cognitiveservices-speech-sdk')
+    const dyn: any = new Function("m", "return import(m)");
+    this.sdkLoadingPromise = dyn("microsoft-cognitiveservices-speech-sdk")
       .then((sdkModule: any) => {
         this.sdk = sdkModule;
         this.sdkLoadingPromise = null; // Reset promise after successful load
@@ -240,7 +244,9 @@ export class AzureTTSClient extends AbstractTTSClient {
       })
       .catch((_error: any) => {
         // Log the actual error for debugging if needed: console.error("SDK Load Error:", _error);
-        console.warn("microsoft-cognitiveservices-speech-sdk not found or failed to load, using REST API fallback for word boundaries.");
+        console.warn(
+          "microsoft-cognitiveservices-speech-sdk not found or failed to load, using REST API fallback for word boundaries."
+        );
         this.sdkLoadingPromise = null; // Reset promise on error
         this.sdk = null; // Ensure SDK is null if loading failed
         return null; // Indicate SDK load failed
@@ -264,16 +270,21 @@ export class AzureTTSClient extends AbstractTTSClient {
     wordBoundaries: Array<{ text: string; offset: number; duration: number }>;
   }> {
     try {
-      if (!sdkInstance) { // Should not happen if called correctly, but good practice
+      if (!sdkInstance) {
+        // Should not happen if called correctly, but good practice
         throw new Error("Attempted to use SDK method, but SDK instance is missing.");
       }
       // Create a speech config
-      const speechConfig = sdkInstance.SpeechConfig.fromSubscription(this.subscriptionKey, this.region);
+      const speechConfig = sdkInstance.SpeechConfig.fromSubscription(
+        this.subscriptionKey,
+        this.region
+      );
 
       // Set the output format
-      speechConfig.speechSynthesisOutputFormat = options?.format === "mp3"
-        ? sdkInstance.SpeechSynthesisOutputFormat.Audio24Khz96KBitRateMonoMp3
-        : sdkInstance.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;
+      speechConfig.speechSynthesisOutputFormat =
+        options?.format === "mp3"
+          ? sdkInstance.SpeechSynthesisOutputFormat.Audio24Khz96KBitRateMonoMp3
+          : sdkInstance.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;
 
       // Set the voice
       if (this.voiceId) {
@@ -449,12 +460,16 @@ export class AzureTTSClient extends AbstractTTSClient {
 
     try {
       // Create a speech config
-      const speechConfig = this.sdk.SpeechConfig.fromSubscription(this.subscriptionKey, this.region);
+      const speechConfig = this.sdk.SpeechConfig.fromSubscription(
+        this.subscriptionKey,
+        this.region
+      );
 
       // Set the output format
-      speechConfig.speechSynthesisOutputFormat = options?.format === "mp3"
-        ? this.sdk.SpeechSynthesisOutputFormat.Audio24Khz96KBitRateMonoMp3
-        : this.sdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;
+      speechConfig.speechSynthesisOutputFormat =
+        options?.format === "mp3"
+          ? this.sdk.SpeechSynthesisOutputFormat.Audio24Khz96KBitRateMonoMp3
+          : this.sdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;
 
       // Set the voice
       if (this.voiceId) {
@@ -542,17 +557,17 @@ export class AzureTTSClient extends AbstractTTSClient {
     const voiceId = options?.voice || this.voiceId;
 
     // Validate and process SSML for Azure compatibility
-    const validation = SSMLUtils.validateSSMLForEngine(ssml, 'azure', voiceId || undefined);
+    const validation = SSMLUtils.validateSSMLForEngine(ssml, "azure", voiceId || undefined);
     if (validation.warnings.length > 0) {
-      console.warn('Azure SSML warnings:', validation.warnings);
+      console.warn("Azure SSML warnings:", validation.warnings);
     }
     if (!validation.isValid) {
-      console.error('Azure SSML validation errors:', validation.errors);
-      throw new Error(`Invalid SSML for Azure: ${validation.errors.join(', ')}`);
+      console.error("Azure SSML validation errors:", validation.errors);
+      throw new Error(`Invalid SSML for Azure: ${validation.errors.join(", ")}`);
     }
 
     // Process SSML for Azure compatibility
-    ssml = SSMLUtils.processSSMLForEngine(ssml, 'azure', voiceId || undefined);
+    ssml = SSMLUtils.processSSMLForEngine(ssml, "azure", voiceId || undefined);
 
     // Ensure proper SSML structure for Azure
     ssml = this.ensureAzureSSMLStructure(ssml, voiceId, options);
@@ -567,32 +582,36 @@ export class AzureTTSClient extends AbstractTTSClient {
    * @param options Synthesis options
    * @returns Properly structured SSML for Azure
    */
-  private ensureAzureSSMLStructure(ssml: string, voiceId?: string | null, options?: AzureTTSOptions): string {
+  private ensureAzureSSMLStructure(
+    ssml: string,
+    voiceId?: string | null,
+    options?: AzureTTSOptions
+  ): string {
     // Check if SSML contains mstts-specific tags
     const hasMsttsContent = /mstts:/.test(ssml);
 
     // Ensure required attributes are present
-    if (!ssml.includes('version=')) {
-      ssml = ssml.replace('<speak', '<speak version="1.0"');
+    if (!ssml.includes("version=")) {
+      ssml = ssml.replace("<speak", '<speak version="1.0"');
     }
-    if (!ssml.includes('xmlns=')) {
-      ssml = ssml.replace('<speak', '<speak xmlns="http://www.w3.org/2001/10/synthesis"');
+    if (!ssml.includes("xmlns=")) {
+      ssml = ssml.replace("<speak", '<speak xmlns="http://www.w3.org/2001/10/synthesis"');
     }
     // Add mstts namespace if content contains mstts tags
-    if (hasMsttsContent && !ssml.includes('xmlns:mstts=')) {
-      ssml = ssml.replace('<speak', '<speak xmlns:mstts="https://www.w3.org/2001/mstts"');
+    if (hasMsttsContent && !ssml.includes("xmlns:mstts=")) {
+      ssml = ssml.replace("<speak", '<speak xmlns:mstts="https://www.w3.org/2001/mstts"');
     }
-    if (!ssml.includes('xml:lang=')) {
-      ssml = ssml.replace('<speak', `<speak xml:lang="${this.lang}"`);
+    if (!ssml.includes("xml:lang=")) {
+      ssml = ssml.replace("<speak", `<speak xml:lang="${this.lang}"`);
     }
 
     // Add voice selection if a voice is set and not already present
-    if (voiceId && !ssml.includes('<voice')) {
+    if (voiceId && !ssml.includes("<voice")) {
       // Extract content between speak tags
       const speakMatch = ssml.match(/<speak[^>]*>(.*?)<\/speak>/s);
       if (speakMatch) {
         const content = speakMatch[1].trim();
-        const speakTag = ssml.substring(0, ssml.indexOf('>') + 1);
+        const speakTag = ssml.substring(0, ssml.indexOf(">") + 1);
         ssml = `${speakTag}<voice name="${voiceId}">${content}</voice></speak>`;
       }
     }
@@ -645,5 +664,5 @@ export class AzureTTSClient extends AbstractTTSClient {
  * Extended options for Azure TTS
  */
 export interface AzureTTSOptions extends SpeakOptions {
-  format?: 'mp3' | 'wav'; // Define formats supported by this client logic
+  format?: "mp3" | "wav"; // Define formats supported by this client logic
 }

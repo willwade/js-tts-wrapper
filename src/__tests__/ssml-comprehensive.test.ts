@@ -1,20 +1,21 @@
-import { describe, it, expect, beforeAll, jest } from "@jest/globals";
+import { beforeAll, describe, expect, it, jest } from "@jest/globals";
 
 // Increase timeout for external API calls that may be slow/intermittent
 jest.setTimeout(30000);
+
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { createTTSClient } from "../factory";
 import type { AbstractTTSClient } from "../core/abstract-tts";
+import { createTTSClient } from "../factory";
 
 // Load environment variables from .env file
-const envFile = path.join(process.cwd(), '.env');
+const envFile = path.join(process.cwd(), ".env");
 if (fs.existsSync(envFile)) {
-  const envContent = fs.readFileSync(envFile, 'utf8');
-  const envLines = envContent.split('\n');
+  const envContent = fs.readFileSync(envFile, "utf8");
+  const envLines = envContent.split("\n");
   for (const line of envLines) {
-    if (line.trim() && !line.startsWith('#')) {
+    if (line.trim() && !line.startsWith("#")) {
       const match = line.match(/^export\s+([A-Za-z0-9_]+)="(.*)"/);
       if (match) {
         const [, key, value] = match;
@@ -22,14 +23,14 @@ if (fs.existsSync(envFile)) {
       }
     }
   }
-  console.log('Environment variables loaded from .env file for Jest');
+  console.log("Environment variables loaded from .env file for Jest");
 } else {
-  console.log('No .env file found for Jest');
+  console.log("No .env file found for Jest");
 }
 
 /**
  * Comprehensive SSML Testing Suite
- * 
+ *
  * This test suite verifies SSML support across different TTS engines.
  * It tests various SSML elements including prosody, breaks, emphasis,
  * and ensures proper handling for engines that don't support SSML.
@@ -51,7 +52,14 @@ const CREDENTIAL_FREE_ENGINES = ["espeak-wasm", "sherpaonnx", "sherpaonnx-wasm"]
 
 // Test engines to run (can be overridden by environment variable)
 const TEST_ENGINES = process.env.TEST_ENGINES?.split(",") || [
-  "google", "azure", "polly", "witai", "elevenlabs", "openai", "sapi", "espeak-wasm"
+  "google",
+  "azure",
+  "polly",
+  "witai",
+  "elevenlabs",
+  "openai",
+  "sapi",
+  "espeak-wasm",
 ];
 
 /**
@@ -62,23 +70,31 @@ function getMockCredentials(engineName: string): any {
     case "google":
       // Use real credentials if available, otherwise fake
       if (process.env.GOOGLE_SA_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-        const keyFilename = process.env.GOOGLE_SA_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS;
+        const keyFilename =
+          process.env.GOOGLE_SA_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS;
         return { keyFilename };
       }
       return { keyFilename: "fake-key.json" };
     case "azure":
       // Use real credentials if available, otherwise fake
       if (process.env.MICROSOFT_TOKEN && process.env.MICROSOFT_REGION) {
-        return { subscriptionKey: process.env.MICROSOFT_TOKEN, region: process.env.MICROSOFT_REGION };
+        return {
+          subscriptionKey: process.env.MICROSOFT_TOKEN,
+          region: process.env.MICROSOFT_REGION,
+        };
       }
       return { subscriptionKey: "fake-key", region: "westus" };
     case "polly":
       // Use real credentials if available, otherwise fake
-      if (process.env.POLLY_AWS_KEY_ID && process.env.POLLY_AWS_ACCESS_KEY && process.env.POLLY_REGION) {
+      if (
+        process.env.POLLY_AWS_KEY_ID &&
+        process.env.POLLY_AWS_ACCESS_KEY &&
+        process.env.POLLY_REGION
+      ) {
         return {
           region: process.env.POLLY_REGION,
           accessKeyId: process.env.POLLY_AWS_KEY_ID,
-          secretAccessKey: process.env.POLLY_AWS_ACCESS_KEY
+          secretAccessKey: process.env.POLLY_AWS_ACCESS_KEY,
         };
       }
       return { region: "us-east-1", accessKeyId: "fake-key", secretAccessKey: "fake-secret" };
@@ -102,11 +118,15 @@ function getMockCredentials(engineName: string): any {
       return { apiKey: "fake-key" };
     case "watson":
       // Use real credentials if available, otherwise fake
-      if (process.env.WATSON_API_KEY && process.env.WATSON_REGION && process.env.WATSON_INSTANCE_ID) {
+      if (
+        process.env.WATSON_API_KEY &&
+        process.env.WATSON_REGION &&
+        process.env.WATSON_INSTANCE_ID
+      ) {
         return {
           apiKey: process.env.WATSON_API_KEY,
           region: process.env.WATSON_REGION,
-          instanceId: process.env.WATSON_INSTANCE_ID
+          instanceId: process.env.WATSON_INSTANCE_ID,
         };
       }
       return { apiKey: "fake-key", region: "us-south", instanceId: "fake-instance" };
@@ -185,7 +205,7 @@ describe("Comprehensive SSML Testing", () => {
               expect(fs.statSync(outputPath).size).toBeGreaterThan(0);
 
               console.log(`${engineName}: Basic SSML test passed`);
-              
+
               // Clean up
               if (fs.existsSync(outputPath)) {
                 fs.unlinkSync(outputPath);
@@ -222,7 +242,7 @@ describe("Comprehensive SSML Testing", () => {
               expect(fs.statSync(outputPath).size).toBeGreaterThan(0);
 
               console.log(`${engineName}: Prosody SSML test passed`);
-              
+
               // Clean up
               if (fs.existsSync(outputPath)) {
                 fs.unlinkSync(outputPath);
@@ -261,7 +281,7 @@ describe("Comprehensive SSML Testing", () => {
               expect(fs.statSync(outputPath).size).toBeGreaterThan(0);
 
               console.log(`${engineName}: Break SSML test passed`);
-              
+
               // Clean up
               if (fs.existsSync(outputPath)) {
                 fs.unlinkSync(outputPath);
@@ -298,7 +318,7 @@ describe("Comprehensive SSML Testing", () => {
               expect(fs.statSync(outputPath).size).toBeGreaterThan(0);
 
               console.log(`${engineName}: Emphasis SSML test passed`);
-              
+
               // Clean up
               if (fs.existsSync(outputPath)) {
                 fs.unlinkSync(outputPath);
@@ -368,7 +388,7 @@ describe("Comprehensive SSML Testing", () => {
               expect(fs.statSync(outputPath).size).toBeGreaterThan(0);
 
               console.log(`${engineName}: SSML stripping test passed`);
-              
+
               // Clean up
               if (fs.existsSync(outputPath)) {
                 fs.unlinkSync(outputPath);
@@ -396,23 +416,25 @@ function isServiceIssue(error: any): boolean {
   const errorStatus = error?.status || 0;
 
   // Check for service issues that can occur during synthesis even with valid credentials
-  return errorMessage.includes('quota') ||
-         errorMessage.includes('rate limit') ||
-         errorMessage.includes('ratelimiterror') ||
-         errorMessage.includes('exceeded your current quota') ||
-         errorMessage.includes('service unavailable') ||
-         errorMessage.includes('temporarily unavailable') ||
-         errorMessage.includes('server error') ||
-         errorMessage.includes('404') ||
-         // Network-layer issues we should treat as transient/unreliable in CI
-         errorMessage.includes('terminated') ||
-         errorMessage.includes('econnreset') ||
-         errorMessage.includes('und_err_socket') ||
-         errorMessage.includes('socket') ||
-         errorStatus === 429 ||  // Rate limit
-         errorStatus === 404 ||  // Not found (e.g., API feature not enabled)
-         errorStatus === 500 ||  // Server error
-         errorStatus === 502 ||  // Bad gateway
-         errorStatus === 503 ||  // Service unavailable
-         errorStatus === 504;    // Gateway timeout
+  return (
+    errorMessage.includes("quota") ||
+    errorMessage.includes("rate limit") ||
+    errorMessage.includes("ratelimiterror") ||
+    errorMessage.includes("exceeded your current quota") ||
+    errorMessage.includes("service unavailable") ||
+    errorMessage.includes("temporarily unavailable") ||
+    errorMessage.includes("server error") ||
+    errorMessage.includes("404") ||
+    // Network-layer issues we should treat as transient/unreliable in CI
+    errorMessage.includes("terminated") ||
+    errorMessage.includes("econnreset") ||
+    errorMessage.includes("und_err_socket") ||
+    errorMessage.includes("socket") ||
+    errorStatus === 429 || // Rate limit
+    errorStatus === 404 || // Not found (e.g., API feature not enabled)
+    errorStatus === 500 || // Server error
+    errorStatus === 502 || // Bad gateway
+    errorStatus === 503 || // Service unavailable
+    errorStatus === 504
+  ); // Gateway timeout
 }
