@@ -42,3 +42,4 @@ export * from "./types";
 export { isBrowser, isNode } from "./utils/environment";
 // Utilities
 export { estimateWordBoundaries } from "./utils/word-timing-estimator";
+export * as VoiceUtils from "./core/voice-utils";
