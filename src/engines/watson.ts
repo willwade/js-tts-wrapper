@@ -81,7 +81,7 @@ export class WatsonTTSClient extends AbstractTTSClient {
     return rawVoices.map((voice: any) => ({
       id: voice.name,
       name: voice.name.split("_")[1].replace("V3Voice", ""),
-      gender: voice.gender === "female" ? "Female" : voice.gender === "male" ? "Male" : "Unknown",
+      gender: AbstractTTSClient.normalizeGender(voice.gender),
       provider: "ibm",
       languageCodes: [
         {

@@ -1198,7 +1198,7 @@ export class SherpaOnnxTTSClient extends AbstractTTSClient {
       return {
         id: voice.id,
         name: voice.name,
-        gender: voice.gender as "Male" | "Female" | "Unknown",
+        gender: AbstractTTSClient.normalizeGender(voice.gender),
         provider: "sherpaonnx",
         languageCodes: [languageCode],
       };

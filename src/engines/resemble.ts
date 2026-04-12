@@ -140,7 +140,7 @@ export class ResembleTTSClient extends AbstractTTSClient {
     return rawVoices.map((voice: any) => ({
       id: voice.uuid || voice.id || voice.voice_uuid,
       name: voice.name || voice.uuid || voice.id,
-      gender: (voice.gender || "Unknown") as "Male" | "Female" | "Unknown",
+      gender: AbstractTTSClient.normalizeGender(voice.gender),
       languageCodes: [
         {
           bcp47: voice.language || "en-US",

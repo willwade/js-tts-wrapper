@@ -146,7 +146,7 @@ export class SAPITTSClient extends AbstractTTSClient {
       const unifiedVoices: UnifiedVoice[] = voiceData.map((voice) => ({
         id: voice.Id || voice.Name || "unknown",
         name: voice.Name || "Unknown Voice",
-        gender: voice.Gender === "Male" || voice.Gender === "Female" ? voice.Gender : "Unknown",
+        gender: AbstractTTSClient.normalizeGender(voice.Gender),
         provider: "sapi",
         languageCodes: [
           {

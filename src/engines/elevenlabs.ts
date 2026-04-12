@@ -871,7 +871,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
     return rawVoices.map((voice) => ({
       id: voice.voice_id,
       name: voice.name,
-      gender: undefined, // ElevenLabs doesn't provide gender
+      gender: AbstractTTSClient.normalizeGender(voice.labels?.gender),
       languageCodes: [
         {
           bcp47: voice.labels?.accent || "en-US",
@@ -914,12 +914,7 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
       const unifiedVoice: UnifiedVoice = {
         id: voice.voice_id,
         name: voice.name,
-        gender:
-          voice.labels?.gender === "female"
-            ? "Female"
-            : voice.labels?.gender === "male"
-              ? "Male"
-              : "Unknown",
+        gender: AbstractTTSClient.normalizeGender(voice.labels?.gender),
         languageCodes: [
           {
             bcp47: voice.labels?.language || "en-US",

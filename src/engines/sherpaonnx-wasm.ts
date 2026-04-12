@@ -269,7 +269,7 @@ export class SherpaOnnxWasmTTSClient extends AbstractTTSClient {
             return {
               id: model.id,
               name: model.name,
-              gender: (model.gender || "Unknown") as any,
+              gender: AbstractTTSClient.normalizeGender(model.gender),
               provider: "sherpaonnx-wasm" as const,
               languageCodes: [
                 {
@@ -1693,7 +1693,7 @@ class ModelRepository {
             type: derivedType,
             name: model.name || id,
             language: langCode,
-            gender: "unknown", // Not specified in merged_models.json
+            gender: "Unknown",
             sampleRate: model.sample_rate || 22050,
             url,
             compressed: !!model.compression,
@@ -1767,7 +1767,7 @@ class ModelRepository {
         type: "vits",
         name: "Piper Amy (Medium)",
         language: "en-US",
-        gender: "female",
+        gender: "Female",
         sampleRate: 22050,
         files: {
           model: "model.onnx",

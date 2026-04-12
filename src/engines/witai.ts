@@ -122,7 +122,7 @@ export class WitAITTSClient extends AbstractTTSClient {
     return rawVoices.map((voice: any) => ({
       id: voice.id,
       name: voice.name,
-      gender: voice.gender === "female" ? "Female" : voice.gender === "male" ? "Male" : "Unknown",
+      gender: AbstractTTSClient.normalizeGender(voice.gender),
       provider: "witai",
       languageCodes: voice.languageCodes.map((locale: string) => {
         const [language, region] = locale.split("-");

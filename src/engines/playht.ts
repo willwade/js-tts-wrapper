@@ -215,7 +215,7 @@ export class PlayHTTTSClient extends AbstractTTSClient {
       unifiedVoices.push({
         id: uniqueId,
         name: voice.name,
-        gender: (voice.gender as "Male" | "Female" | "Unknown") || "Unknown",
+        gender: AbstractTTSClient.normalizeGender(voice.gender),
         provider: "playht",
         languageCodes: [languageCode],
       });

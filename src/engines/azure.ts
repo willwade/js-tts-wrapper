@@ -102,7 +102,7 @@ export class AzureTTSClient extends AbstractTTSClient {
     return rawVoices.map((voice: any) => ({
       id: voice.ShortName,
       name: voice.DisplayName,
-      gender: voice.Gender === "Female" ? "Female" : voice.Gender === "Male" ? "Male" : "Unknown",
+      gender: AbstractTTSClient.normalizeGender(voice.Gender),
       provider: "azure",
       languageCodes: [
         {

@@ -169,7 +169,7 @@ export class FishAudioTTSClient extends AbstractTTSClient {
       .map((voice: any) => ({
         id: voice._id || voice.id,
         name: voice.title || voice.name || "Unknown",
-        gender: (voice.gender || "Unknown") as "Male" | "Female" | "Unknown",
+        gender: AbstractTTSClient.normalizeGender(voice.gender),
         languageCodes: voice.languages
           ? voice.languages.map((lang: string) => ({
               bcp47: lang,

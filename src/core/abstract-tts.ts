@@ -24,6 +24,14 @@ import * as SSMLUtils from "./ssml-utils";
  * This provides a unified interface for all TTS providers
  */
 export abstract class AbstractTTSClient {
+  protected static normalizeGender(value: unknown): "Male" | "Female" | "Unknown" {
+    if (!value || typeof value !== "string") return "Unknown";
+    const lower = value.toLowerCase();
+    if (lower === "female") return "Female";
+    if (lower === "male") return "Male";
+    return "Unknown";
+  }
+
   /**
    * Currently selected voice ID
    */

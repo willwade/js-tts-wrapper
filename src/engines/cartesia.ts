@@ -257,11 +257,13 @@ export class CartesiaTTSClient extends AbstractTTSClient {
     return rawVoices.map((voice) => ({
       id: voice.id,
       name: voice.name,
-      gender: (voice.description?.toLowerCase().includes("female")
-        ? "Female"
-        : voice.description?.toLowerCase().includes("male")
-          ? "Male"
-          : "Unknown") as "Male" | "Female" | "Unknown",
+      gender: AbstractTTSClient.normalizeGender(
+        voice.description?.toLowerCase().includes("female")
+          ? "female"
+          : voice.description?.toLowerCase().includes("male")
+            ? "male"
+            : "Unknown"
+      ),
       languageCodes: voice.language
         ? [
             {
