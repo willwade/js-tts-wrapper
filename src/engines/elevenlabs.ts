@@ -459,25 +459,55 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
    * Get available voices from the provider
    * @returns Promise resolving to an array of voice objects
    */
+  /**
+   * Merge raw voices with resolved language data from the models endpoint.
+   * Extracted as a separate method so tests can inject mock data directly.
+   */
+  protected _getVoicesWithModels(rawVoices: any[], models: any[]): any[] {
+    // Build model_id → languages map (TTS-capable models only)
+    const modelLanguageMap = new Map<string, { language_id: string; name: string }[]>();
+    for (const model of models) {
+      if (model.can_do_text_to_speech && Array.isArray(model.languages)) {
+        modelLanguageMap.set(model.model_id, model.languages);
+      }
+    }
+
+    return rawVoices.map((voice) => {
+      const modelIds: string[] = voice.high_quality_base_model_ids ?? [];
+      const seen = new Set<string>();
+      const resolvedLanguages: { language_id: string; name: string }[] = [];
+      for (const modelId of modelIds) {
+        for (const lang of modelLanguageMap.get(modelId) ?? []) {
+          if (!seen.has(lang.language_id)) {
+            seen.add(lang.language_id);
+            resolvedLanguages.push(lang);
+          }
+        }
+      }
+      return { ...voice, _resolvedLanguages: resolvedLanguages };
+    });
+  }
+
   protected async _getVoices(): Promise<any[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/voices`, {
-        method: "GET",
-        headers: {
-          "xi-api-key": this.apiKey,
-        },
-      });
+      const headers = { "xi-api-key": this.apiKey };
+      const [voicesResp, modelsResp] = await Promise.all([
+        fetch(`${this.baseUrl}/voices`, { method: "GET", headers }),
+        fetch(`${this.baseUrl}/models`, { method: "GET", headers }),
+      ]);
 
-      if (!response.ok) {
-        const errorText = await response.text();
+      if (!voicesResp.ok) {
+        const errorText = await voicesResp.text();
         console.error(
-          `ElevenLabs API error: ${response.status} ${response.statusText}\nResponse: ${errorText}`
+          `ElevenLabs API error: ${voicesResp.status} ${voicesResp.statusText}\nResponse: ${errorText}`
         );
-        throw new Error(`Failed to get voices: ${response.statusText}`);
+        throw new Error(`Failed to get voices: ${voicesResp.statusText}`);
       }
 
-      const data = await response.json();
-      return data.voices;
+      const voiceData = await voicesResp.json();
+      const modelData = modelsResp.ok ? await modelsResp.json() : [];
+
+      return this._getVoicesWithModels(voiceData.voices, modelData);
     } catch (error) {
       console.error("Error getting ElevenLabs voices:", error);
       return [];
@@ -877,13 +907,14 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
           : voice.labels?.gender === "male"
             ? "Male"
             : undefined,
-      languageCodes: [
-        {
-          bcp47: voice.labels?.accent || "en-US",
-          iso639_3: (voice.labels?.accent || "en-US").split("-")[0] || "eng",
-          display: voice.labels?.accent || "English",
-        },
-      ],
+      languageCodes:
+        Array.isArray(voice._resolvedLanguages) && voice._resolvedLanguages.length > 0
+          ? voice._resolvedLanguages.map((lang: { language_id: string; name: string }) => ({
+              bcp47: lang.language_id,
+              iso639_3: lang.language_id,
+              display: lang.name,
+            }))
+          : [{ bcp47: "en", iso639_3: "en", display: "English" }],
       provider: "elevenlabs",
     }));
   }
