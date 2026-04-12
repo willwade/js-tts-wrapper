@@ -456,10 +456,6 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
   }
 
   /**
-   * Get available voices from the provider
-   * @returns Promise resolving to an array of voice objects
-   */
-  /**
    * Merge raw voices with resolved language data from the models endpoint.
    * Extracted as a separate method so tests can inject mock data directly.
    */
