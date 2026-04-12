@@ -175,14 +175,15 @@ describe("Azure MSTTS Namespace Handling", () => {
 
     it("should normalise 0-1 volume fraction to 0-100 percentage", async () => {
       // Regression test for: https://github.com/willwade/js-tts-wrapper/issues/40
-      // Callers commonly pass volume as a 0-1 float; 0.8 should become volume="80%", not "0.8%".
+      // Callers commonly pass volume as a 0-1 float; 0.8 should become volume="80" (absolute, 0-100 scale), not "0.8" or "80%".
       const plainSSML = `<speak>Hello world</speak>`;
       const options = { volume: 0.8 };
 
       const result = (client as any).ensureAzureSSMLStructure(plainSSML, "en-US-JennyNeural", options);
 
-      expect(result).toContain('volume="80%"');
-      expect(result).not.toContain('volume="0.8%"');
+      expect(result).toContain('volume="80"');
+      expect(result).not.toContain('volume="0.8"');
+      expect(result).not.toContain('volume="80%"');
     });
   });
 });

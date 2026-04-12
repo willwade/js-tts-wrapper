@@ -68,7 +68,7 @@ export function createProsodyTag(text: string, options?: SpeakOptions): string {
 
   if (options.rate) attrs.push(`rate="${options.rate}"`);
   if (options.pitch) attrs.push(`pitch="${options.pitch}"`);
-  if (options.volume !== undefined) attrs.push(`volume="${options.volume}%"`);
+  if (options.volume !== undefined) attrs.push(`volume="${options.volume}"`);
 
   if (attrs.length === 0) return text;
 

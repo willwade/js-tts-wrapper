@@ -53,7 +53,7 @@ describe("SSMLUtils", () => {
 
     it("should create prosody tag with volume", () => {
       const result = SSMLUtils.createProsodyTag("Hello", { volume: 80 });
-      expect(result).toBe('<prosody volume="80%">Hello</prosody>');
+      expect(result).toBe('<prosody volume="80">Hello</prosody>');
     });
 
     it("should create prosody tag with multiple attributes", () => {
@@ -64,7 +64,7 @@ describe("SSMLUtils", () => {
       });
       expect(result).toContain('rate="slow"');
       expect(result).toContain('pitch="high"');
-      expect(result).toContain('volume="80%"');
+      expect(result).toContain('volume="80"');
     });
 
     it("should return original text if no options provided", () => {
