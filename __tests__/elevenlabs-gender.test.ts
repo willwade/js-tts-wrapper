@@ -3,22 +3,12 @@
  * The bulk voice list response includes labels.gender as "female" / "male"
  */
 
-jest.mock("../src/core/abstract-tts", () => ({
-  AbstractTTSClient: class {
-    voiceId = "some-voice-id";
-    lang = "en-US";
-    properties: Record<string, unknown> = { rate: "medium", pitch: "medium", volume: 100 };
-    timings: unknown[] = [];
-    on() {}
-    emit() {}
-  },
-}));
+import { ElevenLabsTTSClient } from "../src/engines/elevenlabs";
 
 describe("ElevenLabs _mapVoicesToUnified — gender mapping", () => {
   let client: any;
 
-  beforeEach(async () => {
-    const { ElevenLabsTTSClient } = await import("../src/engines/elevenlabs");
+  beforeEach(() => {
     client = new ElevenLabsTTSClient({ apiKey: "fake" });
   });
 

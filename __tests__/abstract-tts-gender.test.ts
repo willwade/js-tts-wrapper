@@ -2,18 +2,11 @@
  * Tests for AbstractTTSClient.getVoicesByGender() (issue #44)
  */
 
+import { AbstractTTSClient } from "../src/core/abstract-tts";
 import type { UnifiedVoice } from "../src/types";
 
-// Minimal stub so we can instantiate a concrete subclass
-jest.mock("../src/core/abstract-tts", () => {
-  const actual = jest.requireActual("../src/core/abstract-tts");
-  return actual;
-});
-
 // Build a concrete subclass with a fixed voice list
-async function makeClient(voices: UnifiedVoice[]) {
-  const { AbstractTTSClient } = await import("../src/core/abstract-tts");
-
+function makeClient(voices: UnifiedVoice[]) {
   class TestTTSClient extends AbstractTTSClient {
     constructor() {
       super({ lang: "en-US" } as any);
@@ -68,29 +61,29 @@ const VOICES: UnifiedVoice[] = [
 
 describe("AbstractTTSClient.getVoicesByGender()", () => {
   it("returns only Female voices when asked for Female", async () => {
-    const client = await makeClient(VOICES);
-    const result = await (client as any).getVoicesByGender("Female");
+    const client = makeClient(VOICES);
+    const result = await client.getVoicesByGender("Female");
     expect(result).toHaveLength(2);
     expect(result.every((v: UnifiedVoice) => v.gender === "Female")).toBe(true);
   });
 
   it("returns only Male voices when asked for Male", async () => {
-    const client = await makeClient(VOICES);
-    const result = await (client as any).getVoicesByGender("Male");
+    const client = makeClient(VOICES);
+    const result = await client.getVoicesByGender("Male");
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe("voice-male-1");
   });
 
   it("returns only Unknown voices when asked for Unknown", async () => {
-    const client = await makeClient(VOICES);
-    const result = await (client as any).getVoicesByGender("Unknown");
+    const client = makeClient(VOICES);
+    const result = await client.getVoicesByGender("Unknown");
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe("voice-unknown-1");
   });
 
   it("returns an empty array when no voices match the gender", async () => {
-    const client = await makeClient([VOICES[0]]); // only Female
-    const result = await (client as any).getVoicesByGender("Male");
+    const client = makeClient([VOICES[0]]); // only Female
+    const result = await client.getVoicesByGender("Male");
     expect(result).toHaveLength(0);
   });
 });
