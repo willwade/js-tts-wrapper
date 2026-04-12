@@ -2,21 +2,9 @@
  * Tests for Azure SSML generation correctness (issue #42)
  */
 
+import { jest } from "@jest/globals";
+import { AzureTTSClient } from "../src/engines/azure";
 import * as SSMLUtils from "../src/core/ssml-utils";
-
-// Minimal stub so we can import AzureTTSClient without real credentials
-jest.mock("../src/core/abstract-tts", () => {
-  return {
-    AbstractTTSClient: class {
-      voiceId = "en-US-AriaNeural";
-      lang = "en-US";
-      properties: Record<string, unknown> = { rate: "medium", pitch: "medium", volume: 100 };
-      timings: unknown[] = [];
-      on() {}
-      emit() {}
-    },
-  };
-});
 
 // We test the SSML utilities directly — no network calls needed.
 
@@ -43,7 +31,7 @@ describe("createProsodyTag — volume format", () => {
 });
 
 describe("Azure prepareSSML — no spurious xmlns/version warnings", () => {
-  let warnSpy: jest.SpyInstance;
+  let warnSpy: ReturnType<typeof jest.spyOn>;
 
   beforeEach(() => {
     warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
@@ -54,8 +42,6 @@ describe("Azure prepareSSML — no spurious xmlns/version warnings", () => {
   });
 
   it("does not warn about missing xmlns or version when synthesising plain text", async () => {
-    // Import lazily so mock is in place
-    const { AzureTTSClient } = await import("../src/engines/azure");
     const client = new AzureTTSClient({ subscriptionKey: "key", region: "eastus" });
 
     // Access the private method via type cast

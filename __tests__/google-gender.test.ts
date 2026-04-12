@@ -4,22 +4,12 @@
  * These must map to "Male", "Female", "Unknown" in UnifiedVoice
  */
 
-jest.mock("../src/core/abstract-tts", () => ({
-  AbstractTTSClient: class {
-    voiceId = "en-US-Standard-A";
-    lang = "en-US";
-    properties: Record<string, unknown> = { rate: "medium", pitch: "medium", volume: 100 };
-    timings: unknown[] = [];
-    on() {}
-    emit() {}
-  },
-}));
+import { GoogleTTSClient } from "../src/engines/google";
 
 describe("Google _mapVoicesToUnified — gender casing", () => {
   let client: any;
 
-  beforeEach(async () => {
-    const { GoogleTTSClient } = await import("../src/engines/google");
+  beforeEach(() => {
     client = new GoogleTTSClient({ keyFilename: "fake.json" });
   });
 
