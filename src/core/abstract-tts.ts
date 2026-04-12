@@ -16,6 +16,7 @@ import type {
 import type { AudioFormat } from "../utils/audio-converter";
 import { detectAudioFormat } from "../utils/audio-input";
 import { isBrowser, isNode } from "../utils/environment";
+import { filterByGender } from "./voice-utils";
 import { LanguageNormalizer } from "./language-utils";
 import * as SSMLUtils from "./ssml-utils";
 
@@ -1141,5 +1142,15 @@ export abstract class AbstractTTSClient {
           lang.iso639_3 === normalizedLanguage.iso639_3
       )
     );
+  }
+
+  /**
+   * Get available voices for a specific gender
+   * @param gender "Male", "Female", or "Unknown"
+   * @returns Promise resolving to an array of available voices for the specified gender
+   */
+  async getVoicesByGender(gender: "Male" | "Female" | "Unknown"): Promise<UnifiedVoice[]> {
+    const voices = await this.getVoices();
+    return filterByGender(voices, gender);
   }
 }
