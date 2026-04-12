@@ -413,7 +413,8 @@ export class GoogleTTSClient extends AbstractTTSClient {
     return rawVoices.map((voice: any) => ({
       id: voice.name,
       name: voice.name || "Unknown",
-      gender: voice.ssmlGender?.toLowerCase() || undefined,
+      gender:
+        voice.ssmlGender === "MALE" ? "Male" : voice.ssmlGender === "FEMALE" ? "Female" : "Unknown",
       languageCodes: voice.languageCodes,
       provider: "google" as const,
       raw: voice, // Keep the original raw voice data

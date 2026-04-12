@@ -871,7 +871,12 @@ export class ElevenLabsTTSClient extends AbstractTTSClient {
     return rawVoices.map((voice) => ({
       id: voice.voice_id,
       name: voice.name,
-      gender: undefined, // ElevenLabs doesn't provide gender
+      gender:
+        voice.labels?.gender === "female"
+          ? "Female"
+          : voice.labels?.gender === "male"
+            ? "Male"
+            : undefined,
       languageCodes: [
         {
           bcp47: voice.labels?.accent || "en-US",
