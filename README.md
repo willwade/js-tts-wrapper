@@ -44,6 +44,7 @@ A JavaScript/TypeScript library that provides a unified API for working with mul
 |--------------|------------|-------------|----------|-------------|
 | `azure` | `AzureTTSClient` | Both | Microsoft Azure Cognitive Services | `@azure/cognitiveservices-speechservices`, `microsoft-cognitiveservices-speech-sdk` |
 | `google` | `GoogleTTSClient` | Both | Google Cloud Text-to-Speech | `@google-cloud/text-to-speech` |
+| `gemini` | `GeminiTTSClient` | Both | Gemini Flash TTS | None (uses fetch API) |
 | `elevenlabs` | `ElevenLabsTTSClient` | Both | ElevenLabs | `node-fetch@2` (Node.js only) |
 | `watson` | `WatsonTTSClient` | Both | IBM Watson | None (uses fetch API) |
 | `openai` | `OpenAITTSClient` | Both | OpenAI | `openai` |
@@ -271,7 +272,7 @@ async function runExample() {
 runExample().catch(console.error);
 ```
 
-The factory supports all engines: `'azure'`, `'google'`, `'polly'`, `'elevenlabs'`, `'openai'`, `'modelslab'`, `'playht'`, `'watson'`, `'witai'`, `'sherpaonnx'`, `'sherpaonnx-wasm'`, `'espeak'`, `'espeak-wasm'`, `'sapi'`, `'cartesia'`, `'deepgram'`, `'hume'`, `'xai'`, `'fishaudio'`, `'mistral'`, `'murf'`, `'unrealspeech'`, `'resemble'`, etc.
+The factory supports all engines: `'azure'`, `'google'`, `'gemini'`, `'polly'`, `'elevenlabs'`, `'openai'`, `'modelslab'`, `'playht'`, `'watson'`, `'witai'`, `'sherpaonnx'`, `'sherpaonnx-wasm'`, `'espeak'`, `'espeak-wasm'`, `'sapi'`, `'cartesia'`, `'deepgram'`, `'hume'`, `'xai'`, `'fishaudio'`, `'mistral'`, `'murf'`, `'unrealspeech'`, `'resemble'`, etc.
 
 ## Core Functionality
 
@@ -492,6 +493,7 @@ The following engines **automatically strip SSML tags** and convert to plain tex
 - **Cartesia** - SSML tags removed; audio tags (`[laugh]`, `[sigh]`, etc.) mapped to `<emotion>` for sonic-3, stripped for others
 - **Deepgram** - SSML tags are removed, plain text is synthesized
 - **Hume** - SSML tags are removed, plain text is synthesized
+- **Gemini** - SSML tags are removed; Gemini audio tags are passed natively
 - **xAI** - SSML tags are removed; audio tags passed natively for grok-tts
 - **Fish Audio** - SSML tags removed; audio tags passed natively for s2-pro
 - **Mistral** - SSML tags are removed, plain text is synthesized
@@ -697,6 +699,7 @@ When disabled, js-tts-wrapper falls back to the lightweight built-in converter (
 | Cartesia | ✅ Converted | → SSML → Plain text |
 | Deepgram | ✅ Converted | → SSML → Plain text |
 | Hume | ✅ Converted | → SSML → Plain text |
+| Gemini | ✅ Converted | → SSML → Plain text |
 | xAI | ✅ Converted | → SSML → Plain text |
 | Fish Audio | ✅ Converted | → SSML → Plain text |
 | Mistral | ✅ Converted | → SSML → Plain text |
@@ -842,6 +845,44 @@ Notes:
 - For true timings, use service account credentials (Node) where the beta client can be used.
 - Environment variable supported by examples/tests: `GOOGLECLOUDTTS_API_KEY`.
 
+### Gemini Flash TTS
+
+Gemini Flash TTS uses the Gemini API, not Google Cloud Text-to-Speech. Configure `GEMINI_API_KEY` or pass `apiKey` directly.
+
+Enable the **Gemini API** (`generativelanguage.googleapis.com`) in your Google Cloud project. Google Cloud Text-to-Speech (`texttospeech.googleapis.com`) is not used by this engine.
+
+#### ESM
+```javascript
+import { GeminiTTSClient } from 'js-tts-wrapper';
+
+const tts = new GeminiTTSClient({
+  apiKey: process.env.GEMINI_API_KEY,
+  model: 'gemini-3.1-flash-tts-preview',
+  voice: 'Kore'
+});
+
+const audio = await tts.synthToBytes('Say cheerfully: Have a wonderful day!');
+```
+
+#### Factory
+```javascript
+import { createTTSClient } from 'js-tts-wrapper';
+
+const tts = createTTSClient('gemini', {
+  apiKey: process.env.GEMINI_API_KEY,
+  voice: 'Puck'
+});
+
+await tts.speak('[excitedly] Hello from Gemini Flash TTS!');
+```
+
+Notes:
+- Supported models: `gemini-3.1-flash-tts-preview` (default) and `gemini-2.5-flash-preview-tts`.
+- Supported voices: Zephyr, Puck, Charon, Kore, Fenrir, Leda, Orus, Aoede, Callirrhoe, Autonoe, Enceladus, Iapetus, Umbriel, Algieba, Despina, Erinome, Algenib, Rasalgethi, Laomedeia, Achernar, Alnilam, Schedar, Gacrux, Pulcherrima, Achird, Zubenelgenubi, Vindemiatrix, Sadachbia, Sadaltager, Sulafat.
+- Gemini TTS does not support SSML; SSML tags are stripped before synthesis.
+- Gemini TTS does not provide true streaming; `synthToBytestream()` wraps the completed audio bytes in a stream.
+- Output is WAV by default. Use `{ format: 'pcm' }` to return raw PCM.
+- Gemini audio tags can be included directly in text, such as `[whispers]`, `[laughs]`, or `[excitedly]`.
 
 ### AWS Polly
 
@@ -1441,6 +1482,7 @@ cd your-project
 # Install specific engine dependencies
 npx js-tts-wrapper@latest run install:azure
 npx js-tts-wrapper@latest run install:google
+npx js-tts-wrapper@latest run install:gemini  # no additional dependencies
 npx js-tts-wrapper@latest run install:polly
 npx js-tts-wrapper@latest run install:openai
 npx js-tts-wrapper@latest run install:sherpaonnx

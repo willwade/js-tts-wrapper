@@ -122,7 +122,8 @@ export type UnifiedVoice = {
     | "resemble"
     | "unrealspeech"
     | "xai"
-    | "fishaudio";
+    | "fishaudio"
+    | "gemini";
 
   /**
    * Language codes supported by this voice

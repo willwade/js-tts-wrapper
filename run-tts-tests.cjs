@@ -20,7 +20,7 @@ const engineName = process.argv[2];
 
 if (!engineName) {
   console.error('Usage: node run-tts-tests.cjs <engine-name>');
-  console.error('Available engines: azure, google, polly, openai, elevenlabs, playht, upliftai, sherpaonnx, sherpaonnx-wasm, sapi, espeak, system');
+  console.error('Available engines: azure, google, gemini, polly, openai, elevenlabs, playht, upliftai, sherpaonnx, sherpaonnx-wasm, sapi, espeak, system');
   process.exit(1);
 }
 
@@ -28,6 +28,7 @@ if (!engineName) {
 const engineTestPatterns = {
   'azure': 'azure',
   'google': 'google',
+  'gemini': 'gemini',
   'polly': 'polly',
   'openai': 'openai',
   'elevenlabs': 'elevenlabs',
