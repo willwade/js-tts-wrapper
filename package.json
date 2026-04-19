@@ -60,6 +60,7 @@
     "test:azure": "node run-tts-tests.cjs azure",
     "test:elevenlabs": "node run-tts-tests.cjs elevenlabs",
     "test:google": "node run-tts-tests.cjs google",
+    "test:gemini": "node run-tts-tests.cjs gemini",
     "test:polly": "node run-tts-tests.cjs polly",
     "test:openai": "node run-tts-tests.cjs openai",
     "test:playht": "node run-tts-tests.cjs playht",
@@ -99,6 +100,7 @@
     "install:deps": "echo 'Use npm install js-tts-wrapper[engine] instead. For example: npm install js-tts-wrapper[azure]'",
     "install:azure": "npm install microsoft-cognitiveservices-speech-sdk",
     "install:google": "npm install @google-cloud/text-to-speech",
+    "install:gemini": "echo 'Gemini TTS uses direct REST API calls; no additional dependencies required.'",
     "install:polly": "npm install @aws-sdk/client-polly",
     "install:openai": "npm install openai",
     "install:elevenlabs": "npm install @elevenlabs/elevenlabs-js",
@@ -118,6 +120,7 @@
     "text-to-speech",
     "azure",
     "google",
+    "gemini",
     "polly",
     "elevenlabs",
     "ibm",
@@ -247,6 +250,7 @@
     "google": {
       "@google-cloud/text-to-speech": "^6.4.0"
     },
+    "gemini": {},
     "elevenlabs": {
       "@elevenlabs/elevenlabs-js": "^2.32.0"
     },

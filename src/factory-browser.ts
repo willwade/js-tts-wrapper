@@ -5,6 +5,7 @@ import { DeepgramTTSClient } from "./engines/deepgram.js";
 import { ElevenLabsTTSClient } from "./engines/elevenlabs.js";
 import { EspeakBrowserTTSClient } from "./engines/espeak-wasm.js";
 import { FishAudioTTSClient } from "./engines/fishaudio.js";
+import { GeminiTTSClient } from "./engines/gemini.js";
 import { GoogleTTSClient } from "./engines/google.js";
 import { HumeTTSClient } from "./engines/hume.js";
 import { MistralTTSClient } from "./engines/mistral.js";
@@ -42,6 +43,7 @@ export type SupportedBrowserTTS =
   | "cartesia"
   | "deepgram"
   | "fishaudio"
+  | "gemini"
   | "google"
   | "hume"
   | "mistral"
@@ -112,6 +114,10 @@ export function createBrowserTTSClient(engine: SupportedBrowserTTS, credentials?
     case "fishaudio":
       return applyProperties(
         new FishAudioTTSClient(credentials as import("./engines/fishaudio").FishAudioTTSCredentials)
+      );
+    case "gemini":
+      return applyProperties(
+        new GeminiTTSClient(credentials as import("./engines/gemini").GeminiTTSCredentials)
       );
     case "google":
       return applyProperties(

@@ -11,6 +11,7 @@ export { ElevenLabsTTSClient } from "./engines/elevenlabs";
 export { EspeakNodeTTSClient, EspeakTTSClient } from "./engines/espeak";
 export { EspeakBrowserTTSClient, EspeakWasmTTSClient } from "./engines/espeak-wasm";
 export { FishAudioTTSClient } from "./engines/fishaudio";
+export { GeminiTTSClient } from "./engines/gemini";
 export { GoogleTTSClient } from "./engines/google";
 export { HumeTTSClient } from "./engines/hume";
 export { MistralTTSClient } from "./engines/mistral";

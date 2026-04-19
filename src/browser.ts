@@ -13,6 +13,7 @@ export { DeepgramTTSClient } from "./engines/deepgram";
 export { ElevenLabsTTSClient } from "./engines/elevenlabs";
 export { EspeakBrowserTTSClient } from "./engines/espeak-wasm";
 export { FishAudioTTSClient } from "./engines/fishaudio";
+export { GeminiTTSClient } from "./engines/gemini";
 export { GoogleTTSClient } from "./engines/google";
 export { HumeTTSClient } from "./engines/hume";
 export { MistralTTSClient } from "./engines/mistral";

@@ -6,6 +6,7 @@ import { ElevenLabsTTSClient } from "./engines/elevenlabs.js";
 import { EspeakTTSClient } from "./engines/espeak.js";
 import { EspeakWasmTTSClient } from "./engines/espeak-wasm.js";
 import { FishAudioTTSClient } from "./engines/fishaudio.js";
+import { GeminiTTSClient } from "./engines/gemini.js";
 import { GoogleTTSClient } from "./engines/google.js";
 import { HumeTTSClient } from "./engines/hume.js";
 import { MistralTTSClient } from "./engines/mistral.js";
@@ -45,6 +46,7 @@ export type SupportedTTS =
   | "cartesia"
   | "deepgram"
   | "fishaudio"
+  | "gemini"
   | "google"
   | "hume"
   | "mistral"
@@ -118,6 +120,10 @@ export function createTTSClient(engine: SupportedTTS, credentials?: TTSCredentia
     case "fishaudio":
       return applyProperties(
         new FishAudioTTSClient(credentials as import("./engines/fishaudio").FishAudioTTSCredentials)
+      );
+    case "gemini":
+      return applyProperties(
+        new GeminiTTSClient(credentials as import("./engines/gemini").GeminiTTSCredentials)
       );
     case "google":
       return applyProperties(

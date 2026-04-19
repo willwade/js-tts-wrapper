@@ -61,6 +61,7 @@ async function installEngine(engine) {
   const engineDeps = {
     azure: ["microsoft-cognitiveservices-speech-sdk"],
     google: ["@google-cloud/text-to-speech"],
+    gemini: [],
     elevenlabs: ["node-fetch@2"],
     playht: ["node-fetch@2"],
     polly: ["@aws-sdk/client-polly"],
@@ -136,6 +137,7 @@ Commands:
 Available engines:
   azure               Microsoft Azure TTS
   google              Google Cloud TTS
+  gemini              Gemini Flash TTS (direct REST, no dependencies)
   elevenlabs          ElevenLabs TTS
   playht              PlayHT TTS
   polly               AWS Polly TTS
