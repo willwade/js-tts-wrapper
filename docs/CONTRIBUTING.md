@@ -60,6 +60,10 @@ ELEVENLABS_API_KEY=your-elevenlabs-api-key
 GOOGLE_APPLICATION_CREDENTIALS=path/to/google-credentials.json
 # or
 GOOGLE_SA_PATH=path/to/google-credentials.json
+
+# CereVoice TTS
+CEREVOICE_EMAIL=your-cerevoice-email
+CEREVOICE_PASSWORD=your-cerevoice-password
 ```
 
 ## Code Style

@@ -1,6 +1,7 @@
 // Browser-compatible factory for TTS clients
 import { AzureTTSClient } from "./engines/azure.js";
 import { CartesiaTTSClient } from "./engines/cartesia.js";
+import { CereVoiceTTSClient } from "./engines/cerevoice.js";
 import { DeepgramTTSClient } from "./engines/deepgram.js";
 import { ElevenLabsTTSClient } from "./engines/elevenlabs.js";
 import { EspeakBrowserTTSClient } from "./engines/espeak-wasm.js";
@@ -41,6 +42,7 @@ try {
 export type SupportedBrowserTTS =
   | "azure"
   | "cartesia"
+  | "cerevoice"
   | "deepgram"
   | "fishaudio"
   | "gemini"
@@ -106,6 +108,10 @@ export function createBrowserTTSClient(engine: SupportedBrowserTTS, credentials?
     case "cartesia":
       return applyProperties(
         new CartesiaTTSClient(credentials as import("./engines/cartesia").CartesiaTTSCredentials)
+      );
+    case "cerevoice":
+      return applyProperties(
+        new CereVoiceTTSClient(credentials as import("./engines/cerevoice").CereVoiceTTSCredentials)
       );
     case "deepgram":
       return applyProperties(

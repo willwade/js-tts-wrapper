@@ -9,6 +9,7 @@ export { AbstractTTSClient } from "./core/abstract-tts";
 // Browser-compatible engines
 export { AzureTTSClient } from "./engines/azure";
 export { CartesiaTTSClient } from "./engines/cartesia";
+export { CereVoiceTTSClient } from "./engines/cerevoice";
 export { DeepgramTTSClient } from "./engines/deepgram";
 export { ElevenLabsTTSClient } from "./engines/elevenlabs";
 export { EspeakBrowserTTSClient } from "./engines/espeak-wasm";

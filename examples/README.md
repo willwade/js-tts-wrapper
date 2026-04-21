@@ -108,6 +108,7 @@ The following engines work in browser environments:
 - **Azure TTS** - Requires subscription key + region
 - **Google Cloud TTS** - Requires service account JSON
 - **AWS Polly** - Requires access key + secret + region
+- **CereVoice Cloud** - Requires email + password, supports SSML and word-boundary metadata
 - **Wit.ai TTS** - Requires API token
 - **Watson TTS** - Requires API key + URL
 
