@@ -6,6 +6,7 @@ export * as VoiceUtils from "./core/voice-utils";
 // Engine exports
 export { AzureTTSClient } from "./engines/azure";
 export { CartesiaTTSClient } from "./engines/cartesia";
+export { CereVoiceTTSClient } from "./engines/cerevoice";
 export { DeepgramTTSClient } from "./engines/deepgram";
 export { ElevenLabsTTSClient } from "./engines/elevenlabs";
 export { EspeakNodeTTSClient, EspeakTTSClient } from "./engines/espeak";

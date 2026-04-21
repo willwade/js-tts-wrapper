@@ -74,6 +74,8 @@ The following secrets need to be configured in the GitHub repository for the aut
 - `MICROSOFT_REGION`: Azure TTS region (optional, for testing)
 - `ELEVENLABS_API_KEY`: ElevenLabs API key (optional, for testing)
 - `GOOGLE_SA_KEY`: Google Cloud service account key in JSON format (optional, for testing)
+- `CEREVOICE_EMAIL`: CereVoice Cloud account email (optional, for live testing)
+- `CEREVOICE_PASSWORD`: CereVoice Cloud account password (optional, for live testing)
 
 ## Versioning
 

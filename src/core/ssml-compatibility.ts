@@ -87,6 +87,30 @@ export const ENGINE_SSML_CAPABILITIES: Record<string, SSMLCapabilities> = {
     requiresNamespace: false,
     requiresVersion: false,
   },
+  cerevoice: {
+    supportsSSML: true,
+    supportLevel: "full",
+    supportedTags: [
+      "speak",
+      "audio",
+      "break",
+      "emphasis",
+      "lexicon",
+      "mark",
+      "meta",
+      "metadata",
+      "p",
+      "phoneme",
+      "prosody",
+      "say-as",
+      "sub",
+      "s",
+      "voice",
+    ],
+    unsupportedTags: ["lang"],
+    requiresNamespace: false,
+    requiresVersion: false,
+  },
 
   // Partial SSML Support
   azure: {

@@ -100,6 +100,7 @@ export type UnifiedVoice = {
    */
   provider:
     | "azure"
+    | "cerevoice"
     | "google"
     | "ibm"
     | "elevenlabs"

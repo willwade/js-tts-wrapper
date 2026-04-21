@@ -58,6 +58,7 @@
     "test:env": "node load-env.js && jest",
     "test:tts": "node run-tts-tests.cjs",
     "test:azure": "node run-tts-tests.cjs azure",
+    "test:cerevoice": "cross-env NODE_OPTIONS=--experimental-vm-modules jest src/__tests__/cerevoice.test.ts",
     "test:elevenlabs": "node run-tts-tests.cjs elevenlabs",
     "test:google": "node run-tts-tests.cjs google",
     "test:gemini": "node run-tts-tests.cjs gemini",
@@ -119,6 +120,8 @@
     "tts",
     "text-to-speech",
     "azure",
+    "cerevoice",
+    "cereproc",
     "google",
     "gemini",
     "polly",
@@ -251,6 +254,7 @@
       "@google-cloud/text-to-speech": "^6.4.0"
     },
     "gemini": {},
+    "cerevoice": {},
     "elevenlabs": {
       "@elevenlabs/elevenlabs-js": "^2.32.0"
     },

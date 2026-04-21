@@ -24,6 +24,15 @@ GOOGLE_APPLICATION_CREDENTIALS=path_to_your_google_credentials_json
 GOOGLE_SA_PATH=path_to_your_google_service_account_json
 ```
 
+### CereVoice TTS
+```
+CEREVOICE_EMAIL=your_cerevoice_email
+CEREVOICE_PASSWORD=your_cerevoice_password
+# Optional
+CEREVOICE_ACCESS_TOKEN=existing_access_token
+CEREVOICE_REFRESH_TOKEN=existing_refresh_token
+```
+
 You can set these environment variables in a `.env` file in the root of the project.
 
 ## Running Tests
@@ -57,9 +66,14 @@ npm run test:elevenlabs
 
 # Test Google TTS
 npm run test:google
+
+# Test CereVoice unit coverage
+npm run test:cerevoice
 ```
 
 If your credentials for the specified engine are invalid, the tests will be skipped with a clear message.
+
+`npm run test:cerevoice` runs mocked unit coverage for auth, voice mapping, synthesis request shape, metadata fetching, and word-boundary conversion. It does not require live CereVoice credentials.
 
 ## Running Examples
 
