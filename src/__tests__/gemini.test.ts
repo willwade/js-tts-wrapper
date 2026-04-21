@@ -121,11 +121,59 @@ describe("GeminiTTSClient", () => {
     expect(voices).toHaveLength(30);
     expect(voices[0]).toHaveProperty("id", "Zephyr");
     expect(voices[0]).toHaveProperty("provider", "gemini");
+    expect(voices.every((voice) => voice.gender && voice.gender !== "Unknown")).toBe(true);
+    expect(voices.every((voice) => typeof voice.metadata?.style === "string")).toBe(true);
+    expect(voices[0].metadata?.genderSource).toBe("google-cloud-gemini-tts");
   });
 
   it("filters voices by supported languages", async () => {
     expect((await client.getVoicesByLanguage("en")).length).toBeGreaterThan(0);
     expect((await client.getVoicesByLanguage("fr")).length).toBeGreaterThan(0);
+    expect((await client.getVoicesByLanguage("es")).length).toBeGreaterThan(0);
+    expect((await client.getVoicesByLanguage("en-US")).length).toBeGreaterThan(0);
+    expect((await client.getVoicesByLanguage("fr-FR")).length).toBeGreaterThan(0);
+  });
+
+  it("maps documented Gemini voice genders", async () => {
+    const voices = await client.getVoices();
+    const byId = new Map(voices.map((voice) => [voice.id, voice]));
+
+    expect(byId.get("Zephyr")?.gender).toBe("Female");
+    expect(byId.get("Kore")?.gender).toBe("Female");
+    expect(byId.get("Puck")?.gender).toBe("Male");
+    expect(byId.get("Charon")?.gender).toBe("Male");
+  });
+
+  it("filters voices by documented gender", async () => {
+    const femaleVoices = await client.getVoicesByGender("Female");
+    const maleVoices = await client.getVoicesByGender("Male");
+
+    expect(femaleVoices.length).toBeGreaterThan(0);
+    expect(maleVoices.length).toBeGreaterThan(0);
+    expect(femaleVoices.every((voice) => voice.gender === "Female")).toBe(true);
+    expect(maleVoices.every((voice) => voice.gender === "Male")).toBe(true);
+    expect(femaleVoices.some((voice) => voice.id === "Zephyr")).toBe(true);
+    expect(maleVoices.some((voice) => voice.id === "Puck")).toBe(true);
+  });
+
+  it("exposes documented Gemini language metadata", async () => {
+    const [voice] = await client.getVoices();
+    const languageCodes = voice.languageCodes.map((language) => language.bcp47);
+    const readiness = voice.metadata?.languageReadiness as Record<string, string>;
+    const supportedLanguageCodes = voice.metadata?.supportedLanguageCodes as string[];
+
+    expect(languageCodes).toEqual(
+      expect.arrayContaining(["en-US", "fr-FR", "de-DE", "pt-BR", "ja-JP"])
+    );
+    expect(languageCodes).toEqual(
+      expect.arrayContaining(["en-GB", "fr-CA", "cmn-CN", "es-MX", "ur-PK"])
+    );
+    expect(languageCodes).toContain("cmn-TW");
+    expect(supportedLanguageCodes).toEqual(languageCodes);
+    expect(readiness["en-US"]).toBe("GA");
+    expect(readiness["fr-FR"]).toBe("GA");
+    expect(readiness["en-GB"]).toBe("Preview");
+    expect(readiness["cmn-CN"]).toBe("Preview");
   });
 
   it("creates via node and browser factories", () => {
