@@ -33,16 +33,7 @@ export function filterByGender(
  */
 export function filterByProvider(
   voices: UnifiedVoice[],
-  provider:
-    | "azure"
-    | "google"
-    | "ibm"
-    | "elevenlabs"
-    | "polly"
-    | "witai"
-    | "playht"
-    | "openai"
-    | "sherpa"
+  provider: UnifiedVoice["provider"]
 ): UnifiedVoice[] {
   return voices.filter((voice) => voice.provider === provider);
 }
