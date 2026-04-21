@@ -3,7 +3,7 @@ import * as SSMLUtils from "../core/ssml-utils";
 import * as SpeechMarkdown from "../markdown/converter";
 import type { SpeakOptions, TTSCredentials, UnifiedVoice } from "../types";
 import { getFetch } from "../utils/fetch-utils";
-import { toIso639_3, toLanguageDisplay } from "../utils/language-utils";
+import { toIso639_3 } from "../utils/language-utils";
 
 export type GeminiTTSModel = "gemini-3.1-flash-tts-preview" | "gemini-2.5-flash-preview-tts";
 
@@ -55,92 +55,125 @@ export interface GeminiTTSCredentials extends TTSCredentials {
   propertiesJson?: string;
 }
 
+type GeminiVoiceGender = "Male" | "Female";
+
 type GeminiVoiceInfo = {
   id: GeminiTTSVoice;
   name: GeminiTTSVoice;
   style: string;
+  gender: GeminiVoiceGender;
 };
 
-const SUPPORTED_LANGUAGES = [
-  "ar",
-  "fil",
-  "bn",
-  "fi",
-  "nl",
-  "gl",
-  "en",
-  "ka",
-  "fr",
-  "el",
-  "de",
-  "gu",
-  "hi",
-  "ht",
-  "id",
-  "he",
-  "it",
-  "hu",
-  "ja",
-  "is",
-  "ko",
-  "jv",
-  "mr",
-  "kn",
-  "pl",
-  "kok",
-  "pt",
-  "lo",
-  "ro",
-  "la",
-  "ru",
-  "lv",
-  "es",
-  "lt",
-  "ta",
-  "lb",
-  "te",
-  "mk",
-  "th",
-  "mai",
-  "tr",
-  "mg",
-  "uk",
-  "ms",
-  "vi",
-  "ml",
-  "af",
-  "mn",
-  "sq",
-  "ne",
-  "am",
-  "nb",
-  "hy",
-  "nn",
-  "az",
-  "or",
-  "eu",
-  "ps",
-  "be",
-  "fa",
-  "bg",
-  "pa",
-  "my",
-  "sr",
-  "ca",
-  "sd",
-  "ceb",
-  "si",
-  "cmn",
-  "sk",
-  "hr",
-  "sl",
-  "cs",
-  "sw",
-  "da",
-  "sv",
-  "et",
-  "ur",
+type GeminiLanguageReadiness = "GA" | "Preview";
+
+type GeminiLanguageInfo = {
+  bcp47: string;
+  display: string;
+  readiness: GeminiLanguageReadiness;
+};
+
+const GEMINI_SUPPORTED_LANGUAGES: GeminiLanguageInfo[] = [
+  { bcp47: "ar-EG", display: "Arabic (Egypt)", readiness: "GA" },
+  { bcp47: "bn-BD", display: "Bangla (Bangladesh)", readiness: "GA" },
+  { bcp47: "nl-NL", display: "Dutch (Netherlands)", readiness: "GA" },
+  { bcp47: "en-IN", display: "English (India)", readiness: "GA" },
+  { bcp47: "en-US", display: "English (United States)", readiness: "GA" },
+  { bcp47: "fr-FR", display: "French (France)", readiness: "GA" },
+  { bcp47: "de-DE", display: "German (Germany)", readiness: "GA" },
+  { bcp47: "hi-IN", display: "Hindi (India)", readiness: "GA" },
+  { bcp47: "id-ID", display: "Indonesian (Indonesia)", readiness: "GA" },
+  { bcp47: "it-IT", display: "Italian (Italy)", readiness: "GA" },
+  { bcp47: "ja-JP", display: "Japanese (Japan)", readiness: "GA" },
+  { bcp47: "ko-KR", display: "Korean (South Korea)", readiness: "GA" },
+  { bcp47: "mr-IN", display: "Marathi (India)", readiness: "GA" },
+  { bcp47: "pl-PL", display: "Polish (Poland)", readiness: "GA" },
+  { bcp47: "pt-BR", display: "Portuguese (Brazil)", readiness: "GA" },
+  { bcp47: "ro-RO", display: "Romanian (Romania)", readiness: "GA" },
+  { bcp47: "ru-RU", display: "Russian (Russia)", readiness: "GA" },
+  { bcp47: "es-ES", display: "Spanish (Spain)", readiness: "GA" },
+  { bcp47: "ta-IN", display: "Tamil (India)", readiness: "GA" },
+  { bcp47: "te-IN", display: "Telugu (India)", readiness: "GA" },
+  { bcp47: "th-TH", display: "Thai (Thailand)", readiness: "GA" },
+  { bcp47: "tr-TR", display: "Turkish (Turkey)", readiness: "GA" },
+  { bcp47: "uk-UA", display: "Ukrainian (Ukraine)", readiness: "GA" },
+  { bcp47: "vi-VN", display: "Vietnamese (Vietnam)", readiness: "GA" },
+  { bcp47: "af-ZA", display: "Afrikaans (South Africa)", readiness: "Preview" },
+  { bcp47: "sq-AL", display: "Albanian (Albania)", readiness: "Preview" },
+  { bcp47: "am-ET", display: "Amharic (Ethiopia)", readiness: "Preview" },
+  { bcp47: "ar-001", display: "Arabic (World)", readiness: "Preview" },
+  { bcp47: "hy-AM", display: "Armenian (Armenia)", readiness: "Preview" },
+  { bcp47: "az-AZ", display: "Azerbaijani (Azerbaijan)", readiness: "Preview" },
+  { bcp47: "eu-ES", display: "Basque (Spain)", readiness: "Preview" },
+  { bcp47: "be-BY", display: "Belarusian (Belarus)", readiness: "Preview" },
+  { bcp47: "bg-BG", display: "Bulgarian (Bulgaria)", readiness: "Preview" },
+  { bcp47: "my-MM", display: "Burmese (Myanmar)", readiness: "Preview" },
+  { bcp47: "ca-ES", display: "Catalan (Spain)", readiness: "Preview" },
+  { bcp47: "ceb-PH", display: "Cebuano (Philippines)", readiness: "Preview" },
+  { bcp47: "cmn-CN", display: "Chinese, Mandarin (China)", readiness: "Preview" },
+  { bcp47: "cmn-TW", display: "Chinese, Mandarin (Taiwan)", readiness: "Preview" },
+  { bcp47: "hr-HR", display: "Croatian (Croatia)", readiness: "Preview" },
+  { bcp47: "cs-CZ", display: "Czech (Czech Republic)", readiness: "Preview" },
+  { bcp47: "da-DK", display: "Danish (Denmark)", readiness: "Preview" },
+  { bcp47: "en-AU", display: "English (Australia)", readiness: "Preview" },
+  { bcp47: "en-GB", display: "English (United Kingdom)", readiness: "Preview" },
+  { bcp47: "et-EE", display: "Estonian (Estonia)", readiness: "Preview" },
+  { bcp47: "fil-PH", display: "Filipino (Philippines)", readiness: "Preview" },
+  { bcp47: "fi-FI", display: "Finnish (Finland)", readiness: "Preview" },
+  { bcp47: "fr-CA", display: "French (Canada)", readiness: "Preview" },
+  { bcp47: "gl-ES", display: "Galician (Spain)", readiness: "Preview" },
+  { bcp47: "ka-GE", display: "Georgian (Georgia)", readiness: "Preview" },
+  { bcp47: "el-GR", display: "Greek (Greece)", readiness: "Preview" },
+  { bcp47: "gu-IN", display: "Gujarati (India)", readiness: "Preview" },
+  { bcp47: "ht-HT", display: "Haitian Creole (Haiti)", readiness: "Preview" },
+  { bcp47: "he-IL", display: "Hebrew (Israel)", readiness: "Preview" },
+  { bcp47: "hu-HU", display: "Hungarian (Hungary)", readiness: "Preview" },
+  { bcp47: "is-IS", display: "Icelandic (Iceland)", readiness: "Preview" },
+  { bcp47: "jv-JV", display: "Javanese (Java)", readiness: "Preview" },
+  { bcp47: "kn-IN", display: "Kannada (India)", readiness: "Preview" },
+  { bcp47: "kok-IN", display: "Konkani (India)", readiness: "Preview" },
+  { bcp47: "lo-LA", display: "Lao (Laos)", readiness: "Preview" },
+  { bcp47: "la-VA", display: "Latin (Vatican City)", readiness: "Preview" },
+  { bcp47: "lv-LV", display: "Latvian (Latvia)", readiness: "Preview" },
+  { bcp47: "lt-LT", display: "Lithuanian (Lithuania)", readiness: "Preview" },
+  { bcp47: "lb-LU", display: "Luxembourgish (Luxembourg)", readiness: "Preview" },
+  { bcp47: "mk-MK", display: "Macedonian (North Macedonia)", readiness: "Preview" },
+  { bcp47: "mai-IN", display: "Maithili (India)", readiness: "Preview" },
+  { bcp47: "mg-MG", display: "Malagasy (Madagascar)", readiness: "Preview" },
+  { bcp47: "ms-MY", display: "Malay (Malaysia)", readiness: "Preview" },
+  { bcp47: "ml-IN", display: "Malayalam (India)", readiness: "Preview" },
+  { bcp47: "mn-MN", display: "Mongolian (Mongolia)", readiness: "Preview" },
+  { bcp47: "ne-NP", display: "Nepali (Nepal)", readiness: "Preview" },
+  { bcp47: "nb-NO", display: "Norwegian, Bokmal (Norway)", readiness: "Preview" },
+  { bcp47: "nn-NO", display: "Norwegian, Nynorsk (Norway)", readiness: "Preview" },
+  { bcp47: "or-IN", display: "Odia (India)", readiness: "Preview" },
+  { bcp47: "ps-AF", display: "Pashto (Afghanistan)", readiness: "Preview" },
+  { bcp47: "fa-IR", display: "Persian (Iran)", readiness: "Preview" },
+  { bcp47: "pt-PT", display: "Portuguese (Portugal)", readiness: "Preview" },
+  { bcp47: "pa-IN", display: "Punjabi (India)", readiness: "Preview" },
+  { bcp47: "sr-RS", display: "Serbian (Serbia)", readiness: "Preview" },
+  { bcp47: "sd-IN", display: "Sindhi (India)", readiness: "Preview" },
+  { bcp47: "si-LK", display: "Sinhala (Sri Lanka)", readiness: "Preview" },
+  { bcp47: "sk-SK", display: "Slovak (Slovakia)", readiness: "Preview" },
+  { bcp47: "sl-SI", display: "Slovenian (Slovenia)", readiness: "Preview" },
+  { bcp47: "es-419", display: "Spanish (Latin America)", readiness: "Preview" },
+  { bcp47: "es-MX", display: "Spanish (Mexico)", readiness: "Preview" },
+  { bcp47: "sw-KE", display: "Swahili (Kenya)", readiness: "Preview" },
+  { bcp47: "sv-SE", display: "Swedish (Sweden)", readiness: "Preview" },
+  { bcp47: "ur-PK", display: "Urdu (Pakistan)", readiness: "Preview" },
 ];
+
+const GEMINI_SUPPORTED_LANGUAGE_CODES = GEMINI_SUPPORTED_LANGUAGES.map(
+  (language) => language.bcp47
+);
+
+const GEMINI_LANGUAGE_READINESS: Record<string, GeminiLanguageReadiness> =
+  GEMINI_SUPPORTED_LANGUAGES.reduce<Record<string, GeminiLanguageReadiness>>(
+    (readiness, language) => {
+      readiness[language.bcp47] = language.readiness;
+      return readiness;
+    },
+    {}
+  );
 
 /**
  * Gemini Flash TTS client.
@@ -157,36 +190,36 @@ export class GeminiTTSClient extends AbstractTTSClient {
   static readonly DEFAULT_VOICE: GeminiTTSVoice = "Kore";
 
   static readonly VOICES: GeminiVoiceInfo[] = [
-    { id: "Zephyr", name: "Zephyr", style: "Bright" },
-    { id: "Puck", name: "Puck", style: "Upbeat" },
-    { id: "Charon", name: "Charon", style: "Informative" },
-    { id: "Kore", name: "Kore", style: "Firm" },
-    { id: "Fenrir", name: "Fenrir", style: "Excitable" },
-    { id: "Leda", name: "Leda", style: "Youthful" },
-    { id: "Orus", name: "Orus", style: "Firm" },
-    { id: "Aoede", name: "Aoede", style: "Breezy" },
-    { id: "Callirrhoe", name: "Callirrhoe", style: "Easy-going" },
-    { id: "Autonoe", name: "Autonoe", style: "Bright" },
-    { id: "Enceladus", name: "Enceladus", style: "Breathy" },
-    { id: "Iapetus", name: "Iapetus", style: "Clear" },
-    { id: "Umbriel", name: "Umbriel", style: "Easy-going" },
-    { id: "Algieba", name: "Algieba", style: "Smooth" },
-    { id: "Despina", name: "Despina", style: "Smooth" },
-    { id: "Erinome", name: "Erinome", style: "Clear" },
-    { id: "Algenib", name: "Algenib", style: "Gravelly" },
-    { id: "Rasalgethi", name: "Rasalgethi", style: "Informative" },
-    { id: "Laomedeia", name: "Laomedeia", style: "Upbeat" },
-    { id: "Achernar", name: "Achernar", style: "Soft" },
-    { id: "Alnilam", name: "Alnilam", style: "Firm" },
-    { id: "Schedar", name: "Schedar", style: "Even" },
-    { id: "Gacrux", name: "Gacrux", style: "Mature" },
-    { id: "Pulcherrima", name: "Pulcherrima", style: "Forward" },
-    { id: "Achird", name: "Achird", style: "Friendly" },
-    { id: "Zubenelgenubi", name: "Zubenelgenubi", style: "Casual" },
-    { id: "Vindemiatrix", name: "Vindemiatrix", style: "Gentle" },
-    { id: "Sadachbia", name: "Sadachbia", style: "Lively" },
-    { id: "Sadaltager", name: "Sadaltager", style: "Knowledgeable" },
-    { id: "Sulafat", name: "Sulafat", style: "Warm" },
+    { id: "Zephyr", name: "Zephyr", style: "Bright", gender: "Female" },
+    { id: "Puck", name: "Puck", style: "Upbeat", gender: "Male" },
+    { id: "Charon", name: "Charon", style: "Informative", gender: "Male" },
+    { id: "Kore", name: "Kore", style: "Firm", gender: "Female" },
+    { id: "Fenrir", name: "Fenrir", style: "Excitable", gender: "Male" },
+    { id: "Leda", name: "Leda", style: "Youthful", gender: "Female" },
+    { id: "Orus", name: "Orus", style: "Firm", gender: "Male" },
+    { id: "Aoede", name: "Aoede", style: "Breezy", gender: "Female" },
+    { id: "Callirrhoe", name: "Callirrhoe", style: "Easy-going", gender: "Female" },
+    { id: "Autonoe", name: "Autonoe", style: "Bright", gender: "Female" },
+    { id: "Enceladus", name: "Enceladus", style: "Breathy", gender: "Male" },
+    { id: "Iapetus", name: "Iapetus", style: "Clear", gender: "Male" },
+    { id: "Umbriel", name: "Umbriel", style: "Easy-going", gender: "Male" },
+    { id: "Algieba", name: "Algieba", style: "Smooth", gender: "Male" },
+    { id: "Despina", name: "Despina", style: "Smooth", gender: "Female" },
+    { id: "Erinome", name: "Erinome", style: "Clear", gender: "Female" },
+    { id: "Algenib", name: "Algenib", style: "Gravelly", gender: "Male" },
+    { id: "Rasalgethi", name: "Rasalgethi", style: "Informative", gender: "Male" },
+    { id: "Laomedeia", name: "Laomedeia", style: "Upbeat", gender: "Female" },
+    { id: "Achernar", name: "Achernar", style: "Soft", gender: "Female" },
+    { id: "Alnilam", name: "Alnilam", style: "Firm", gender: "Male" },
+    { id: "Schedar", name: "Schedar", style: "Even", gender: "Male" },
+    { id: "Gacrux", name: "Gacrux", style: "Mature", gender: "Female" },
+    { id: "Pulcherrima", name: "Pulcherrima", style: "Forward", gender: "Female" },
+    { id: "Achird", name: "Achird", style: "Friendly", gender: "Male" },
+    { id: "Zubenelgenubi", name: "Zubenelgenubi", style: "Casual", gender: "Male" },
+    { id: "Vindemiatrix", name: "Vindemiatrix", style: "Gentle", gender: "Female" },
+    { id: "Sadachbia", name: "Sadachbia", style: "Lively", gender: "Male" },
+    { id: "Sadaltager", name: "Sadaltager", style: "Knowledgeable", gender: "Male" },
+    { id: "Sulafat", name: "Sulafat", style: "Warm", gender: "Female" },
   ];
 
   constructor(credentials: GeminiTTSCredentials = {}) {
@@ -351,15 +384,18 @@ export class GeminiTTSClient extends AbstractTTSClient {
     return rawVoices.map((voice: GeminiVoiceInfo) => ({
       id: voice.id,
       name: voice.name,
-      gender: "Unknown",
+      gender: voice.gender,
       provider: "gemini",
-      languageCodes: SUPPORTED_LANGUAGES.map((language) => ({
-        bcp47: language,
-        iso639_3: toIso639_3(language),
-        display: toLanguageDisplay(language),
+      languageCodes: GEMINI_SUPPORTED_LANGUAGES.map((language) => ({
+        bcp47: language.bcp47,
+        iso639_3: toIso639_3(language.bcp47),
+        display: language.display,
       })),
       metadata: {
         style: voice.style,
+        genderSource: "google-cloud-gemini-tts",
+        supportedLanguageCodes: [...GEMINI_SUPPORTED_LANGUAGE_CODES],
+        languageReadiness: { ...GEMINI_LANGUAGE_READINESS },
       },
     }));
   }

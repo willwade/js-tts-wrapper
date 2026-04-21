@@ -879,6 +879,9 @@ await tts.speak('[excitedly] Hello from Gemini Flash TTS!');
 Notes:
 - Supported models: `gemini-3.1-flash-tts-preview` (default) and `gemini-2.5-flash-preview-tts`.
 - Supported voices: Zephyr, Puck, Charon, Kore, Fenrir, Leda, Orus, Aoede, Callirrhoe, Autonoe, Enceladus, Iapetus, Umbriel, Algieba, Despina, Erinome, Algenib, Rasalgethi, Laomedeia, Achernar, Alnilam, Schedar, Gacrux, Pulcherrima, Achird, Zubenelgenubi, Vindemiatrix, Sadachbia, Sadaltager, Sulafat.
+- `getVoices()` returns documented Gemini voice gender, plus `metadata.style` for each voice.
+- `languageCodes` includes documented Gemini-TTS language/accent BCP-47 codes; synthesis still uses Gemini's automatic language detection.
+- `metadata.languageReadiness` identifies documented language launch readiness as `GA` or `Preview`.
 - Gemini TTS does not support SSML; SSML tags are stripped before synthesis.
 - Gemini TTS does not provide true streaming; `synthToBytestream()` wraps the completed audio bytes in a stream.
 - Output is WAV by default. Use `{ format: 'pcm' }` to return raw PCM.
